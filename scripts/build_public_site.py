@@ -794,12 +794,12 @@ def build_public_site(
             staging / "practice-chains" / "index.html",
             _shell(
                 "Optional Practice Chains — OCF",
-                render_markdown(_read_markdown(content_dir, "practice-chains.md")),
+                _practice_chains_page(_read_markdown(content_dir, "practice-chains.md"), functions),
                 "practice-chains",
                 source_commit,
                 toc=True,
                 toc_items=_markdown_toc(_read_markdown(content_dir, "practice-chains.md")),
-                description="Sixteen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
+                description="Seventeen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
             ),
         )
         historical_body = _historical_names_page(
@@ -1292,7 +1292,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
     session_count = sum(len(rows) for rows in sessions_by_function.values()) + len(preparation_sessions)
     availability = {bool(sessions_by_function.get(function["function_id"])) for function in functions}
     audio_filter = (
-        '<label for="audio-filter">Audio availability</label><select id="audio-filter"><option value="">All documentation</option><option value="yes">Published audio available</option><option value="no">Documentation only</option></select>'
+        '<label for="audio-filter">Audio availability</label><select id="audio-filter"><option value="">All documentation</option><option value="yes">With audio</option><option value="no">Documentation only</option></select>'
         if len(availability) > 1
         else ""
     )
@@ -1854,8 +1854,12 @@ def _quick_reference(functions, sessions_by_function):
                 f'<li><span class="cue-role">{_html("Primary" if command["designation"] == "primary" else "Secondary")}</span> <strong>{_html(spoken)}</strong></li>'
             )
         category = function["primary_category"]
+        audio_cell = (
+            f'<a href="../functions/{_html(function["function_id"])}/#listening">Listen</a>'
+            if sessions_by_function.get(function["function_id"]) else "Audio unavailable"
+        )
         rows.append(
-            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current spoken cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Published audio availability">{"Published audio available" if sessions_by_function.get(function["function_id"]) else "Audio unavailable"}</td></tr>'
+            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current spoken cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
         )
     options = "".join(
         f'<option value="{_html(item["id"])}">{_html(item["label"].title())}</option>'
@@ -1902,6 +1906,30 @@ def _historical_names_page(
         f'<p class="source-link"><a href="{_html(source_url)}">Historical name reference</a></p></header>'
         f'<div class="historical-name-grid">{entries}</div>'
     )
+
+
+def _practice_chains_page(markdown, functions):
+    """Show current spoken cues from the same pinned source as function pages."""
+    by_id = {function["function_id"]: function for function in functions}
+    selected_commands = {"OCF-BOD-010": "OCF-CMD-BOD-010-FOOD-LESS"}
+
+    def with_cue(match):
+        fid = match.group(1)
+        _require(fid in by_id, f"practice chain references unknown function: {fid}")
+        function = by_id[fid]
+        selected = selected_commands.get(fid)
+        commands = [command for command in function["commands"]
+                    if command.get("command_status") == "active"
+                    and (command.get("command_id") == selected if selected
+                         else command.get("designation") == "primary")]
+        _require(len(commands) == 1, f"practice chain needs one active selected cue: {fid}")
+        spoken = commands[0].get("spoken_cue")
+        _require(isinstance(spoken, str) and spoken.strip(),
+                 f"practice chain selected cue has no spoken text: {fid}")
+        return match.group(0) + f' <span class="chain-spoken-cue">({_html(spoken)})</span>'
+
+    return re.sub(r'<a href="\.\./functions/(OCF-[A-Z]{3}-[0-9]{3})/">[^<]+</a>',
+                  with_cue, render_markdown(markdown))
 
 
 def _relationships_page(functions):

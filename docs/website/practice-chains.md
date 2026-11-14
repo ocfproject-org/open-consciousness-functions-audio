@@ -1,12 +1,9 @@
 # Optional practice chains
 
-These sixteen suggested orders group practices around a particular intention.
-They are optional ways to explore, not new activation procedures, prerequisites
-between functions, or promises of combined effects. Read each linked function's
-guide and follow its own documented instructions; the notes below describe why
-it appears in the sequence, not how to activate it. You do not need to complete
-a whole chain in one sitting. These examples do not require a mental picture or
-a particular sensation.
+Explore seventeen optional sequences for learning, daily life, rest, and reflection.
+Each step links to its function's guide and shows the current spoken cue.
+Use a whole chain or choose individual practices. Mental pictures and particular
+sensations are not required for these examples.
 
 ## Preparation first
 
@@ -161,9 +158,15 @@ Relax → Options → Sleep Insight
 2. [Options](../functions/OCF-COG-005/) — Consider the choices and alternatives available to you.
 3. [Sleep Insight](../functions/OCF-SLP-004/) — Frame a question or problem for reflection through sleep and on waking.
 
-## Choose what fits
+## Weight management
 
-You can stop, take a break, or return to an individual practice. These suggested
-orders do not replace function-specific safety guidance or healthcare. For
-standalone choices, [browse all functions](../functions/) or return to
-[Start Here](../start/).
+Nutricia → Appetite Choice → Habit Freedom when needed → Detox (optional)
+
+1. [Nutricia](../functions/OCF-BOD-010/) — Use the selected mode for this sequence.
+2. [Appetite Choice](../functions/OCF-BOD-005/) — For moments when cravings arise.
+3. [Habit Freedom](../functions/OCF-LIF-001/) — Use if an unwanted repeated eating pattern has already begun.
+4. [Detox](../functions/OCF-BOD-004/) — Optional follow-up practice.
+
+## Keep exploring
+
+[Browse all functions](../functions/) or return to [Start Here](../start/).
