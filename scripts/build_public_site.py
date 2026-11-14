@@ -1292,7 +1292,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
     session_count = sum(len(rows) for rows in sessions_by_function.values()) + len(preparation_sessions)
     availability = {bool(sessions_by_function.get(function["function_id"])) for function in functions}
     audio_filter = (
-        '<label for="audio-filter">Audio availability</label><select id="audio-filter"><option value="">All documentation</option><option value="yes">Published audio available</option><option value="no">Documentation only</option></select>'
+        '<label for="audio-filter">Audio availability</label><select id="audio-filter"><option value="">All documentation</option><option value="yes">With audio</option><option value="no">Documentation only</option></select>'
         if len(availability) > 1
         else ""
     )
@@ -1854,8 +1854,12 @@ def _quick_reference(functions, sessions_by_function):
                 f'<li><span class="cue-role">{_html("Primary" if command["designation"] == "primary" else "Secondary")}</span> <strong>{_html(spoken)}</strong></li>'
             )
         category = function["primary_category"]
+        audio_cell = (
+            f'<a href="../functions/{_html(function["function_id"])}/#listening">Listen</a>'
+            if sessions_by_function.get(function["function_id"]) else "Audio unavailable"
+        )
         rows.append(
-            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current spoken cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Published audio availability">{"Published audio available" if sessions_by_function.get(function["function_id"]) else "Audio unavailable"}</td></tr>'
+            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current spoken cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
         )
     options = "".join(
         f'<option value="{_html(item["id"])}">{_html(item["label"].title())}</option>'

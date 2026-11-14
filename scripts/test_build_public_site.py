@@ -771,7 +771,9 @@ class PublicSiteBuildTests(unittest.TestCase):
         unavailable = _quick_reference([function], {})
         available = _quick_reference([function], {"OCF-FND-001": [object()]})
         self.assertIn("Audio unavailable", unavailable)
-        self.assertIn("Published audio available", available)
+        self.assertNotIn("Published audio available", available)
+        self.assertIn('href="../functions/OCF-FND-001/#listening">Listen</a>', available)
+        self.assertNotIn(">Listen</a>", unavailable)
 
     def test_quick_reference_filter_includes_secondary_canonical_domains(self):
         function = {
