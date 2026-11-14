@@ -43,6 +43,24 @@
   --banner-muted: #e1e8dc;
 }
 
+:root[data-theme="black"] {
+  color-scheme: dark;
+  --paper: #000000;
+  --ink: #eeeeee;
+  --muted: #b7c0c4;
+  --line: #666666;
+  --green: #000000;
+  --dark: #000000;
+  --dark-soft: #000000;
+  --accent: #c1da9d;
+  --card: #000000;
+  --focus-ring: #ffdb70;
+  --banner-ink: #eeeeee;
+  --banner-muted: #b7c0c4;
+}
+
+.brand-mark { object-fit: contain; flex-shrink: 0; border-radius: 22%; }
+
 .site-header { gap: 1rem; height: auto; min-height: 82px; padding-inline: clamp(1rem, 4vw, 4rem); }
 .site-header nav.desktop-nav { display: flex; flex: 1 1 28rem; min-width: 0; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: clamp(.4rem, 1vw, .8rem); }
 .site-header nav.desktop-nav > a, .site-header nav.desktop-nav .more-menu > summary { flex: 0 0 auto; white-space: nowrap; font-size: .92rem; }
@@ -94,6 +112,7 @@
 .docs-hero .hero-lede { max-width: 56ch; font-size: 1.1rem; line-height: 1.65; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .button-outline-light { border: 1px solid rgba(244,243,235,.55); color: #f4f3eb; }
+.docs-hero .button-light, .docs-hero .button-light:hover { color: #14201d; }
 .docs-hero .button-outline-light { color: #f4f3eb; }
 .home-paths, .home-about, .home-library-preview { max-width: 1120px; margin-inline: auto; padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1rem, 4vw, 2rem); }
 .docs-hero .hero-index { right: clamp(1rem, 7vw, 5rem); max-width: calc(100% - 2rem); line-height: 1.5; overflow-wrap: anywhere; }

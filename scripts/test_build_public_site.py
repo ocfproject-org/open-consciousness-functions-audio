@@ -44,6 +44,19 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_header_and_favicon_reuse_pinned_public_brand_assets(self):
+        import json
+        root = Path(__file__).resolve().parents[1] / "site/assets/branding"
+        provenance = json.loads((root / "source.json").read_text())
+        self.assertEqual(provenance["source_commit"], "6b4a9861ab89bea849ef6a97575af9cac6065d9b")
+        for asset in provenance["assets"]:
+            self.assertEqual(hashlib.sha256((root / asset["path"]).read_bytes()).hexdigest(), asset["sha256"])
+        html = _shell("Example", "<h1>Example</h1>", "start", "a" * 40)
+        self.assertIn('href="../assets/branding/ocf-app-icon-32.png" type="image/png"', html)
+        self.assertIn('src="../assets/branding/ocf-app-icon-128.png"', html)
+        self.assertNotIn('aria-hidden="true">OCF</span>', html)
+
+
     def test_optional_chains_are_exactly_the_seventeen_owner_approved_orders(self):
         source = (Path(__file__).resolve().parents[1] / "docs/website/practice-chains.md").read_text()
         expected = {
