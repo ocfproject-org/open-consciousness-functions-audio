@@ -1463,7 +1463,7 @@ test('mobile Quick Reference cards retain descriptions, cues, and accurate audio
   await expect(page.getByRole('columnheader', {name: 'Description'})).toHaveCount(1);
   await expect(page.getByRole('columnheader', {name: 'Audio availability'})).toHaveCount(1);
   for (const row of await rows.all()) {
-    for (const label of ['Current spoken cues', 'Description', 'Published audio availability']) {
+    for (const label of ['Current spoken cues', 'Description', 'Audio']) {
       const cell = row.locator(`td[data-label="${label}"]`);
       await expect(cell).toBeVisible();
       await expect(cell).toContainText(/\S/);
