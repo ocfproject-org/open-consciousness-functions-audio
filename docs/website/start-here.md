@@ -25,14 +25,18 @@ driving or doing anything that requires vigilance.
 
 ## A suggested way to explore
 
-After Preparation Learning, these three functions can be approachable starting
+After Preparation Learning, these five functions can be approachable starting
 points:
 
 1. [Relax — OCF-FND-004](../functions/OCF-FND-004/) — a gentle introduction to
    guided relaxation and the structure of OCF listening.
 2. [Focus — OCF-FND-002](../functions/OCF-FND-002/) — an attention-oriented
    guided practice and a way to become familiar with its documented cues.
-3. [Think Fast — OCF-COG-007](../functions/OCF-COG-007/) — a thinking-oriented
+3. [Imprint — OCF-COG-004](../functions/OCF-COG-004/) — a practice for capturing
+   selected information or experiences you want to retain.
+4. [Recall — OCF-COG-006](../functions/OCF-COG-006/) — a practice for bringing
+   learned material or memories to mind.
+5. [Think Fast — OCF-COG-007](../functions/OCF-COG-007/) — a thinking-oriented
    practice to explore through its own documented instructions.
 
 You can explore these functions in any order; the list is an optional browsing

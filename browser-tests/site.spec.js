@@ -126,13 +126,15 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   const sequence = page.locator('#main ol');
   await expect(sequence).toHaveCount(1);
   const items = await sequence.locator('li').allTextContents();
-  expect(items).toHaveLength(3);
+  expect(items).toHaveLength(5);
   expect(items[0]).toContain('Relax — OCF-FND-004');
   expect(items[1]).toContain('Focus — OCF-FND-002');
-  expect(items[2]).toContain('Think Fast — OCF-COG-007');
+  expect(items[2]).toContain('Imprint — OCF-COG-004');
+  expect(items[3]).toContain('Recall — OCF-COG-006');
+  expect(items[4]).toContain('Think Fast — OCF-COG-007');
   expect(text).not.toContain('distinguishes displayed cues from spoken cues');
   expect(text).toContain('separate introductory session, not one of the 58 function records');
-  expect(text).toContain('After Preparation Learning, these three functions can be approachable starting points:');
+  expect(text).toContain('After Preparation Learning, these five functions can be approachable starting points:');
   expect(text).toContain('You can explore these functions in any order;');
   expect(text).toContain('not a required sequence among them');
   await noAxeViolations(page);
@@ -1716,4 +1718,21 @@ test('branding and four theme choices preserve device defaults and persistent ov
   await expect.poll(background).not.toBe('rgb(0, 0, 0)');
   await page.reload();
   await expect(control).toHaveText('Theme: System');
+});
+
+
+test('dedicated Start Here and homepage both show all five optional starter links on mobile', async ({page}) => {
+  await page.setViewportSize({width:320,height:900});
+  const expected = ['OCF-FND-004','OCF-FND-002','OCF-COG-004','OCF-COG-006','OCF-COG-007'];
+  for (const [route, selector] of [['/start/', 'main ol a'], ['/', '.starting-practices a']]) {
+    await page.goto(route);
+    const ids = await page.locator(selector).evaluateAll(links => links.map(a => a.getAttribute('href').match(/OCF-[A-Z]{3}-[0-9]{3}/)[0]));
+    expect(ids).toEqual(expected);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await noAxeViolations(page);
+    await page.locator(selector).nth(2).click();
+    await expect(page).toHaveURL(/functions\/OCF-COG-004\/$/);
+    await page.goBack();
+    await expect(page.locator(selector)).toHaveCount(5);
+  }
 });

@@ -165,7 +165,7 @@ Nutricia → Appetite Choice → Habit Freedom when needed → Detox (optional)
 1. [Nutricia](../functions/OCF-BOD-010/) — Use the selected mode for this sequence.
 2. [Appetite Choice](../functions/OCF-BOD-005/) — For moments when cravings arise.
 3. [Habit Freedom](../functions/OCF-LIF-001/) — Use if an unwanted repeated eating pattern has already begun.
-4. [Detox](../functions/OCF-BOD-004/) — Optional follow-up practice.
+4. [Detox](../functions/OCF-BOD-004/) — Optional after overeating or indulging.
 
 ## Keep exploring
 
