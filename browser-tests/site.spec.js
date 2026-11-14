@@ -1633,7 +1633,7 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await page.locator('main a[href$="practice-chains/"]').click();
     await expect(page).toHaveURL(/practice-chains\/$/);
     await expect(page.locator('h1')).toHaveText('Optional practice chains');
-    await expect(page.locator('main ol')).toHaveCount(16);
+    await expect(page.locator('main ol')).toHaveCount(17);
     const toc = page.locator(width === 320 ? '.mobile-toc' : '.desktop-toc');
     if (width === 320) await toc.locator('summary').click();
     await toc.locator('a[href="#daily-learning"]').click();
@@ -1658,6 +1658,11 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await expect(page.locator('main ol').nth(13).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Circulation", "Restorative Sleep"]);
     await expect(page.locator('main ol').nth(14).locator('a')).toHaveText(["Relax", "Focus", "Think Fast", "Imprint", "Recall", "Information Access"]);
     await expect(page.locator('main ol').nth(15).locator('a')).toHaveText(["Relax", "Options", "Sleep Insight"]);
+    await expect(page.locator('main ol').nth(16).locator('a')).toHaveText(['Nutricia', 'Appetite Choice', 'Habit Freedom', 'Detox']);
+    await expect(page.locator('main ol').nth(16).locator('.chain-spoken-cue')).toHaveText(['(Plus Food Less)', '(Plus Satisfied)', '(Plus Free This Habit)', '(Plus Detox)']);
+    await expect(page.locator('main ol li .chain-spoken-cue')).toHaveCount(69);
+    await expect(page.locator('main button')).toHaveCount(0);
+
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await noAxeViolations(page);
     const link = page.locator('main ol').nth(3).getByRole('link', {name: 'Let Go', exact: true});
@@ -1670,6 +1675,6 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await page.locator('main ol').nth(3).getByRole('link', {name: 'Reset', exact: true}).click();
     await expect(page).toHaveURL(/functions\/OCF-FND-005\/$/);
     await page.goBack();
-    await expect(page.locator('main ol')).toHaveCount(16);
+    await expect(page.locator('main ol')).toHaveCount(17);
   }
 });

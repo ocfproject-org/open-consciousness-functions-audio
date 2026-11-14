@@ -29,6 +29,7 @@ from build_public_site import (
     _renamed_title_rows,
     _quick_reference,
     _relationships_page,
+    _practice_chains_page,
     _recommended_settings,
     _shell,
     _request_public_asset,
@@ -43,7 +44,7 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
-    def test_optional_chains_are_exactly_the_sixteen_owner_approved_orders(self):
+    def test_optional_chains_are_exactly_the_seventeen_owner_approved_orders(self):
         source = (Path(__file__).resolve().parents[1] / "docs/website/practice-chains.md").read_text()
         expected = {
             "Learning": ["OCF-FND-004", "OCF-FND-002", "OCF-COG-007", "OCF-COG-004", "OCF-COG-006"],
@@ -62,22 +63,51 @@ class PublicSiteBuildTests(unittest.TestCase):
             'Physical maintenance': ['OCF-FND-004', 'OCF-BOD-013', 'OCF-BOD-002', 'OCF-SLP-001'],
             'Daily learning': ['OCF-FND-004', 'OCF-FND-002', 'OCF-COG-007', 'OCF-COG-004', 'OCF-COG-006', 'OCF-COG-001'],
             'Evening problem-solving': ['OCF-FND-004', 'OCF-COG-005', 'OCF-SLP-004'],
+            'Weight management': ['OCF-BOD-010', 'OCF-BOD-005', 'OCF-LIF-001', 'OCF-BOD-004'],
 
         }
         import re
-        self.assertEqual(len(re.findall(r"^\d+\. ", source, re.M)), 65)
+        self.assertEqual(len(re.findall(r"^\d+\. ", source, re.M)), 69)
         for title, identities in expected.items():
             section = source.split("## " + title + "\n", 1)[1].split("\n## ", 1)[0]
             self.assertEqual(re.findall(r"functions/(OCF-[A-Z]{3}-[0-9]{3})/", section.split("Optional variation:")[0]), identities)
         self.assertIn("Optional variation: add [Contemplation](../functions/OCF-COG-003/) before Manifest", source)
         self.assertEqual(source.count("Optional variation:"), 1)
-        self.assertIn("These examples do not require a mental picture or", source)
+        self.assertIn("Mental pictures and particular", source)
         self.assertNotIn("Explore a felt sense", source)
-        self.assertIn("not new activation procedures", source)
+        self.assertIn("optional sequences", source)
         self.assertIn("official Human Plus", source)
-        self.assertIn("follow its own documented instructions", source)
+        self.assertIn("Each step links to its function", source)
         self.assertIn("practice-chains/", (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text())
 
+
+    def test_chain_cues_use_active_pinned_spoken_text_and_explicit_food_less(self):
+        functions = [{"function_id": "OCF-BOD-010", "commands": [
+            {"command_id": "OCF-CMD-BOD-010-PRIMARY", "designation": "primary", "command_status": "active", "spoken_cue": "Plus Food More"},
+            {"command_id": "OCF-CMD-BOD-010-FOOD-LESS", "designation": "secondary", "command_status": "active", "spoken_cue": "Plus Food Less"},
+        ]}]
+        source = "1. [Nutricia](../functions/OCF-BOD-010/) — A selected mode."
+        html = _practice_chains_page(source, functions)
+        self.assertEqual(html.count("Plus Food Less"), 1)
+        self.assertNotIn("Plus Food More", html)
+        self.assertNotIn("button", html)
+        primary = [{"function_id": "OCF-FND-004", "commands": [
+            {"designation": "primary", "command_status": "active", "spoken_cue": "Plus Relax"},
+        ]}]
+        link = "[Relax](../functions/OCF-FND-004/)"
+        self.assertIn("(Plus Relax)", _practice_chains_page(link, primary))
+        primary[0]["commands"][0]["spoken_cue"] = ""
+        with self.assertRaises(ValueError):
+            _practice_chains_page(link, primary)
+        primary[0]["commands"][0]["spoken_cue"] = "Plus Relax"
+        primary[0]["commands"].append(dict(primary[0]["commands"][0]))
+        with self.assertRaises(ValueError):
+            _practice_chains_page(link, primary)
+        functions[0]["commands"][1]["command_status"] = "inactive"
+        with self.assertRaises(ValueError):
+            _practice_chains_page(source, functions)
+        with self.assertRaises(ValueError):
+            _practice_chains_page("[Unknown](../functions/OCF-XXX-001/)", functions)
 
     def test_function_title_actions_link_to_edition_player_and_direct_formats(self):
         rows = []

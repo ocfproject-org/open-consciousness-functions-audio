@@ -794,12 +794,12 @@ def build_public_site(
             staging / "practice-chains" / "index.html",
             _shell(
                 "Optional Practice Chains — OCF",
-                render_markdown(_read_markdown(content_dir, "practice-chains.md")),
+                _practice_chains_page(_read_markdown(content_dir, "practice-chains.md"), functions),
                 "practice-chains",
                 source_commit,
                 toc=True,
                 toc_items=_markdown_toc(_read_markdown(content_dir, "practice-chains.md")),
-                description="Sixteen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
+                description="Seventeen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
             ),
         )
         historical_body = _historical_names_page(
@@ -1902,6 +1902,30 @@ def _historical_names_page(
         f'<p class="source-link"><a href="{_html(source_url)}">Historical name reference</a></p></header>'
         f'<div class="historical-name-grid">{entries}</div>'
     )
+
+
+def _practice_chains_page(markdown, functions):
+    """Show current spoken cues from the same pinned source as function pages."""
+    by_id = {function["function_id"]: function for function in functions}
+    selected_commands = {"OCF-BOD-010": "OCF-CMD-BOD-010-FOOD-LESS"}
+
+    def with_cue(match):
+        fid = match.group(1)
+        _require(fid in by_id, f"practice chain references unknown function: {fid}")
+        function = by_id[fid]
+        selected = selected_commands.get(fid)
+        commands = [command for command in function["commands"]
+                    if command.get("command_status") == "active"
+                    and (command.get("command_id") == selected if selected
+                         else command.get("designation") == "primary")]
+        _require(len(commands) == 1, f"practice chain needs one active selected cue: {fid}")
+        spoken = commands[0].get("spoken_cue")
+        _require(isinstance(spoken, str) and spoken.strip(),
+                 f"practice chain selected cue has no spoken text: {fid}")
+        return match.group(0) + f' <span class="chain-spoken-cue">({_html(spoken)})</span>'
+
+    return re.sub(r'<a href="\.\./functions/(OCF-[A-Z]{3}-[0-9]{3})/">[^<]+</a>',
+                  with_cue, render_markdown(markdown))
 
 
 def _relationships_page(functions):
