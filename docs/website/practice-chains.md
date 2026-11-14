@@ -5,7 +5,8 @@ They are optional ways to explore, not new activation procedures, prerequisites
 between functions, or promises of combined effects. Read each linked function's
 guide and follow its own documented instructions; the notes below describe why
 it appears in the sequence, not how to activate it. You do not need to complete
-a whole chain in one sitting.
+a whole chain in one sitting. These examples do not require a mental picture or
+a particular sensation.
 
 ## Preparation first
 
@@ -138,7 +139,7 @@ Relax → Body Tune-Up → Circulation → Restorative Sleep
 
 1. [Relax](../functions/OCF-FND-004/) — Begin with physical and mental relaxation.
 2. [Body Tune-Up](../functions/OCF-BOD-013/) — Include a whole-body balance-oriented practice rather than one focused on a particular body area.
-3. [Circulation](../functions/OCF-BOD-002/) — Explore a felt sense of smooth, comfortable circulation.
+3. [Circulation](../functions/OCF-BOD-002/) — Explore the Circulation practice’s intended focus on smooth, comfortable circulation.
 4. [Restorative Sleep](../functions/OCF-SLP-001/) — Make rest and recovery the purpose of the closing practice.
 
 ## Daily learning

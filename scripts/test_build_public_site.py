@@ -71,6 +71,8 @@ class PublicSiteBuildTests(unittest.TestCase):
             self.assertEqual(re.findall(r"functions/(OCF-[A-Z]{3}-[0-9]{3})/", section.split("Optional variation:")[0]), identities)
         self.assertIn("Optional variation: add [Contemplation](../functions/OCF-COG-003/) before Manifest", source)
         self.assertEqual(source.count("Optional variation:"), 1)
+        self.assertIn("These examples do not require a mental picture or", source)
+        self.assertNotIn("Explore a felt sense", source)
         self.assertIn("not new activation procedures", source)
         self.assertIn("official Human Plus", source)
         self.assertIn("follow its own documented instructions", source)
