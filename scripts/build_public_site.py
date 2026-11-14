@@ -790,6 +790,18 @@ def build_public_site(
                 source_commit,
             ),
         )
+        _write(
+            staging / "practice-chains" / "index.html",
+            _shell(
+                "Optional Practice Chains — OCF",
+                render_markdown(_read_markdown(content_dir, "practice-chains.md")),
+                "practice-chains",
+                source_commit,
+                toc=True,
+                toc_items=_markdown_toc(_read_markdown(content_dir, "practice-chains.md")),
+                description="Sixteen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
+            ),
+        )
         historical_body = _historical_names_page(
             historical_rows,
             functions,
@@ -1124,6 +1136,7 @@ def _shell(
     more_nav = [
         ("Historical names", "historical-names/", "historical-names"),
         ("Related functions", "relationships/", "relationships"),
+        ("Practice chains", "practice-chains/", "practice-chains"),
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
         ("About", "about/", "about"),

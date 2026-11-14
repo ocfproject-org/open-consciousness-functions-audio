@@ -353,7 +353,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await expect(menu.locator('a').first()).toBeFocused();
   await expect(menu.locator('a').first()).toHaveAttribute('href', 'start/');
   await expect(menu.locator('a[href="preparation-learning/"]')).toHaveCount(0);
-  expect(await menu.locator('a').count()).toBe(9);
+  expect(await menu.locator('a').count()).toBe(10);
   const primaryLinks = menu.locator('nav[aria-label="Main navigation"] > a');
   await expect(primaryLinks).toHaveCount(4);
   const linkRects = await primaryLinks.evaluateAll(links => links.map(link => {
@@ -369,7 +369,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   for (const link of await primaryLinks.all()) await expect(link).toBeVisible();
   const more = menu.locator('.more-menu');
   await more.locator('summary').click();
-  await expect(more.locator('.more-links a')).toHaveCount(5);
+  await expect(more.locator('.more-links a')).toHaveCount(6);
   for (const link of await more.locator('.more-links a').all()) await expect(link).toBeVisible();
   await more.locator('summary').click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
@@ -1623,4 +1623,53 @@ test('browse constructs only requested players and preserves selection and ident
   await expect(player).toHaveAttribute('data-identity', 'original');
   await expect(checkbox).toBeChecked();
   await expect(page.locator('#selection-count')).toContainText('1 file selected');
+});
+
+
+test('approved practice chains are discoverable, optional, accessible and retain navigation', async ({ page }) => {
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({width, height: 900});
+    await page.goto('/start/');
+    await page.locator('main a[href$="practice-chains/"]').click();
+    await expect(page).toHaveURL(/practice-chains\/$/);
+    await expect(page.locator('h1')).toHaveText('Optional practice chains');
+    await expect(page.locator('main ol')).toHaveCount(16);
+    const toc = page.locator(width === 320 ? '.mobile-toc' : '.desktop-toc');
+    if (width === 320) await toc.locator('summary').click();
+    await toc.locator('a[href="#daily-learning"]').click();
+    await expect(page).toHaveURL(/#daily-learning$/);
+    await expect(page.locator('#daily-learning')).toBeInViewport();
+    await page.goBack();
+    await expect(page).toHaveURL(/practice-chains\/$/);
+
+    await expect(page.locator('main ol').nth(0).locator('a')).toHaveText(['Relax', 'Focus', 'Think Fast', 'Imprint', 'Recall']);
+    await expect(page.locator('main ol').nth(1).locator('a')).toHaveText(['Relax', 'Think Fast', 'Coordination', 'Focus']);
+    await expect(page.locator('main ol').nth(2).locator('a')).toHaveText(['Relax', 'Focus', 'Speak Up', 'Inner Power', 'Think Fast']);
+    await expect(page.locator('main ol').nth(3).locator('a')).toHaveText(['Relax', 'Let Go', 'Reset']);
+    await expect(page.locator('main ol').nth(4).locator('a')).toHaveText(["Relax", "Let Go", "Options", "Manifest"]);
+    await expect(page.locator('main ol').nth(5).locator('a')).toHaveText(["Relax", "Inner Power", "Think Fast", "Focus", "Options", "Manifest"]);
+    await expect(page.locator('main ol').nth(6).locator('a')).toHaveText(["Think Fast", "Focus", "Coordination", "Do This Now"]);
+    await expect(page.locator('main ol').nth(7).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Restorative Sleep"]);
+    await expect(page.locator('main ol').nth(8).locator('a')).toHaveText(["Relax", "Sleep", "Restorative Sleep"]);
+    await expect(page.locator('main ol').nth(9).locator('a')).toHaveText(["Relax", "Dream Theme", "Sleep"]);
+    await expect(page.locator('main ol').nth(10).locator('a')).toHaveText(["Relax", "Options", "Contemplation", "Sleep Insight"]);
+    await expect(page.locator('main ol').nth(11).locator('a')).toHaveText(["Relax", "Habit Freedom", "Let Go", "Offload"]);
+    await expect(page.locator('main ol').nth(12).locator('a')).toHaveText(["Relax", "Do This Now", "Think Fast", "Coordination"]);
+    await expect(page.locator('main ol').nth(13).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Circulation", "Restorative Sleep"]);
+    await expect(page.locator('main ol').nth(14).locator('a')).toHaveText(["Relax", "Focus", "Think Fast", "Imprint", "Recall", "Information Access"]);
+    await expect(page.locator('main ol').nth(15).locator('a')).toHaveText(["Relax", "Options", "Sleep Insight"]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await noAxeViolations(page);
+    const link = page.locator('main ol').nth(3).getByRole('link', {name: 'Let Go', exact: true});
+    await link.focus();
+    await expect(link).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/functions\/OCF-EMO-001\/$/);
+    await page.goBack();
+    await expect(page.locator('h1')).toHaveText('Optional practice chains');
+    await page.locator('main ol').nth(3).getByRole('link', {name: 'Reset', exact: true}).click();
+    await expect(page).toHaveURL(/functions\/OCF-FND-005\/$/);
+    await page.goBack();
+    await expect(page.locator('main ol')).toHaveCount(16);
+  }
 });

@@ -39,6 +39,9 @@ You can explore these functions in any order; the list is an optional browsing
 suggestion, not a required sequence among them. Reading a guide does not mean an
 audio recording is available.
 
+For optional sequences organized around learning, daily life, rest, and
+reflection, explore [Practice chains](../practice-chains/).
+
 ## Learn the cues, then choose
 
 The [quick reference](../quick-reference/) lists current spoken cues. A cue
