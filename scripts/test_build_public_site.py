@@ -43,6 +43,40 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_optional_chains_are_exactly_the_sixteen_owner_approved_orders(self):
+        source = (Path(__file__).resolve().parents[1] / "docs/website/practice-chains.md").read_text()
+        expected = {
+            "Learning": ["OCF-FND-004", "OCF-FND-002", "OCF-COG-007", "OCF-COG-004", "OCF-COG-006"],
+            "Performance": ["OCF-FND-004", "OCF-COG-007", "OCF-PRF-003", "OCF-FND-002"],
+            "Communication": ["OCF-FND-004", "OCF-FND-002", "OCF-COM-001", "OCF-PRF-002", "OCF-COG-007"],
+            "Emotional reset": ["OCF-FND-004", "OCF-EMO-001", "OCF-FND-005"],
+            'Decision': ['OCF-FND-004', 'OCF-EMO-001', 'OCF-COG-005', 'OCF-EXP-001'],
+            'Morning': ['OCF-FND-004', 'OCF-PRF-002', 'OCF-COG-007', 'OCF-FND-002', 'OCF-COG-005', 'OCF-EXP-001'],
+            'Work': ['OCF-COG-007', 'OCF-FND-002', 'OCF-PRF-003', 'OCF-PRF-001'],
+            'Recovery': ['OCF-FND-004', 'OCF-BOD-013', 'OCF-SLP-001'],
+            'Sleep preparation': ['OCF-FND-004', 'OCF-SLP-002', 'OCF-SLP-001'],
+            'Dreams': ['OCF-FND-004', 'OCF-SLP-003', 'OCF-SLP-002'],
+            'Problem-solving': ['OCF-FND-004', 'OCF-COG-005', 'OCF-COG-003', 'OCF-SLP-004'],
+            'Habits': ['OCF-FND-004', 'OCF-LIF-001', 'OCF-EMO-001', 'OCF-EMO-002'],
+            'Action': ['OCF-FND-004', 'OCF-PRF-001', 'OCF-COG-007', 'OCF-PRF-003'],
+            'Physical maintenance': ['OCF-FND-004', 'OCF-BOD-013', 'OCF-BOD-002', 'OCF-SLP-001'],
+            'Daily learning': ['OCF-FND-004', 'OCF-FND-002', 'OCF-COG-007', 'OCF-COG-004', 'OCF-COG-006', 'OCF-COG-001'],
+            'Evening problem-solving': ['OCF-FND-004', 'OCF-COG-005', 'OCF-SLP-004'],
+
+        }
+        import re
+        self.assertEqual(len(re.findall(r"^\d+\. ", source, re.M)), 65)
+        for title, identities in expected.items():
+            section = source.split("## " + title + "\n", 1)[1].split("\n## ", 1)[0]
+            self.assertEqual(re.findall(r"functions/(OCF-[A-Z]{3}-[0-9]{3})/", section.split("Optional variation:")[0]), identities)
+        self.assertIn("Optional variation: add [Contemplation](../functions/OCF-COG-003/) before Manifest", source)
+        self.assertEqual(source.count("Optional variation:"), 1)
+        self.assertIn("not new activation procedures", source)
+        self.assertIn("official Human Plus", source)
+        self.assertIn("follow its own documented instructions", source)
+        self.assertIn("practice-chains/", (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text())
+
+
     def test_function_title_actions_link_to_edition_player_and_direct_formats(self):
         rows = []
         for title, asset_suffix, edition in (
