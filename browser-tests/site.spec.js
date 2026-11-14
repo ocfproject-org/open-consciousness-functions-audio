@@ -135,6 +135,7 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   expect(text).not.toContain('distinguishes displayed cues from spoken cues');
   expect(text).toContain('separate introductory session, not one of the 58 function records');
   expect(text).toContain('After Preparation Learning, these five functions can be approachable starting points:');
+  expect(text).not.toContain('three functions');
   expect(text).toContain('You can explore these functions in any order;');
   expect(text).toContain('not a required sequence among them');
   await noAxeViolations(page);
