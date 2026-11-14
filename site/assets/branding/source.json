@@ -1,0 +1,21 @@
+{
+  "source_repository": "https://github.com/meramsey/open-consciousness-functions",
+  "source_commit": "6b4a9861ab89bea849ef6a97575af9cac6065d9b",
+  "brand_version": "0.3.0",
+  "source_review_status": "candidate",
+  "website_selection": "Owner requested existing source-main icons for website branding; source approval metadata unchanged.",
+  "assets": [
+    {
+      "path": "ocf-app-icon-128.png",
+      "source_path": "brand/imports/ocf-cosmic-path-brand-kit-v1/png/ocf-app-icon-128.png",
+      "sha256": "ba05e269981efc0ab527fa891ce18d88f985cb0fcb599781474b4bb21626d92a",
+      "method": "unchanged supplied public PNG"
+    },
+    {
+      "path": "ocf-app-icon-32.png",
+      "source_path": "brand/imports/ocf-cosmic-path-brand-kit-v1/png/ocf-app-icon-32.png",
+      "sha256": "2d80f54e057cfad23800cb1285d5e82fa58ffbb88f2704c6cc03675d07a7a35a",
+      "method": "unchanged supplied public PNG"
+    }
+  ]
+}

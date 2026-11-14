@@ -179,7 +179,7 @@
 
   const themeButton = document.querySelector('[data-theme-toggle]');
   if (themeButton) {
-    const themes = ['system', 'light', 'dark'];
+    const themes = ['system', 'light', 'dark', 'black'];
     const setThemePreference = preference => {
       if (preference === 'system') document.documentElement.removeAttribute('data-theme');
       else document.documentElement.dataset.theme = preference;
@@ -187,8 +187,11 @@
       themeButton.textContent = `Theme: ${label}`;
       themeButton.setAttribute('aria-label', `Color theme: ${label}. Activate to change.`);
       themeButton.dataset.themePreference = preference;
+      const themeColor = document.querySelector('meta[name="theme-color"]');
+      if (themeColor) themeColor.content = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
     };
     let preference = 'system';
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setThemePreference(preference));
     try {
       const saved = localStorage.getItem('ocf-theme');
       if (themes.includes(saved)) preference = saved;

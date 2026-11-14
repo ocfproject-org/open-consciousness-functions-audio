@@ -126,13 +126,16 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   const sequence = page.locator('#main ol');
   await expect(sequence).toHaveCount(1);
   const items = await sequence.locator('li').allTextContents();
-  expect(items).toHaveLength(3);
+  expect(items).toHaveLength(5);
   expect(items[0]).toContain('Relax — OCF-FND-004');
   expect(items[1]).toContain('Focus — OCF-FND-002');
-  expect(items[2]).toContain('Think Fast — OCF-COG-007');
+  expect(items[2]).toContain('Imprint — OCF-COG-004');
+  expect(items[3]).toContain('Recall — OCF-COG-006');
+  expect(items[4]).toContain('Think Fast — OCF-COG-007');
   expect(text).not.toContain('distinguishes displayed cues from spoken cues');
   expect(text).toContain('separate introductory session, not one of the 58 function records');
-  expect(text).toContain('After Preparation Learning, these three functions can be approachable starting points:');
+  expect(text).toContain('After Preparation Learning, these five functions can be approachable starting points:');
+  expect(text).not.toContain('three functions');
   expect(text).toContain('You can explore these functions in any order;');
   expect(text).toContain('not a required sequence among them');
   await noAxeViolations(page);
@@ -463,7 +466,7 @@ test('manual and system theme combinations keep banner, hover and focus contrast
     return (values[0] + 0.05) / (values[1] + 0.05);
   };
   for (const osTheme of ['light', 'dark']) {
-    for (const preference of ['light', 'dark', 'system']) {
+    for (const preference of ['light', 'dark', 'black', 'system']) {
       await page.emulateMedia({ colorScheme: osTheme });
       await page.goto('/functions/');
       await page.evaluate(value => localStorage.setItem('ocf-theme', value), preference);
@@ -1678,5 +1681,59 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await expect(page).toHaveURL(/functions\/OCF-FND-005\/$/);
     await page.goBack();
     await expect(page.locator('main ol')).toHaveCount(17);
+  }
+});
+
+
+test('branding and four theme choices preserve device defaults and persistent overrides', async ({ page }) => {
+  await page.emulateMedia({colorScheme: 'dark'});
+  await page.goto('/');
+  await expect(page.locator('[data-theme-toggle]')).toHaveText('Theme: System');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+  await expect(page.locator('.brand-mark')).toHaveAttribute('src', 'assets/branding/ocf-app-icon-128.png');
+  expect(await page.locator('.brand-mark').evaluate(img => img.complete && img.naturalWidth === 128)).toBe(true);
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', 'assets/branding/ocf-app-icon-32.png');
+  const background = () => page.locator('body').evaluate(el => getComputedStyle(el).backgroundColor);
+  const dark = await background();
+  await page.emulateMedia({colorScheme: 'light'});
+  await expect.poll(background).not.toBe(dark);
+  const control = page.locator('[data-theme-toggle]');
+  for (const name of ['Light', 'Dark', 'Black']) {
+    await control.click();
+    await expect(control).toHaveText('Theme: ' + name);
+  }
+  await expect.poll(background).toBe('rgb(0, 0, 0)');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000');
+  await noAxeViolations(page);
+  await page.emulateMedia({colorScheme: 'dark'});
+  await page.goto('/practice-chains/');
+  await expect(control).toHaveText('Theme: Black');
+  await expect.poll(background).toBe('rgb(0, 0, 0)');
+  await page.setViewportSize({width:320,height:900});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await noAxeViolations(page);
+  await control.click();
+  await expect(control).toHaveText('Theme: System');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+  await page.emulateMedia({colorScheme:'light'});
+  await expect.poll(background).not.toBe('rgb(0, 0, 0)');
+  await page.reload();
+  await expect(control).toHaveText('Theme: System');
+});
+
+
+test('dedicated Start Here and homepage both show all five optional starter links on mobile', async ({page}) => {
+  await page.setViewportSize({width:320,height:900});
+  const expected = ['OCF-FND-004','OCF-FND-002','OCF-COG-004','OCF-COG-006','OCF-COG-007'];
+  for (const [route, selector] of [['/start/', 'main ol a'], ['/', '.starting-practices a']]) {
+    await page.goto(route);
+    const ids = await page.locator(selector).evaluateAll(links => links.map(a => a.getAttribute('href').match(/OCF-[A-Z]{3}-[0-9]{3}/)[0]));
+    expect(ids).toEqual(expected);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await noAxeViolations(page);
+    await page.locator(selector).nth(2).click();
+    await expect(page).toHaveURL(/functions\/OCF-COG-004\/$/);
+    await page.goBack();
+    await expect(page.locator(selector)).toHaveCount(5);
   }
 });
