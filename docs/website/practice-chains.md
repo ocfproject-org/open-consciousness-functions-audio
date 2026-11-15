@@ -1,4 +1,4 @@
-# Optional practice chains
+# Function Chains
 
 Explore seventeen optional sequences for learning, daily life, rest, and reflection.
 Each step links to its function's guide and shows the current spoken cue.

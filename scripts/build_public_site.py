@@ -793,7 +793,7 @@ def build_public_site(
         _write(
             staging / "practice-chains" / "index.html",
             _shell(
-                "Optional Practice Chains — OCF",
+                "Function Chains — OCF",
                 _practice_chains_page(_read_markdown(content_dir, "practice-chains.md"), functions),
                 "practice-chains",
                 source_commit,
@@ -1136,7 +1136,7 @@ def _shell(
     more_nav = [
         ("Historical names", "historical-names/", "historical-names"),
         ("Related functions", "relationships/", "relationships"),
-        ("Practice chains", "practice-chains/", "practice-chains"),
+        ("Function Chains", "practice-chains/", "practice-chains"),
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
         ("About", "about/", "about"),

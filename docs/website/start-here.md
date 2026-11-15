@@ -44,7 +44,7 @@ suggestion, not a required sequence among them. Reading a guide does not mean an
 audio recording is available.
 
 For optional sequences organized around learning, daily life, rest, and
-reflection, explore [Practice chains](../practice-chains/).
+reflection, explore [Function Chains](../practice-chains/).
 
 ## Learn the cues, then choose
 
