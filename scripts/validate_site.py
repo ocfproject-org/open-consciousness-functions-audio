@@ -371,6 +371,8 @@ def _validate_documentation_site(site_root: Path):
         "downloads/index.html",
         "preparation-learning/index.html",
         "about/index.html",
+        "how-it-works/index.html",
+        "get-involved/index.html",
     }
     expected.update(f"functions/{identity}/index.html" for identity in identities)
     for relative in expected:

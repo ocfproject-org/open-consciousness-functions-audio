@@ -2,10 +2,14 @@
 
 ## What OCF is
 
-Open Consciousness Functions (OCF) is an independent, open-source library of
-guided audio practices. Each function has a distinct purpose, command cues, and
-documented instructions. A title or cue does not by itself guarantee an effect
-or explain a complete activation procedure.
+Open Consciousness Functions (OCF) is an open-source guided audio project.
+Its current functions help you explore a focused practice through a guided
+session, then use the learned cue and its instructions in everyday life.
+Standalone guided meditations and connected series are planned too.
+
+[How OCF works](../how-it-works/) explains the guidance, cues and stereo sound.
+[See the two practice paths below](#choose-your-path), or
+[check your left and right audio](../listening/#stereo-test) before listening.
 
 ## Preparation Learning
 
@@ -18,10 +22,7 @@ catalog.
 
 ## Choose one practice
 
-Start with one intention and read that function's guide before choosing an
-edition. You can listen, read its instructions first, or use a transcript. Pause,
-skip parts of a recording, or stop listening at any time. Do not listen while
-driving or doing anything that requires vigilance.
+Choose a function that fits what you want to explore. Read its guide, then listen somewhere you can give the session your attention. Do not listen while driving, operating machinery, or doing anything else that requires your attention.
 
 ## A suggested way to explore
 

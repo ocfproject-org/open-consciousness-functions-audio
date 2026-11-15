@@ -108,7 +108,7 @@
 .breadcrumbs { max-width: 76ch; margin: 0 auto 1.5rem; color: var(--ink); font-size: .83rem; }
 .breadcrumbs a { text-decoration: underline; text-underline-offset: .15em; }
 .docs-hero { min-height: 470px; padding: clamp(3rem, 8vw, 7rem) clamp(1.5rem, 12vw, 11rem); }
-.docs-hero .hero-copy { max-width: 760px; }
+.docs-hero .hero-copy { max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
 .docs-hero .hero-lede { max-width: 56ch; font-size: 1.1rem; line-height: 1.65; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .button-outline-light { border: 1px solid rgba(244,243,235,.55); color: #f4f3eb; }
@@ -367,3 +367,20 @@
   a { color: black; text-decoration: underline; }
   .transcript-body { max-height: none; overflow: visible; }
 }
+
+/* First-time visitor paths remain readable as ordinary text without scripting. */
+.home-introduction { margin-block: 2.5rem; }
+.practice-path-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin-block: 1.5rem; }
+.practice-path { overflow-wrap: anywhere; background: var(--paper); border: 1px solid var(--line); padding: 1.25rem; min-width: 0; }
+.practice-path h3 { margin-top: .25rem; }
+.flow-steps { padding-left: 1.5rem; }
+.flow-steps li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
+.flow-steps li:last-child { border-bottom: 0; }
+.visitor-flow { margin-top: 2rem; }
+.stereo-test { border: 1px solid var(--line); background: var(--paper); padding: 1.25rem; margin-bottom: 2rem; }
+.stereo-controls { display: flex; flex-wrap: wrap; gap: .75rem; }
+.stereo-controls button, [data-feedback-reveal] { min-height: 44px; padding: .65rem 1rem; border: 1px solid var(--line); color: var(--ink); background: var(--paper); font: inherit; cursor: pointer; }
+.stereo-controls button[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+.stereo-controls button:disabled { cursor: default; opacity: .6; }
+[data-feedback-result] { display: inline-block; margin: .5rem; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .practice-path-grid { grid-template-columns: 1fr; } }

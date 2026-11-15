@@ -123,7 +123,7 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   expect(text).toContain('Only people who have already learned the official Human Plus preparation track may skip it.');
   expect(text).not.toContain('Michael');
   expect(text).not.toContain('not a verified official OCF policy');
-  const sequence = page.locator('#main ol');
+  const sequence = page.locator('#main .docs-content > ol');
   await expect(sequence).toHaveCount(1);
   const items = await sequence.locator('li').allTextContents();
   expect(items).toHaveLength(5);
@@ -251,7 +251,7 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await page.goto('/start/');
   await expect(page.locator('#main')).toContainText('Complete Preparation Learning before using any OCF function.');
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
-  await expect(page.locator('#main a[href="../preparation-learning/"]')).toBeVisible();
+  await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
   await page.goto('/preparation-learning/');
   await expect(page.locator('.edition-card audio')).toBeVisible();
 });
@@ -357,7 +357,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await expect(menu.locator('a').first()).toBeFocused();
   await expect(menu.locator('a').first()).toHaveAttribute('href', 'start/');
   await expect(menu.locator('a[href="preparation-learning/"]')).toHaveCount(0);
-  expect(await menu.locator('a').count()).toBe(10);
+  expect(await menu.locator('a').count()).toBe(12);
   const primaryLinks = menu.locator('nav[aria-label="Main navigation"] > a');
   await expect(primaryLinks).toHaveCount(4);
   const linkRects = await primaryLinks.evaluateAll(links => links.map(link => {
@@ -373,7 +373,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   for (const link of await primaryLinks.all()) await expect(link).toBeVisible();
   const more = menu.locator('.more-menu');
   await more.locator('summary').click();
-  await expect(more.locator('.more-links a')).toHaveCount(6);
+  await expect(more.locator('.more-links a')).toHaveCount(8);
   for (const link of await more.locator('.more-links a').all()) await expect(link).toBeVisible();
   await more.locator('summary').click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
@@ -1548,7 +1548,7 @@ test('About leads with reader context and keeps provenance in native disclosure'
   await page.goto('/about/');
   await expect(page.locator('h1')).toHaveText('About OCF');
   const introText = await page.locator('.page-intro').innerText();
-  expect(introText).toContain('independent, open-source library');
+  expect(introText).toContain('independent, open-source guided audio project');
   expect(introText).toContain('Read the guide');
   expect(introText).toContain('Report a website or catalog issue');
   expect(introText).not.toContain('source commit');
@@ -1727,7 +1727,7 @@ test('branding and four theme choices preserve device defaults and persistent ov
 test('dedicated Start Here and homepage both show all five optional starter links on mobile', async ({page}) => {
   await page.setViewportSize({width:320,height:900});
   const expected = ['OCF-FND-004','OCF-FND-002','OCF-COG-004','OCF-COG-006','OCF-COG-007'];
-  for (const [route, selector] of [['/start/', 'main ol a'], ['/', '.starting-practices a']]) {
+  for (const [route, selector] of [['/start/', 'main .docs-content > ol a'], ['/', '.starting-practices a']]) {
     await page.goto(route);
     const ids = await page.locator(selector).evaluateAll(links => links.map(a => a.getAttribute('href').match(/OCF-[A-Z]{3}-[0-9]{3}/)[0]));
     expect(ids).toEqual(expected);
