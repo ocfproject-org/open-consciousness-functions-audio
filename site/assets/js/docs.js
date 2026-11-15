@@ -38,11 +38,92 @@
   if (typeof module !== 'undefined') module.exports = {normalize, matches, safeTranscript, highlight};
   if (typeof document === 'undefined') return;
 
+  document.querySelectorAll('[data-no-script-note]').forEach(note => { note.hidden = true; });
+
+  // Construct the address only on request; the readable fallback remains usable without JS.
+  const feedbackButton = document.querySelector('[data-feedback-reveal]');
+  if (feedbackButton) feedbackButton.addEventListener('click', () => {
+    const address = ['feedback', ['ocfproject', 'org'].join('.')].join('@');
+    const link = document.createElement('a');
+    link.href = 'mailto:' + address;
+    link.textContent = address;
+    document.querySelector('[data-feedback-result]').replaceChildren(link);
+    feedbackButton.hidden = true;
+    link.focus();
+  });
+
+  // Local, short stereo signal only: no recording, remote request or device detection.
+  const stereoTest = document.querySelector('.stereo-test');
+  if (stereoTest) {
+    const channelButtons = [...stereoTest.querySelectorAll('[data-test-channel]')];
+    const stopButton = stereoTest.querySelector('[data-test-stop]');
+    const status = stereoTest.querySelector('[data-test-status]');
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let context = null;
+    let source = null;
+    let generation = 0;
+    const stop = (message = 'Test stopped.') => {
+      generation += 1;
+      if (source) {
+        source.onended = null;
+        try { source.stop(); } catch (_) { /* Already ended. */ }
+        source.disconnect();
+        source = null;
+      }
+      stopButton.disabled = true;
+      channelButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+      status.textContent = message;
+    };
+    if (!AudioContextClass) {
+      channelButtons.forEach(button => { button.disabled = true; });
+      status.textContent = 'This browser does not support the interactive audio test. Use the device setup guides below.';
+    } else channelButtons.forEach(button => {
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', async () => {
+        stop('Preparing test…');
+        const ticket = generation;
+        stopButton.disabled = false; // Stop also cancels a pending resume request.
+        const channel = Number(button.dataset.testChannel);
+        try {
+          if (!context) context = new AudioContextClass();
+          await context.resume();
+          if (ticket !== generation || document.hidden) return;
+          document.querySelectorAll('audio').forEach(audio => audio.pause());
+          const length = Math.floor(context.sampleRate * 0.8);
+          const buffer = context.createBuffer(2, length, context.sampleRate);
+          const samples = buffer.getChannelData(channel);
+          const fade = Math.floor(context.sampleRate * 0.04);
+          for (let i = 0; i < length; i += 1) {
+            const envelope = Math.min(1, i / fade, (length - 1 - i) / fade);
+            samples[i] = 0.04 * envelope * Math.sin(2 * Math.PI * 440 * i / context.sampleRate);
+          }
+          source = context.createBufferSource();
+          source.buffer = buffer; // The opposite channel remains exactly zero.
+          source.connect(context.destination);
+          source.onended = () => { if (ticket === generation) stop('Test finished. Choose a channel to play again.'); };
+          source.start();
+          button.setAttribute('aria-pressed', 'true');
+          status.textContent = `Playing ${channel === 0 ? 'left' : 'right'} channel only.`;
+        } catch (_) {
+          if (ticket === generation) stop('The audio test could not start. Check your browser audio permissions and try again.');
+        }
+      });
+    });
+    stopButton.addEventListener('click', () => stop());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    window.addEventListener('pagehide', () => {
+      stop();
+      if (context) { context.close().catch(() => {}); context = null; }
+    });
+    // Starting another audio player always stops this test first.
+    document.addEventListener('play', event => { if (event.target.tagName === 'AUDIO') stop(); }, true);
+  }
+
   const legacyParams = new URLSearchParams(location.search);
   const legacyFunction = legacyParams.get('function');
   const legacyCategory = legacyParams.get('category');
   const pathParts = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean);
-  const atSiteRoot = pathParts.length <= 1 && !/(?:^|\/)(?:functions|start|listening|quick-reference|historical-names|relationships|downloads|about|preparation-learning)(?:\/|$)/.test(location.pathname);
+  const atSiteRoot = pathParts.length <= 1 && !/(?:^|\/)(?:functions|start|listening|quick-reference|historical-names|relationships|downloads|about|preparation-learning|how-it-works|get-involved|practice-chains)(?:\/|$)/.test(location.pathname);
   if (atSiteRoot && ((legacyFunction && /^OCF-[A-Z]{3}-\d{3}$/.test(legacyFunction)) || (legacyCategory && /^[a-z][a-z-]*$/.test(legacyCategory)))) {
     const destination = new URL('functions/', location.href);
     if (legacyFunction) destination.searchParams.set('function', legacyFunction);

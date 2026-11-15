@@ -507,6 +507,7 @@ def _function_audio_availability(functions, catalog, sessions_by_function):
 
 def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_function):
     markdown = markdown.replace(STALE_CUE_DISTINCTION_NOTE, "")
+    markdown = _replace_markdown_section(markdown, "Focus 10 and Focus 11: design labels", "")
     markdown = _replace_markdown_once(markdown, "# Welcome to OCF", "# Listening Guide", "page title")
     markdown = _replace_markdown_section(
         markdown,
@@ -785,7 +786,7 @@ def build_public_site(
             staging / "start" / "index.html",
             _shell(
                 "Start Here — OCF",
-                render_markdown(_read_markdown(content_dir, "start-here.md")),
+                render_markdown(_read_markdown(content_dir, "start-here.md")) + _visitor_flow(),
                 "start",
                 source_commit,
             ),
@@ -802,6 +803,15 @@ def build_public_site(
                 description="Seventeen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
             ),
         )
+        for route, title in (("how-it-works", "How OCF works"), ("get-involved", "Get involved")):
+            markdown = _read_markdown(content_dir, f"{route}.md")
+            body = render_markdown(markdown)
+            if route == "get-involved":
+                body += _feedback_contact()
+            _write(staging / route / "index.html", _shell(
+                f"{title} — OCF", body, route, source_commit,
+                toc=True, toc_items=_markdown_toc(markdown),
+            ))
         historical_body = _historical_names_page(
             historical_rows,
             functions,
@@ -847,6 +857,7 @@ def build_public_site(
             preparation_paragraph + _preparation_first_link(),
             1,
         )
+        listening_html = re.sub(r"(</h1>)", lambda match: match.group(1) + _stereo_test(), listening_html, count=1)
         listening_html += _recommended_settings(source_commit)
         listening_html += _device_links()
         listening_toc_source = (
@@ -861,7 +872,7 @@ def build_public_site(
                 "listening",
                 source_commit,
                 toc=True,
-                toc_items=_markdown_toc(listening_toc_source),
+                toc_items=[(2, "stereo-test", "Check left and right")] + _markdown_toc(listening_toc_source),
             ),
         )
         for platform in ("android", "ios", "windows", "macos", "linux"):
@@ -1139,6 +1150,8 @@ def _shell(
         ("Function Chains", "practice-chains/", "practice-chains"),
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
+        ("How OCF works", "how-it-works/", "how-it-works"),
+        ("Get involved", "get-involved/", "get-involved"),
         ("About", "about/", "about"),
     ]
     current_path = current.strip("/")
@@ -1190,13 +1203,13 @@ def _shell(
 <meta name="theme-color" content="#101a22"><meta name="description" content="{_html(description)}">
 <link rel="canonical" href="{_html(canonical)}"><meta property="og:type" content="website"><meta property="og:title" content="{_html(title)}"><meta property="og:description" content="{_html(description)}"><meta property="og:url" content="{_html(canonical)}"><meta name="twitter:card" content="summary">
 <title>{_html(title)}</title><link rel="icon" href="{base}assets/branding/ocf-app-icon-32.png" type="image/png" sizes="32x32"><link rel="stylesheet" href="{base}assets/css/main.css"><link rel="stylesheet" href="{base}assets/css/website.css">
-{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search{{display:none!important}}</style></noscript></head><body>
+{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
 <nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_menu}</nav></details>
 <button class="theme-toggle" type="button" data-theme-toggle aria-label="Color theme: System">Theme: System</button></header>
 <main id="main" class="docs-main">{toc_mobile}<div class="docs-layout{" with-toc" if toc_nav else ""}">{toc_desktop}<article class="{content_class}">{body}</article></div></main>
-<footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
+<footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
 </body></html>'''
 
 
@@ -1238,6 +1251,18 @@ def _render_toc(items):
     )
 
 
+def _visitor_flow():
+    return f'''<section class="visitor-flow" id="choose-your-path" aria-labelledby="flow-title"><h2 id="flow-title">Choose your path</h2><p>These paths show the difference between learning an OCF function and the broader guided listening experiences planned for the project.</p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Learn a function</h3><ol class="flow-steps"><li><strong>Prepare</strong><br><a href="../preparation-learning/">Complete Preparation Learning</a>. { _html(PREPARATION_FIRST_GUIDANCE.split('. ', 1)[1]) }</li><li><strong>Choose</strong><br><a href="../functions/">Pick a function</a> and read its guide.</li><li><strong>Learn</strong><br><a href="../listening/#stereo-test">Check stereo playback</a>, then follow the guided session and learn the cue with its instructions.</li><li><strong>Use in daily life</strong><br>Use the taught procedure when it fits. Return to the guide or recording when you want to refresh the practice.</li></ol></section><section class="practice-path"><p class="eyebrow">Planned · not yet in this library</p><h3>Explore guided meditations and series</h3><ol class="flow-steps"><li><strong>Choose a session or series</strong><br>Pick a theme and follow its published starting guidance.</li><li><strong>Settle in and listen</strong><br>Follow the session’s guidance rather than assuming every meditation teaches a function cue.</li><li><strong>Continue at your pace</strong><br>Revisit a session or follow the series order when one is provided.</li></ol><p><a href="../get-involved/">Share ideas for future sessions</a></p></section></div></section>'''
+
+
+def _feedback_contact():
+    return '''<section id="feedback" class="guide-section"><h2>Share feedback</h2><p>Questions, ideas or something confusing? Email <span class="feedback-address">feedback <span aria-label="at">[at]</span> ocfproject <span aria-label="dot">[dot]</span> org</span>.</p><button type="button" data-feedback-reveal>Show email link</button><span data-feedback-result aria-live="polite"></span><p data-no-script-note>Replace [at] with @ and [dot] with a period to use the address above.</p><p>For a reproducible website issue, <a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/issues">open a website issue on GitHub</a>.</p></section>'''
+
+
+def _stereo_test():
+    return '''<section id="stereo-test" class="stereo-test" aria-labelledby="stereo-test-title"><h2 id="stereo-test-title">Check left and right</h2><p>Put on your stereo headphones or earbuds and start at a comfortable low volume. Each button plays a short, quiet tone in one channel. Left should be heard on your left; right on your right.</p><div class="stereo-controls"><button type="button" data-test-channel="0">Play left</button><button type="button" data-test-channel="1">Play right</button><button type="button" data-test-stop disabled>Stop test</button></div><p data-test-status role="status" aria-live="polite">Ready. No sound plays until you choose a channel.</p><p>If both sides sound the same, check mono audio, balance and your device’s processing settings below. This test lets you listen for separation; it cannot inspect your headphones or system settings.</p><p data-no-script-note>This interactive test needs JavaScript. The listening and device setup guides below remain available.</p></section>'''
+
+
 def _home_page(functions, catalog, source_commit):
     categories = _unique_categories(functions)
     category_links = "".join(
@@ -1255,10 +1280,11 @@ def _home_page(functions, catalog, source_commit):
         for release in catalog["releases"]
         for group in release["functions"] + release.get("preparations", [])
     )
-    return f'''<section class="hero docs-hero"><div class="hero-copy"><p class="eyebrow">Guided practices and function guides</p><h1 id="home-title">Read the guide.<br><em>Choose how to listen.</em></h1><p class="hero-lede">Read a function’s instructions, browse current spoken cues, or listen to and download an available recording.</p><div class="hero-actions"><a class="button button-light" href="start/">Start Here <span aria-hidden="true">→</span></a><a class="button button-outline-light" href="functions/">Browse &amp; Listen</a></div></div><div class="hero-index" aria-hidden="true">{len(functions)} FUNCTION GUIDES · {session_count} PUBLISHED SESSIONS</div></section>
+    return f'''<section class="hero docs-hero"><div class="hero-copy"><p class="eyebrow">Guided practices and function guides</p><h1 id="home-title">Make space to practice.<br><em>Bring it into daily life.</em></h1><p class="hero-lede">OCF is an open-source guided audio project. Explore focused practices for attention, learning, rest and everyday life, then learn the cues and instructions that go with each one.</p><div class="hero-actions"><a class="button button-light" href="start/">Start Here <span aria-hidden="true">→</span></a><a class="button button-outline-light" href="functions/">Browse &amp; Listen</a></div></div><div class="hero-index" aria-hidden="true">{len(functions)} FUNCTION GUIDES · {session_count} PUBLISHED SESSIONS</div></section>
+<section class="home-introduction" aria-labelledby="practice-paths-title"><h2 id="practice-paths-title">A practice you can learn, not just a recording you play.</h2><p>OCF functions pair a focused guided session with a short spoken cue. The session teaches the practice and how to use its cue later, following that function’s own instructions.</p><p><a href="how-it-works/">How the guidance, cues and stereo sound fit together</a> · <a href="start/#choose-your-path">See the practice flow</a> · <a href="listening/#stereo-test">Check your left and right audio</a></p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Functions</h3><p>Start with Preparation Learning, then choose a function with a purpose that fits what you want to explore.</p><a href="functions/">Explore the function library</a></section><section class="practice-path"><p class="eyebrow">Planned</p><h3>Guided meditations and series</h3><p>The project is growing beyond functions, with standalone guided meditations and connected series planned. These are future paths, not recordings currently listed in this library.</p><a href="get-involved/">Help shape what comes next</a></section></div></section>
 <section class="home-paths" aria-labelledby="paths-title"><p class="eyebrow">First steps</p><h2 id="paths-title">Preparation first; then explore by choice.</h2><p class="preparation-note">{_html(PREPARATION_FIRST_GUIDANCE)}</p><p>After Preparation Learning, these practices are optional starting choices—not additional prerequisites:</p><ul class="starting-practices">{starting_links}</ul><div class="path-grid"><a class="path-card" href="start/"><h3>Start Here</h3><p>Preparation instructions, the exception, and choosing a first practice.</p></a><a class="path-card" href="functions/"><h3>Browse &amp; Listen</h3><p>Search practices, compare categories, and open available recordings.</p></a></div><p class="home-utilities">Also available: <a href="quick-reference/">Quick Reference for current spoken cues</a> · <a href="listening/">Detailed Listening Guide</a></p></section>
 <section class="home-library-preview" id="library" aria-labelledby="home-library-title"><span id="releases"></span><p class="eyebrow">Explore all {len(functions)} guides</p><h2 id="home-library-title">Browse by category</h2><nav class="category-links" aria-label="Browse categories">{category_links}</nav><p><a class="text-link" href="functions/">Open Browse &amp; Listen</a> · <a href="quick-reference/">Quick Reference</a> · <a href="downloads/">Individual downloads</a></p></section>
-<section class="home-about"><p class="eyebrow">Open-source and independent</p><p>OCF offers written function guides and a library of individually downloadable recordings. Audio availability is release-specific; the guide remains available independently.</p><a class="text-link" href="about/">About OCF</a></section>'''
+<section class="home-about"><p class="eyebrow">Open-source and independent</p><p>Read the source, suggest improvements, help translate, or share what would make the project more useful to you.</p><a class="text-link" href="about/">About OCF</a> · <a href="get-involved/">Get involved and send feedback</a></section>'''
 
 
 def _functions_index(functions, sessions_by_function, preparation_sessions):
@@ -1633,12 +1659,16 @@ def _function_page(function, sessions, transcript_paths, source_commit):
         or "<li>No related practice is listed for this function. You can still choose it independently.</li>"
     )
     breadcrumb = f'<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../">Home</a> / <a href="../">Browse &amp; Listen</a> / <span aria-current="page">{_html(function["title"]["text"])}</span></nav>'
+    resource = function["canonical_resource"]
+    _require(bool(re.fullmatch(r"locales/en-US/[A-Za-z0-9_.-]+\.yaml", resource)),
+             "function contribution target must be a canonical en-US YAML resource")
+    contribution = f'<section class="guide-section function-contribution"><h2>Help improve this guide</h2><p><a href="{SOURCE_REPOSITORY}/edit/main/{_html(resource)}">Propose an edit to this function’s YAML on GitHub</a>. GitHub will guide you through a branch or fork and pull request; a proposed change is reviewed before publication.</p><p><a href="../../get-involved/">Contribution and translation guidance</a> · <a href="../../get-involved/#feedback">Send feedback</a></p></section>'
     source_details = (
         f'<details class="source-details"><summary>Sources and versions</summary><p>Canonical function source: <a href="{SOURCE_REPOSITORY}/tree/{source_commit}/{_html(function["canonical_resource"])}">locale resource at pinned commit {_html(source_commit[:12])}</a>.</p></details>'
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">Cues and documented instructions</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">Cues and documented instructions</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{contribution}{source_details}'''
     )
 
 
@@ -2027,7 +2057,7 @@ def _about_page(guide_export, catalog, source_docs_url, transcript_counts):
         for group in release["functions"] + release.get("preparations", [])
         for session in group["sessions"]
     )
-    return f'''<header class="page-intro"><p class="eyebrow">Independent and open-source</p><h1>About OCF</h1><p>Open Consciousness Functions is an independent, open-source library of function guides and published recordings for self-directed practice.</p><p>Read the guide, explore current cues, and choose whether to listen or download an available edition. The verified catalog currently lists {session_count} session editions, including the separate Preparation Learning session.</p><p>OCF is not affiliated with The Monroe Institute or Hemi-Sync. The material is not healthcare or emergency advice.</p><p><a href="../start/">Start Here</a> · <a href="../functions/">Browse &amp; Listen</a> · <a href="{SITE_REPOSITORY}/issues">Report a website or catalog issue</a></p></header><details class="technical-transparency"><summary>Sources, versions and publishing details</summary><section class="guide-section"><h2>Documentation and audio sources</h2><ul><li>Function titles, instructions, cues, lifecycle and approved relationships come from the canonical OCF en-US locale resources at source commit <code>{_html(guide_export["source_commit"])}</code>.</li><li>The export contains {len(guide_export["functions"])} function records and {guide_export["build_receipt"]["approved_relationship_count"]} approved optional directional relationships; it excludes narration text and source-evidence paths.</li><li>Audio editions, original release URLs and SHA-256 digests come from verified published release manifests. The site does not modify or republish the release files.</li><li>Edition-matched transcripts copied for same-origin reading are checked against the published manifest's size and digest before the Pages artifact is built.</li></ul><p><a href="{SOURCE_REPOSITORY}/tree/{_html(guide_export["source_commit"])}">Pinned source tree</a> · <a href="{_html(source_docs_url)}">Source documentation</a></p><h2>Published release versions</h2><ul>{"".join(releases) if releases else "<li>No published release is present in the verified catalog.</li>"}</ul></section></details><section class="guide-section"><h2>What this library does not claim</h2><p>Documentation, audio availability, successful playback and checksum validation do not establish efficacy, listening approval, rights clearance, or publication authorization beyond the verified release manifest.</p></section>'''
+    return f'''<header class="page-intro"><p class="eyebrow">Independent and open-source</p><h1>About OCF</h1><p>Open Consciousness Functions is an independent, open-source guided audio project for self-directed practice. Functions are its current library; standalone guided meditations and connected series are planned.</p><p>Read the guide, explore current cues, and choose whether to listen or download an available edition. The verified catalog currently lists {session_count} session editions, including the separate Preparation Learning session.</p><h2>Why we are building OCF</h2><p>Inspired by the Human Plus approach associated with Robert Monroe, OCF aims to make guided practice openly accessible and affordable to explore. We want to revisit useful function ideas, expand what is available, improve clarity and wording, and welcome feedback and contributions in more languages.</p><p>Functions are the starting point, not the boundary of the project. Guided meditations and connected series are part of the direction we want to develop with the community.</p><p>OCF is not affiliated with The Monroe Institute or Hemi-Sync. The material is not healthcare or emergency advice.</p><p><a href="../start/">Start Here</a> · <a href="../functions/">Browse &amp; Listen</a> · <a href="{SITE_REPOSITORY}/issues">Report a website or catalog issue</a></p></header><details class="technical-transparency"><summary>Sources, versions and publishing details</summary><section class="guide-section"><h2>Documentation and audio sources</h2><ul><li>Function titles, instructions, cues, lifecycle and approved relationships come from the canonical OCF en-US locale resources at source commit <code>{_html(guide_export["source_commit"])}</code>.</li><li>The export contains {len(guide_export["functions"])} function records and {guide_export["build_receipt"]["approved_relationship_count"]} approved optional directional relationships; it excludes narration text and source-evidence paths.</li><li>Audio editions, original release URLs and SHA-256 digests come from verified published release manifests. The site does not modify or republish the release files.</li><li>Edition-matched transcripts copied for same-origin reading are checked against the published manifest's size and digest before the Pages artifact is built.</li></ul><p><a href="{SOURCE_REPOSITORY}/tree/{_html(guide_export["source_commit"])}">Pinned source tree</a> · <a href="{_html(source_docs_url)}">Source documentation</a></p><h2>Published release versions</h2><ul>{"".join(releases) if releases else "<li>No published release is present in the verified catalog.</li>"}</ul></section></details><section class="guide-section"><h2>Explore and contribute</h2><p><a href="../how-it-works/">How OCF works</a> explains the guidance, learned cues and stereo sound. <a href="../get-involved/">Get involved</a> to suggest a change, help translate or share feedback.</p></section>'''
 
 
 def _recommended_settings(source_commit):
