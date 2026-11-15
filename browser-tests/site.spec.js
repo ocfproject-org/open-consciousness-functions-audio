@@ -1637,7 +1637,9 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await page.goto('/start/');
     await page.locator('main a[href$="practice-chains/"]').click();
     await expect(page).toHaveURL(/practice-chains\/$/);
-    await expect(page.locator('h1')).toHaveText('Optional practice chains');
+    await expect(page.locator('h1')).toHaveText('Function Chains');
+    await expect(page).toHaveTitle('Function Chains — OCF');
+    await expect(page.locator('.mobile-nav a[aria-current="page"]')).toHaveText('Function Chains');
     await expect(page.locator('main ol')).toHaveCount(17);
     const toc = page.locator(width === 320 ? '.mobile-toc' : '.desktop-toc');
     if (width === 320) await toc.locator('summary').click();
@@ -1676,7 +1678,7 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/functions\/OCF-EMO-001\/$/);
     await page.goBack();
-    await expect(page.locator('h1')).toHaveText('Optional practice chains');
+    await expect(page.locator('h1')).toHaveText('Function Chains');
     await page.locator('main ol').nth(3).getByRole('link', {name: 'Reset', exact: true}).click();
     await expect(page).toHaveURL(/functions\/OCF-FND-005\/$/);
     await page.goBack();
