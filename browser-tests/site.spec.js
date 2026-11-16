@@ -1035,7 +1035,7 @@ test('function titles expose direct Listen/MP3/FLAC actions for each published e
   await noAxeViolations(page, '.function-audio-actions');
 });
 
-test('bounded public release MP3 playback or unavailable-media fallback is verified in this browser', async ({ page, browserName }) => {
+test('bounded public release MP3 playback uses validated contiguous public byte ranges', async ({ page, browserName }) => {
   test.skip(process.env.OCF_REAL_AUDIO_TESTS !== '1', 'Set OCF_REAL_AUDIO_TESTS=1 to allow a capped public release-media probe.');
   test.setTimeout(90000);
   const catalog = await page.request.get('/catalog.json').then(response => response.json());
@@ -1060,33 +1060,86 @@ test('bounded public release MP3 playback or unavailable-media fallback is verif
     try { return decodeURIComponent(rawURL).includes(asset.filename); }
     catch (_) { return false; }
   };
+  // Test-only transport: WebKit must receive enough contiguous bytes to cross the
+  // published MP3's large ID3 artwork tag before its first MPEG frame (~325 KiB).
+  // Never represent this bounded prefix as full-release or native Safari playback.
+  const prefixMode = browserName === 'webkit';
+  const browserWindowBytes = prefixMode ? 512 * 1024 : maxRangeBytes;
+  let reservedBytes = 0;
+  const browserRanges = [];
+  const fetchChunk = async (url, start, end) => {
+    const expectedBytes = end - start + 1;
+    if (ranges.length >= maxRequests || reservedBytes + expectedBytes > maxTotalBytes) {
+      throw new Error('upstream-request-or-byte-cap');
+    }
+    reservedBytes += expectedBytes; // Reserve before awaiting, including concurrent requests.
+    ranges.push({host: new URL(url).hostname, start, end});
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(url, {
+        headers: {Range: `bytes=${start}-${end}`, 'Accept-Encoding': 'identity'},
+        signal: controller.signal,
+      });
+      const cr = /^bytes (\d+)-(\d+)\/(\d+)$/i.exec(response.headers.get('content-range') || '');
+      const encoding = response.headers.get('content-encoding');
+      // Reject an ignored Range or misleading length before reading any body.
+      if (response.status !== 206 || !cr || Number(cr[1]) !== start || Number(cr[2]) !== end
+          || Number(cr[3]) !== asset.size_bytes
+          || Number(response.headers.get('content-length')) !== expectedBytes
+          || (encoding && encoding !== 'identity')) {
+        await response.body?.cancel();
+        throw new Error(`invalid-upstream-range-headers:${response.status}:${start}-${end}`);
+      }
+      const reader = response.body.getReader();
+      const pieces = [];
+      let received = 0;
+      for (;;) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        if (received > expectedBytes) {
+          await reader.cancel();
+          throw new Error('upstream-body-exceeds-declared-range');
+        }
+        pieces.push(Buffer.from(value));
+      }
+      if (received !== expectedBytes) throw new Error('truncated-upstream-range');
+      rangeResponses.push({host: new URL(response.url).hostname, status: 206, start, end, total: asset.size_bytes});
+      return {body: Buffer.concat(pieces), contentType: response.headers.get('content-type') || 'application/octet-stream'};
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
+    }
+  };
   await page.route(url => matchesAudioURL(url.href), async route => {
-    if (ranges.length >= maxRequests) {
+    try {
+      const rawRange = route.request().headers().range || 'bytes=0-';
+      const match = /^bytes=(\d+)-(\d*)$/i.exec(rawRange);
+      if (!match) throw new Error(`unsupported-range:${rawRange}`);
+      const start = Number(match[1]);
+      const requestedEnd = match[2] ? Number(match[2]) : asset.size_bytes - 1;
+      const end = Math.min(requestedEnd, start + browserWindowBytes - 1, asset.size_bytes - 1);
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd) || end < start) throw new Error('invalid-native-range');
+      const parts = [];
+      let contentType;
+      for (let offset = start; offset <= end; offset += maxRangeBytes) {
+        const chunk = await fetchChunk(route.request().url(), offset, Math.min(end, offset + maxRangeBytes - 1));
+        parts.push(chunk.body);
+        contentType = chunk.contentType;
+      }
+      const body = Buffer.concat(parts);
+      browserRanges.push({requested: rawRange, start, end, bytes: body.length});
+      await route.fulfill({status: 206, headers: {
+        'content-type': contentType, 'accept-ranges': 'bytes',
+        'content-range': `bytes ${start}-${end}/${asset.size_bytes}`,
+        'content-length': String(body.length), 'access-control-allow-origin': '*',
+      }, body});
+    } catch (error) {
       budgetExceeded = true;
-      budgetFailures.push('request-count-cap');
-      await route.abort();
-      return;
+      budgetFailures.push(error.message);
+      await route.abort().catch(() => {});
     }
-    const headers = route.request().headers();
-    const match = /^bytes=(\d+)-(\d*)$/i.exec(headers.range || 'bytes=0-');
-    if (!match) {
-      budgetExceeded = true;
-      budgetFailures.push(`unsupported-range:${headers.range || 'missing'}`);
-      await route.abort();
-      return;
-    }
-    const start = Number(match[1]);
-    const requestedEnd = match[2] ? Number(match[2]) : start + maxRangeBytes - 1;
-    const end = Math.min(requestedEnd, start + maxRangeBytes - 1, asset.size_bytes - 1);
-    if (end < start) {
-      budgetExceeded = true;
-      budgetFailures.push(`invalid-range:${start}-${end}`);
-      await route.abort();
-      return;
-    }
-    headers.range = `bytes=${start}-${end}`;
-    ranges.push({host: new URL(route.request().url()).hostname, start, end});
-    await route.continue({headers});
   });
   page.on('request', request => {
     if (!matchesAudioURL(request.url())) return;
@@ -1103,8 +1156,6 @@ test('bounded public release MP3 playback or unavailable-media fallback is verif
     const headers = response.headers();
     const url = new URL(response.url());
     audioResponses.push({host: url.hostname, status: response.status(), resourceType: response.request().resourceType(), contentType: headers['content-type'] || null, contentRange: headers['content-range'] || null});
-    const contentRange = /^bytes (\d+)-(\d+)\/(\d+)$/i.exec(headers['content-range'] || '');
-    if (contentRange) rangeResponses.push({host: url.hostname, status: response.status(), start: Number(contentRange[1]), end: Number(contentRange[2]), total: Number(contentRange[3])});
   });
   const assertMediaBudget = () => {
     expect(budgetExceeded, `bounded public media request guard: ${budgetFailures.join(', ')} (${ranges.length} ranges)`).toBe(false);
@@ -1128,26 +1179,17 @@ test('bounded public release MP3 playback or unavailable-media fallback is verif
   await expect(player).toHaveAttribute('preload', 'none');
   await expect(player.locator('source')).toHaveAttribute('src', asset.download_url);
   await player.evaluate(audio => audio.load());
-  let metadataReady = false;
   try {
-    await expect.poll(() => player.evaluate(audio => Number.isFinite(audio.duration) && audio.readyState >= HTMLMediaElement.HAVE_METADATA), {timeout: 12000}).toBe(true);
-    metadataReady = true;
+    // WebKit can decode this bounded prefix while reporting duration 0 until playback.
+    await expect.poll(() => player.evaluate((audio, prefix) => !audio.error && (prefix
+      ? audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      : Number.isFinite(audio.duration) && audio.duration > 0 && audio.readyState >= HTMLMediaElement.HAVE_METADATA), prefixMode), {timeout: 20000}).toBe(true);
   } catch (error) {
-    if (browserName !== 'webkit') {
-      const state = await player.evaluate(audio => ({readyState: audio.readyState, networkState: audio.networkState, duration: audio.duration, error: audio.error?.code || null}));
-      throw new Error(`Public audio metadata did not load: ${JSON.stringify({state, mediaRequests, mediaFailures, audioResponses, ranges, rangeResponses})}; ${error.message}`);
-    }
-    const state = await player.evaluate(audio => ({readyState: audio.readyState, networkState: audio.networkState, noSource: audio.networkState === HTMLMediaElement.NETWORK_NO_SOURCE, duration: audio.duration, error: audio.error?.code || null}));
-    expect(state.readyState, `WebKit must surface native unavailability: ${JSON.stringify(state)}`).toBe(0);
-    expect(state.noSource).toBe(true);
-    await expect(playbackStatus).toContainText('Audio could not be played', {timeout: 3000});
-    await expect(actions.getByRole('link', {name: `Download MP3 for ${editionLabel}`})).toHaveAttribute('href', asset.download_url);
-    const bytes = assertMediaBudget();
-    console.log(`WebKit direct-media outcome: browser could not select this release stream; accessible error and direct download are available. ${rangeResponses.length} HTTP 206 ranges, ${bytes} bytes, each capped at ${maxRangeBytes}.`);
-    return;
+    const state = await player.evaluate(audio => ({readyState: audio.readyState, networkState: audio.networkState, duration: audio.duration, error: audio.error?.code || null}));
+    throw new Error(`Bounded public audio metadata failed (not proof of browser incompatibility): ${JSON.stringify({state, budgetFailures, mediaRequests, mediaFailures, audioResponses, ranges, rangeResponses, browserRanges})}; ${error.message}`);
   }
-  expect(metadataReady).toBe(true);
-  expect(await player.evaluate(audio => audio.duration)).toBeGreaterThan(1000);
+  let observedDuration = await player.evaluate(audio => audio.duration);
+  if (!prefixMode) expect(observedDuration).toBeGreaterThan(1000);
 
   await page.locator('.page-intro').evaluate(intro => {
     const player = document.querySelector('.edition-card audio');
@@ -1169,11 +1211,16 @@ test('bounded public release MP3 playback or unavailable-media fallback is verif
   await page.keyboard.press('Enter');
   await expect.poll(() => player.evaluate(audio => audio.paused), {timeout: 5000}).toBe(true);
   const pausedAt = await player.evaluate(audio => audio.currentTime);
-  const seekTo = pausedAt + 5;
-  await player.evaluate((audio, target) => { audio.currentTime = target; }, seekTo);
-  await expect.poll(() => player.evaluate((audio, target) => !audio.seeking && audio.currentTime >= target - 0.25, seekTo), {timeout: 15000}).toBe(true);
-  const seekedTo = await player.evaluate(audio => audio.currentTime);
-  expect(seekedTo).toBeGreaterThanOrEqual(seekTo - 0.25);
+  let seekedTo = pausedAt;
+  if (!prefixMode) {
+    const seekTo = pausedAt + 5;
+    await player.evaluate((audio, target) => { audio.currentTime = target; }, seekTo);
+    await expect.poll(() => player.evaluate((audio, target) => !audio.seeking && audio.currentTime >= target - 0.25, seekTo), {timeout: 15000}).toBe(true);
+    seekedTo = await player.evaluate(audio => audio.currentTime);
+    expect(seekedTo).toBeGreaterThanOrEqual(seekTo - 0.25);
+  }
+  // A truncated WebKit prefix may report duration zero even while playing.
+  // Verify pause/resume progression, but do not claim full duration or seeking.
   await page.keyboard.press('Enter');
   await expect.poll(() => player.evaluate(audio => !audio.paused && !audio.ended), {timeout: 8000}).toBe(true);
   await expect.poll(() => player.evaluate((audio, previous) => audio.currentTime > previous + 0.25, seekedTo), {timeout: 10000}).toBe(true);
@@ -1181,7 +1228,7 @@ test('bounded public release MP3 playback or unavailable-media fallback is verif
   await expect.poll(() => player.evaluate(audio => audio.paused), {timeout: 5000}).toBe(true);
 
   const boundedResponseBytes = assertMediaBudget();
-  console.log(`Public release media probe (${asset.format}): ${rangeResponses.length} HTTP 206 ranges, ${boundedResponseBytes} response bytes; per-range cap ${maxRangeBytes}, total cap ${maxTotalBytes}.`);
+  console.log(`Public release media probe (${asset.format}; ${prefixMode ? "bounded-prefix decode/play/pause/resume, NOT seek/full duration/native Safari" : "bounded range playback"}): ${rangeResponses.length} validated upstream HTTP 206 ranges, ${boundedResponseBytes} bytes; upstream cap ${maxRangeBytes}, total cap ${maxTotalBytes}; observed duration ${observedDuration}.`);
   await expect(playbackStatus).toContainText('Paused at');
 });
 
@@ -1737,5 +1784,45 @@ test('dedicated Start Here and homepage both show all five optional starter link
     await expect(page).toHaveURL(/functions\/OCF-COG-004\/$/);
     await page.goBack();
     await expect(page.locator(selector)).toHaveCount(5);
+  }
+});
+
+
+test('transcript match navigation counts, wraps and preserves keyboard focus', async ({ page }) => {
+  await page.setViewportSize({width: 375, height: 900});
+  await page.goto('/functions/OCF-FND-004/');
+  const t = page.locator('[data-transcript]').first();
+  await t.locator(':scope > summary').click();
+  await expect(t.locator('[data-transcript-status]')).toContainText('transcript loaded');
+  const search = t.locator('[data-transcript-search]');
+  await search.fill('relax');
+  const count = await t.locator('mark').count();
+  expect(count).toBeGreaterThan(1);
+  await expect(t.locator('[data-transcript-matches]')).toHaveText(`Match 1 of ${count}`);
+  await search.press('Enter');
+  await expect(search).toBeFocused();
+  await expect(t.locator('[data-transcript-matches]')).toHaveText(`Match 2 of ${count}`);
+  await search.press('Shift+Enter');
+  await t.locator('[data-transcript-previous]').click();
+  await expect(t.locator('[data-transcript-matches]')).toHaveText(`Match ${count} of ${count}`);
+  await t.locator('[data-transcript-next]').click();
+  await expect(t.locator('[data-transcript-matches]')).toHaveText(`Match 1 of ${count}`);
+  await search.fill('zzzz-no-match');
+  await expect(t.locator('[data-transcript-matches]')).toHaveText('No matches');
+  await expect(t.locator('[data-transcript-next]')).toBeDisabled();
+  await search.fill('');
+  await expect(t.locator('[data-transcript-navigation]')).toBeHidden();
+  await noAxeViolations(page);
+});
+
+test('exact lead duplicates are omitted without losing distinct command instructions', async ({ page }) => {
+  for (const id of ['OCF-EXP-003','OCF-EXP-005']) {
+    await page.goto(`/functions/${id}/`);
+    const lead = await page.locator('.lead').innerText();
+    const normalize = value => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+    const paragraphs = await page.locator('.command-block p').allTextContents();
+    expect(paragraphs.some(text => normalize(text) === normalize(lead))).toBe(false);
+    await expect(page.locator('.command-block .spoken-cue').first()).toBeVisible();
+    expect(await page.locator('.command-block ol li').count()).toBeGreaterThan(0);
   }
 });

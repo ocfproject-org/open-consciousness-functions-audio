@@ -1204,7 +1204,7 @@ def _shell(
 <meta name="theme-color" content="#101a22"><meta name="description" content="{_html(description)}">
 <link rel="canonical" href="{_html(canonical)}"><meta property="og:type" content="website"><meta property="og:title" content="{_html(title)}"><meta property="og:description" content="{_html(description)}"><meta property="og:url" content="{_html(canonical)}"><meta name="twitter:card" content="summary">
 <title>{_html(title)}</title><link rel="icon" href="{base}assets/branding/ocf-app-icon-32.png" type="image/png" sizes="32x32"><link rel="stylesheet" href="{base}assets/css/main.css"><link rel="stylesheet" href="{base}assets/css/website.css">
-{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
+{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
 <nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_menu}</nav></details>
@@ -1535,6 +1535,10 @@ def _spoken_cue_references(text, commands):
     return text
 
 
+def _normalized_public_paragraph(text):
+    return " ".join(unicodedata.normalize("NFKC", text).split()).casefold()
+
+
 def _function_page(function, sessions, transcript_paths, source_commit):
     categories = " · ".join(
         _html(category["label"]) for category in function["categories"]
@@ -1569,7 +1573,7 @@ def _function_page(function, sessions, transcript_paths, source_commit):
             "<p>"
             + _html(
                 _spoken_cue_references(
-                    command["usage"]["text"], function["commands"]
+                    ("Follow the steps below." if command["usage"]["text"] == "Deliberately follow the ordered procedure; proposed exercise instructions, not software execution." else command["usage"]["text"]), function["commands"]
                 )
             )
             + "</p>"
@@ -1583,17 +1587,19 @@ def _function_page(function, sessions, transcript_paths, source_commit):
             if command.get("explanation")
             and command["explanation"]["text"]
             != "This is the primary command for the function."
+            and _normalized_public_paragraph(command["explanation"]["text"])
+            != _normalized_public_paragraph(_public_description(function))
             else ""
         )
         scope_html = (
-            '<p class="scope-note">Effect scope: '
+            '<details class="technical-details"><summary>Technical details</summary><p class="scope-note">Effect scope: '
             + _html(command["effect_scope"])
-            + "</p>"
+            + "</p></details>"
             if command.get("effect_scope")
             else ""
         )
         command_sections.append(
-            f'''<section class="command-block"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{spoken_html}{usage_html}{explanation_html}<h4>Documented activation steps</h4>{procedure_html}{scope_html}</section>'''
+            f'''<section class="command-block"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{spoken_html}{usage_html}{explanation_html}<h4>Activation steps</h4>{procedure_html}{scope_html}</section>'''
         )
     scope_rows = []
     for scope in function["lifecycle"]["scopes"]:
@@ -1624,7 +1630,7 @@ def _function_page(function, sessions, transcript_paths, source_commit):
         if release_command
         else ""
     )
-    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Lifecycle and behavior</h2><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Intended persistence: {_html(lifecycle["persistence"] or "not specified")}.</p>{scopes_html}{trigger_html}{release_html}</section>"""
+    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Use and duration</h2>{scopes_html}{trigger_html}{release_html}<details class="technical-details"><summary>Technical details</summary><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Intended persistence: {_html(lifecycle["persistence"] or "not specified")}.</p></details></section>"""
     safety_html = "".join(
         f"<li>{_html(note)}</li>" for note in function["safety_notes"]
     )
@@ -1669,7 +1675,7 @@ def _function_page(function, sessions, transcript_paths, source_commit):
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">Cues and documented instructions</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{contribution}{source_details}'''
     )
 
 
@@ -1771,7 +1777,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
         local = transcript_paths.get(asset["asset_id"])
         if fmt == "txt" and local:
             transcript_controls.append(
-                f'<details class="transcript" data-transcript><summary>{label} — edition {_html(session["edition"])} ({_html(session["locale"])})</summary><p class="transcript-status" data-transcript-status role="status" aria-live="polite" hidden></p><label class="transcript-search"><span>Search this transcript</span><input type="search" data-transcript-search disabled></label><pre class="transcript-body" data-transcript-src="{_html(site_root_prefix + local["path"])}" aria-live="off">Open the download link below to read this edition-matched transcript. With JavaScript enabled, it also loads here when expanded.</pre><button type="button" data-transcript-retry hidden>Retry loading transcript</button><p><a href="{_html(site_root_prefix + local["path"])}" download aria-label="Download transcript text for {_html(title)}, edition {_html(session["edition"])}, {_html(session["locale"])}">Download transcript text</a> · <a href="{_html(asset["download_url"])}" aria-label="Original release asset, TXT for {_html(title)}, edition {_html(session["edition"])}, {_html(session["locale"])}">Original release asset</a></p><details class="file-details"><summary>Transcript file details</summary><p>SHA-256: <code>{_html(asset["sha256"])}</code></p></details></details>'
+                f'<details class="transcript" data-transcript><summary>{label} — edition {_html(session["edition"])} ({_html(session["locale"])})</summary><p class="transcript-status" data-transcript-status role="status" aria-live="polite" hidden></p><label class="transcript-search"><span>Search this transcript</span><input type="search" data-transcript-search disabled></label><div class="transcript-navigation" data-transcript-navigation hidden><button type="button" data-transcript-previous disabled>Previous match</button><button type="button" data-transcript-next disabled>Next match</button><output data-transcript-matches aria-live="polite"></output></div><pre class="transcript-body" data-transcript-src="{_html(site_root_prefix + local["path"])}" aria-live="off">Open the download link below to read this edition-matched transcript. With JavaScript enabled, it also loads here when expanded.</pre><button type="button" data-transcript-retry hidden>Retry loading transcript</button><p><a href="{_html(site_root_prefix + local["path"])}" download aria-label="Download transcript text for {_html(title)}, edition {_html(session["edition"])}, {_html(session["locale"])}">Download transcript text</a> · <a href="{_html(asset["download_url"])}" aria-label="Original release asset, TXT for {_html(title)}, edition {_html(session["edition"])}, {_html(session["locale"])}">Original release asset</a></p><details class="file-details"><summary>Transcript file details</summary><p>SHA-256: <code>{_html(asset["sha256"])}</code></p></details></details>'
             )
         elif local:
             transcript_controls.append(
@@ -1799,7 +1805,12 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
 
 def _asset_specification(asset, *, size=None, duration=None):
     fmt = str(asset.get("format", "")).upper()
-    specifications = [fmt, asset.get("encoding")]
+    encoding = str(asset.get("encoding") or "").strip()
+    if encoding.casefold() == fmt.casefold():
+        encoding = ""
+    elif encoding.casefold().startswith(fmt.casefold() + " "):
+        encoding = encoding[len(fmt):].strip()
+    specifications = [fmt, encoding]
     if asset.get("sample_rate_hz"):
         specifications.append(f"{asset['sample_rate_hz']:,} Hz")
     if asset.get("channels"):

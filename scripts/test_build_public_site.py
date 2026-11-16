@@ -583,6 +583,17 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertNotIn("Intended purpose", html)
         self.assertIn('<details class="source-details">', html)
         self.assertEqual(function, original)
+        function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
+        secondary = copy.deepcopy(function["commands"][0])
+        secondary.update(designation="secondary", spoken_cue="Plus Cancel", explanation={"text": "A distinct secondary meaning."})
+        function["commands"].append(secondary)
+        snapshot = copy.deepcopy(function)
+        rendered = _function_page(function, [], {}, "a" * 40)
+        self.assertEqual(rendered.count("A documented purpose."), 1)
+        self.assertNotIn("A   documented purpose", rendered)
+        self.assertIn("A distinct secondary meaning.", rendered)
+        self.assertIn("Plus Cancel", rendered)
+        self.assertEqual(function, snapshot)
 
     def test_spoken_cue_reference_replaces_only_the_approved_whole_cue(self):
         commands = [
@@ -846,7 +857,7 @@ class PublicSiteBuildTests(unittest.TestCase):
         )
         self.assertEqual(
             specification,
-            "MP3 · MP3 320 kbps · 44,100 Hz · 2 channels · 1.0 MiB · 2m 5s",
+            "MP3 · 320 kbps · 44,100 Hz · 2 channels · 1.0 MiB · 2m 5s",
         )
 
     def test_guide_export_fails_closed_on_source_pin_or_receipt_drift(self):
@@ -963,6 +974,16 @@ class DynamicFunctionCountTests(unittest.TestCase):
         start = (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text()
         self.assertEqual(start.count("{{function_count}}"), 1)
         self.assertIn("one of the 3 function records", render_markdown(start.replace("{{function_count}}", "3")))
+
+
+class AuditPresentationTests(unittest.TestCase):
+    def test_exact_paragraph_normalization_and_format_tokens(self):
+        from build_public_site import _normalized_public_paragraph
+        self.assertEqual(_normalized_public_paragraph(" A  PURPOSE. "), _normalized_public_paragraph("a purpose."))
+        self.assertNotEqual(_normalized_public_paragraph("A purpose."), _normalized_public_paragraph("A different purpose."))
+        self.assertEqual(_asset_specification({"format": "flac", "encoding": "flac"}), "FLAC")
+        self.assertEqual(_asset_specification({"format": "mp3", "encoding": "MP3 320 kbps"}), "MP3 · 320 kbps")
+        self.assertEqual(_asset_specification({"format": "flac", "encoding": "PCM 24-bit"}), "FLAC · PCM 24-bit")
 
 
 if __name__ == "__main__":

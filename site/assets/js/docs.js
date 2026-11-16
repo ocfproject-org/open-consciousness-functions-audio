@@ -384,7 +384,41 @@
     const search = details.querySelector('[data-transcript-search]');
     const status = details.querySelector('[data-transcript-status]');
     const retry = details.querySelector('[data-transcript-retry]');
-    if (search) search.addEventListener('input', () => highlight(pre, transcriptText, search.value));
+    const navigation = details.querySelector('[data-transcript-navigation]');
+    const previous = details.querySelector('[data-transcript-previous]');
+    const next = details.querySelector('[data-transcript-next]');
+    const matchStatus = details.querySelector('[data-transcript-matches]');
+    let matches = [];
+    let currentMatch = -1;
+    const showMatch = (scroll = false) => {
+      matches.forEach((mark, index) => {
+        mark.classList.toggle('current-match', index === currentMatch);
+        if (index === currentMatch) mark.setAttribute('aria-current', 'true');
+        else mark.removeAttribute('aria-current');
+      });
+      if (matchStatus) matchStatus.textContent = matches.length ? `Match ${currentMatch + 1} of ${matches.length}` : (search?.value ? 'No matches' : '');
+      if (previous) previous.disabled = matches.length === 0;
+      if (next) next.disabled = matches.length === 0;
+      if (navigation) navigation.hidden = !loaded || !search?.value;
+      if (scroll && currentMatch >= 0) matches[currentMatch].scrollIntoView({block: 'center', behavior: 'instant'});
+    };
+    const updateMatches = () => {
+      highlight(pre, transcriptText, search?.value || '');
+      matches = [...pre.querySelectorAll('mark')];
+      currentMatch = matches.length ? 0 : -1;
+      showMatch();
+    };
+    const moveMatch = direction => {
+      if (!matches.length) return;
+      currentMatch = (currentMatch + direction + matches.length) % matches.length;
+      showMatch(true);
+    };
+    search?.addEventListener('input', updateMatches);
+    search?.addEventListener('keydown', event => {
+      if (event.key === 'Enter') { event.preventDefault(); moveMatch(event.shiftKey ? -1 : 1); }
+    });
+    previous?.addEventListener('click', () => moveMatch(-1));
+    next?.addEventListener('click', () => moveMatch(1));
     const loadTranscript = async () => {
       if (!details.open || loaded || loading) return;
       const path = safeTranscript(pre?.dataset.transcriptSrc, location.href);
@@ -409,9 +443,9 @@
         const response = await fetch(path, {credentials: 'omit'});
         if (!response.ok) throw new Error('Transcript unavailable');
         transcriptText = await response.text();
-        highlight(pre, transcriptText, search?.value || '');
         if (search) search.disabled = false;
         loaded = true;
+        updateMatches();
         if (status) status.textContent = 'Published transcript loaded.';
       } catch (_) {
         pre.textContent = 'The published transcript could not be loaded.';
