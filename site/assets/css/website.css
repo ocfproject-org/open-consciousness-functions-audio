@@ -389,3 +389,9 @@
 .transcript-navigation[hidden] { display: none; }
 .transcript-navigation button { min-height: 44px; }
 .transcript-body mark.current-match { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* Surprise-session panel and native player layout. */
+.surprise-session { margin-block: 1.5rem; padding: 1rem; border: 1px solid currentColor; border-radius: .75rem; }
+.surprise-session > label { display: block; margin-block: 1rem; }
+.surprise-session audio { display: block; width: 100%; max-width: 36rem; }
+.surprise-session .edition-card { margin-top: 1rem; min-width: 0; }
