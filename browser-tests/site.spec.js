@@ -154,7 +154,7 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   await expect(page.locator('.docs-hero a[href="preparation-learning/"]')).toHaveCount(0);
   await expect(page.locator('.desktop-nav a[href="functions/"]')).toHaveCount(1);
   const quickPath = page.locator('.home-utilities a[href="quick-reference/"]');
-  await expect(quickPath).toContainText('current spoken cues');
+  await expect(quickPath).toContainText('current cues');
   await expect(quickPath).not.toContainText('display/spoken');
 });
 
@@ -1399,7 +1399,7 @@ test('Quick Reference filters, keyboard controls, narrow widths, print, themes, 
 
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto('/quick-reference/');
-  const search = page.getByLabel('Search title, ID, spoken cue or description');
+  const search = page.getByLabel('Search title, ID, cue or description');
   await search.focus();
   await page.keyboard.type('OCF-EXP-001');
   await expect(page.locator('[data-reference-count]')).toHaveText('1 function');
@@ -1466,7 +1466,7 @@ test('mobile Quick Reference cards retain descriptions, cues, and accurate audio
   await expect(page.getByRole('columnheader', {name: 'Description'})).toHaveCount(1);
   await expect(page.getByRole('columnheader', {name: 'Audio availability'})).toHaveCount(1);
   for (const row of await rows.all()) {
-    for (const label of ['Current spoken cues', 'Description', 'Audio']) {
+    for (const label of ['Current cues', 'Description', 'Audio']) {
       const cell = row.locator(`td[data-label="${label}"]`);
       await expect(cell).toBeVisible();
       await expect(cell).toContainText(/\S/);
@@ -1549,15 +1549,15 @@ test('About leads with reader context and keeps provenance in native disclosure'
   await expect(page.locator('h1')).toHaveText('About OCF');
   const introText = await page.locator('.page-intro').innerText();
   expect(introText).toContain('independent, open-source guided audio project');
-  expect(introText).toContain('Read the guide');
-  expect(introText).toContain('Report a website or catalog issue');
+  expect(introText).toContain('Our growing library of functions');
+  expect(introText).toContain('Our Vision');
   expect(introText).not.toContain('source commit');
   const transparency = page.locator('.technical-transparency');
   await expect(transparency).not.toHaveAttribute('open', '');
   await transparency.locator(':scope > summary').click();
   await expect(transparency).toContainText('704440da8e0379cee8dfd332203bc0001c0a5f27');
   await expect(transparency).toContainText('audio-0.1.0-a6-20261111');
-  await expect(page.locator('main')).toContainText('not healthcare or emergency advice');
+  await expect(page.locator('main')).toContainText('freely accessible, clearly documented, and open to improvement');
   await noAxeViolations(page);
 });
 
