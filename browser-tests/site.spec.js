@@ -46,6 +46,7 @@ test('accessibility failure is detected by the same fail-closed gate', async ({ 
 });
 
 test('all 58 generated function pages expose spoken cues only and pass axe', async ({ page }) => {
+  test.setTimeout(120000); // Aggregate 58 page visits and axe scans; assertion timeouts are unchanged.
   const index = await page.request.get('/documentation-index.json').then(response => response.json());
   expect(index.functions).toHaveLength(58);
   for (const row of index.functions) {
