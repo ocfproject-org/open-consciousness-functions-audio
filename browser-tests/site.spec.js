@@ -52,6 +52,12 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     const id = row.function_id;
     await page.goto(`/functions/${id}/`);
     await expect(page.locator('h1')).toBeVisible();
+    for (const [target, label] of [['cues', 'How to use this function'], ['behavior', 'Use and duration']]) {
+      await expect(page.locator(`#${target}`)).toHaveText(label);
+      const links = page.locator(`.desktop-toc a[href="#${target}"], .mobile-toc a[href="#${target}"]`);
+      await expect(links).toHaveCount(2);
+      for (const link of await links.all()) await expect(link).toHaveText(label);
+    }
     await expect(page.locator('.display-cue, .historical-commands, .historical-cue')).toHaveCount(0);
     await expect(page.locator('.draft-badge, .review-status, .status-line')).toHaveCount(0);
     const pageText = await page.locator('body').innerText();

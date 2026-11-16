@@ -1219,8 +1219,8 @@ def _function_toc_items():
         (2, identity, label)
         for identity, label in (
             ("overview", "Purpose"),
-            ("cues", "Cues and documented instructions"),
-            ("behavior", "Lifecycle and behavior"),
+            ("cues", "How to use this function"),
+            ("behavior", "Use and duration"),
             ("safety", "Precautions"),
             ("listening", "Listen and download"),
             ("related", "Explore related practices"),
