@@ -53,7 +53,44 @@
     `${action} ${String(format || 'file').toUpperCase()} for ${item.title}, ${item.locale}, ${item.voice}, edition ${item.edition}`;
   const downloadList = assets => assets.map(a => `${a.sha256}  ${a.filename}\n${a.download_url}`).join('\n\n') + '\n';
   const supportedCatalog = catalog => [1, 2, 3].includes(catalog.schema_version) && Array.isArray(catalog.releases);
-  if (typeof module !== 'undefined') module.exports = {safeURL, entries, normalizeSearch, filterEntries, downloadActionName, downloadList, supportedCatalog};
+  // History records selections, including skipped/interrupted sessions, by stable function ID.
+  const surprisePool = items => {
+    const pool = new Map();
+    for (const item of items) {
+      if (item.id === 'preparation-learning' || !item.assets.some(a => a.format === 'mp3' && safeURL(a.download_url))) continue;
+      if (!pool.has(item.id)) pool.set(item.id, []);
+      pool.get(item.id).push(item);
+    }
+    return pool;
+  };
+  const chooseSurprise = (items, history = [], random = Math.random) => {
+    const pool = surprisePool(items);
+    if (!pool.size) return null;
+    const seen = new Set(Array.isArray(history) ? history.filter(id => typeof id === 'string' && pool.has(id)) : []);
+    let remaining = [...pool.keys()].filter(id => !seen.has(id));
+    if (!remaining.length) { seen.clear(); remaining = [...pool.keys()]; }
+    const id = remaining[Math.floor(random() * remaining.length)];
+    const editions = pool.get(id);
+    seen.add(id);
+    return {item: editions[Math.floor(random() * editions.length)], history: [...seen]};
+  };
+  const createSurpriseHistory = (storage, key = 'ocf-surprise-history:v1') => {
+    let memory = [];
+    let writable = true;
+    return items => {
+      try {
+        const saved = writable ? JSON.parse(storage().getItem(key) || '[]') : memory;
+        if (Array.isArray(saved) && saved.every(id => typeof id === 'string')) memory = saved;
+      } catch (_) { /* Retain this page's history when storage is blocked or corrupt. */ }
+      const chosen = chooseSurprise(items, memory);
+      if (chosen) {
+        memory = chosen.history;
+        try { if (writable) storage().setItem(key, JSON.stringify(memory)); } catch (_) { writable = false; }
+      }
+      return chosen?.item || null;
+    };
+  };
+  if (typeof module !== 'undefined') module.exports = {surprisePool, chooseSurprise, createSurpriseHistory, safeURL, entries, normalizeSearch, filterEntries, downloadActionName, downloadList, supportedCatalog};
   if (typeof document === 'undefined') return;
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -231,6 +268,114 @@
     if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control.value);
   }
 
+  function setupSurprise(items) {
+    const section = el('section', undefined, 'surprise-session');
+    section.setAttribute('aria-labelledby', 'surprise-heading');
+    const heading = el('h3', 'Let us choose a function'); heading.id = 'surprise-heading';
+    const note = el('p', 'Choose from all functions with a playable MP3, regardless of the browse filters. Each function gets an equal chance. Selections are remembered in this browser until all eligible functions have been chosen; if storage is unavailable, history lasts only while this page stays open.');
+    const choose = el('button', 'Surprise me'); choose.type = 'button';
+    const label = el('label'); const hide = el('input'); hide.type = 'checkbox';
+    label.append(hide, document.createTextNode(' Hide session details until I reveal them'));
+    const hint = el('p', 'The narration still names the function. Show more or finish playback to reveal its title and guide.');
+    hint.id = 'surprise-hint'; hide.setAttribute('aria-describedby', hint.id);
+    try { hide.checked = localStorage.getItem('ocf-surprise-hidden:v1') === 'true'; } catch (_) { /* Optional storage. */ }
+    const card = el('div', undefined, 'edition-card'); card.hidden = true;
+    const title = el('h4', 'Your surprise session');
+    const status = el('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); status.setAttribute('data-playback-status', '');
+    const player = el('audio'); player.controls = true; player.preload = 'none'; player.tabIndex = 0;
+    player.dataset.surprisePlayer = 'true';
+    // A focused native media element does not implement Space consistently across engines.
+    player.addEventListener('keydown', event => {
+      if (event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      if (player.paused) player.play().catch(error => {
+        if (error.name !== 'AbortError') player.dispatchEvent(new Event('error'));
+      });
+      else player.pause();
+    });
+    const more = el('button', 'Show more'); more.type = 'button'; more.setAttribute('aria-controls', 'surprise-details');
+    const details = el('div'); details.id = 'surprise-details'; details.tabIndex = -1;
+    card.append(title, status, more, details);
+    const explanation = el('details'); explanation.append(el('summary', 'How choices work'), note);
+    section.append(heading, choose, label, hint, card, explanation);
+    document.querySelector('.library-tools').before(section);
+    const next = createSurpriseHistory(() => localStorage);
+    let current = null;
+    let concealed = false;
+    let ownsMetadata = false;
+    const metadata = () => {
+      if (!('mediaSession' in navigator)) return;
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({title: concealed ? 'Your surprise session' : current.title, artist: 'OCF'});
+      } catch (_) { /* Native audio controls remain available without Media Session. */ }
+    };
+    const present = () => {
+      title.textContent = concealed ? 'Your surprise session' : current.title;
+      player.setAttribute('aria-label', concealed ? 'Listen to your surprise session' : `Listen to ${current.title}, ${current.locale}, ${current.voice}, edition ${current.edition}`);
+      player.dataset.sessionTitle = concealed ? 'Your surprise session' : current.title;
+      // Never put the selected title/edition in concealed accessible labels or status text.
+      if (concealed) delete player.dataset.sessionEdition;
+      else player.dataset.sessionEdition = current.edition;
+      details.replaceChildren(); details.hidden = concealed;
+      more.hidden = !concealed; more.setAttribute('aria-expanded', String(!concealed));
+      if (!concealed) {
+        const link = el('a', 'Read the function guide'); link.href = current.href;
+        details.append(el('p', current.description), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
+      }
+      if (ownsMetadata) metadata();
+      window.ocfUpdateMediaPlayerStatus?.(player);
+    };
+    const reveal = () => { if (!current || !concealed) return; concealed = false; present(); };
+    more.addEventListener('click', () => { reveal(); details.focus(); });
+    player.addEventListener('ended', () => {
+      if (!player.ended) return;
+      const focused = document.activeElement === more;
+      reveal();
+      if (focused) details.focus();
+    });
+    // Clear our metadata when another library player takes over.
+    document.addEventListener('play', event => {
+      if (!(event.target instanceof HTMLMediaElement)) return;
+      if (event.target === player) { ownsMetadata = true; metadata(); }
+      else if (ownsMetadata) {
+        ownsMetadata = false;
+        if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
+      }
+    }, true);
+    hide.addEventListener('change', () => {
+      try { localStorage.setItem('ocf-surprise-hidden:v1', String(hide.checked)); } catch (_) { /* Optional storage. */ }
+      if (current) { concealed = hide.checked; present(); }
+    });
+    choose.disabled = surprisePool(items).size === 0;
+    if (choose.disabled) note.textContent = 'No playable function sessions are available in this catalog.';
+    const selectNext = () => {
+      const selected = next(items);
+      if (!selected) return;
+      player.pause();
+      if (!player.isConnected) title.after(player);
+      current = selected; concealed = hide.checked;
+      player.src = current.assets.find(a => a.format === 'mp3' && safeURL(a.download_url)).download_url;
+      card.hidden = false;
+      present();
+      window.ocfRegisterMediaPlayer?.(player);
+      player.focus();
+    };
+    choose.addEventListener('click', async () => {
+      choose.disabled = true;
+      try {
+        // Serialize cooperating tabs when Web Locks is available (HTTPS/localhost).
+        if (navigator.locks?.request) await navigator.locks.request('ocf-surprise-selection', selectNext);
+        else selectNext();
+      } finally { choose.disabled = false; }
+    });
+    window.addEventListener('pagehide', () => {
+      player.pause();
+      if (ownsMetadata && 'mediaSession' in navigator) navigator.mediaSession.metadata = null;
+      ownsMetadata = false;
+    });
+  }
+
   function createSessionCard(item) {
     const card = el('article', undefined, 'session-card');
     card.dataset.functionId = item.id;
@@ -364,6 +509,7 @@
     if (params.get('category') && category) category.value = params.get('category');
     search.disabled = false;
     catalogItems = items;
+    setupSurprise(items);
     catalogCards = items.map(createSessionCard);
     results.replaceChildren(...catalogCards);
     restorePlaybackState(items);

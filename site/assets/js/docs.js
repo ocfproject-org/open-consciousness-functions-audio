@@ -150,7 +150,9 @@
     const filteredNote = filtered ? ' This edition does not match the current filters; its controls remain available.' : '';
     let message = '';
     if (audio.error || failedPlayers.has(audio)) {
-      message = `Audio could not be played. Check your connection or use the direct download link below.${filteredNote}`;
+      message = audio.dataset.surprisePlayer === 'true'
+        ? 'Audio could not be played. Check your connection and try again, or choose another session.'
+        : `Audio could not be played. Check your connection or use the direct download link below.${filteredNote}`;
     } else if (audio.ended || audio.dataset.ocfResumeEnded === 'true') {
       message = `Playback ended for ${title}${edition}. Use the player controls to replay.${filteredNote}`;
     } else if (!audio.paused && audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
@@ -238,6 +240,12 @@
       }
       for (const other of managedPlayers) if (other !== audio && !other.paused) other.pause();
       monitorPlaybackStart();
+      updatePlaybackStatus(audio);
+    });
+    audio.addEventListener('emptied', () => {
+      cancelPlaybackTimer();
+      startedPlayers.delete(audio);
+      failedPlayers.delete(audio);
       updatePlaybackStatus(audio);
     });
     audio.addEventListener('loadstart', monitorPlaybackStart);
