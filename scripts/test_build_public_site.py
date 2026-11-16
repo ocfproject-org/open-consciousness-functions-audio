@@ -583,6 +583,17 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertNotIn("Intended purpose", html)
         self.assertIn('<details class="source-details">', html)
         self.assertEqual(function, original)
+        function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
+        secondary = copy.deepcopy(function["commands"][0])
+        secondary.update(designation="secondary", spoken_cue="Plus Cancel", explanation={"text": "A distinct secondary meaning."})
+        function["commands"].append(secondary)
+        snapshot = copy.deepcopy(function)
+        rendered = _function_page(function, [], {}, "a" * 40)
+        self.assertEqual(rendered.count("A documented purpose."), 1)
+        self.assertNotIn("A   documented purpose", rendered)
+        self.assertIn("A distinct secondary meaning.", rendered)
+        self.assertIn("Plus Cancel", rendered)
+        self.assertEqual(function, snapshot)
 
     def test_spoken_cue_reference_replaces_only_the_approved_whole_cue(self):
         commands = [
@@ -846,7 +857,7 @@ class PublicSiteBuildTests(unittest.TestCase):
         )
         self.assertEqual(
             specification,
-            "MP3 · MP3 320 kbps · 44,100 Hz · 2 channels · 1.0 MiB · 2m 5s",
+            "MP3 · 320 kbps · 44,100 Hz · 2 channels · 1.0 MiB · 2m 5s",
         )
 
     def test_guide_export_fails_closed_on_source_pin_or_receipt_drift(self):
@@ -923,6 +934,56 @@ class PublicSiteBuildTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "lacks a unique manifest-bound"):
             _catalog_sessions({"releases": [release]})
+
+
+
+class DynamicFunctionCountTests(unittest.TestCase):
+    def test_export_cardinality_follows_verified_receipt_not_fixed_snapshot(self):
+        pin = PublicSiteBuildTests.valid_pin()
+        for size in (1, 57, 59):
+            doc = PublicSiteBuildTests.valid_export(pin)
+            doc["functions"] = [dict(doc["functions"][0], function_id=f"OCF-FND-{i:03}") for i in range(1, size + 1)]
+            receipt = doc["build_receipt"]
+            receipt["function_count"] = size
+            receipt["functions_sha256"] = digest(doc["functions"])
+            receipt["export_content_sha256"] = digest({k: v for k, v in doc.items() if k != "build_receipt"})
+            self.assertIs(validate_guide_export(doc, pin), doc)
+            receipt["function_count"] = size + 1
+            with self.assertRaisesRegex(ValueError, "count receipt mismatch"):
+                validate_guide_export(doc, pin)
+        for rows, message in (([], "nonempty"), ([{"function_id": "OCF-FND-001"}] * 2, "duplicate/missing"), ([{"function_id": "OCF-PREP-LEARN"}], "invalid function ID")):
+            doc = PublicSiteBuildTests.valid_export(pin)
+            doc["functions"] = rows
+            with self.assertRaisesRegex(ValueError, message):
+                validate_guide_export(doc, pin)
+
+    def test_public_counts_follow_unique_guides_not_sessions_or_preparation(self):
+        from build_public_site import _about_page, _preparation_page
+        for size in (2, 3):
+            functions = [{"function_id": f"OCF-FND-{i:03}", "title": {"text": "Example"}, "description": {"text": "Purpose"}, "categories": [{"id": "foundation", "label": "Foundation"}], "primary_category": "foundation", "tags": [], "common_uses": [], "commands": [], "historical_commands": []} for i in range(1, size + 1)]
+            guide = {"functions": functions, "source_commit": "a" * 40, "build_receipt": {"approved_relationship_count": 0}}
+            # Audio editions, including repeated IDs and separate preparation, do not inflate guide count.
+            catalog = {"releases": [{"release_url": "https://example.test/release", "tag": "v1", "version": "1", "source_ocf_commit": "a" * 40, "functions": [{"function_id": "OCF-FND-001", "sessions": [{}, {}]}], "preparations": [{"sessions": [{}, {}]}]}]}
+            about = _about_page(guide, catalog, "https://example.test/docs", {})
+            self.assertIn(f"currently includes {size} functions and a separate Preparation Learning session", about)
+            self.assertIn("<h2>Our Vision</h2>", about)
+            self.assertIn("<strong>freely accessible, clearly documented, and open to improvement</strong>", about)
+            self.assertIn(f">{size} functions</output>", _quick_reference(functions, {}))
+            self.assertIn(f"Browse the {size} function guides", _preparation_page([], {}, size))
+            self.assertIn(f"{size} FUNCTION GUIDES", _home_page(functions, {"releases": []}, "a" * 40))
+        start = (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text()
+        self.assertEqual(start.count("{{function_count}}"), 1)
+        self.assertIn("one of the 3 function records", render_markdown(start.replace("{{function_count}}", "3")))
+
+
+class AuditPresentationTests(unittest.TestCase):
+    def test_exact_paragraph_normalization_and_format_tokens(self):
+        from build_public_site import _normalized_public_paragraph
+        self.assertEqual(_normalized_public_paragraph(" A  PURPOSE. "), _normalized_public_paragraph("a purpose."))
+        self.assertNotEqual(_normalized_public_paragraph("A purpose."), _normalized_public_paragraph("A different purpose."))
+        self.assertEqual(_asset_specification({"format": "flac", "encoding": "flac"}), "FLAC")
+        self.assertEqual(_asset_specification({"format": "mp3", "encoding": "MP3 320 kbps"}), "MP3 · 320 kbps")
+        self.assertEqual(_asset_specification({"format": "flac", "encoding": "PCM 24-bit"}), "FLAC · PCM 24-bit")
 
 
 if __name__ == "__main__":

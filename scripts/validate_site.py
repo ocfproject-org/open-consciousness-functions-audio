@@ -340,12 +340,14 @@ def _validate_documentation_site(site_root: Path):
     )
     functions = index.get("functions")
     require(
-        type(functions) is list and len(functions) == 58,
-        "documentation index must contain 58 functions",
+        type(functions) is list and bool(functions),
+        "documentation index must contain a nonempty function catalog",
     )
+    require(type(receipt.get("function_count")) is int and receipt["function_count"] == len(functions),
+            "website receipt function count mismatch")
     identities = [row.get("function_id") for row in functions if isinstance(row, dict)]
     require(
-        len(identities) == 58 and len(set(identities)) == 58,
+        len(identities) == len(functions) and len(set(identities)) == len(functions),
         "documentation index has duplicate or missing function IDs",
     )
     require(

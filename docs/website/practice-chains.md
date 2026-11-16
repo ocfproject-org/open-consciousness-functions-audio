@@ -1,7 +1,7 @@
 # Function Chains
 
 Explore seventeen optional sequences for learning, daily life, rest, and reflection.
-Each step links to its function's guide and shows the current spoken cue.
+Each step links to its function's guide and shows the current cue.
 Use a whole chain or choose individual practices. Mental pictures and particular
 sensations are not required for these examples.
 

@@ -16,7 +16,7 @@ Standalone guided meditations and connected series are planned too.
 Complete [Preparation Learning](../preparation-learning/) before using any OCF
 function. Only people who have already learned the official Human Plus
 preparation track may skip it. Preparation Learning is a separate introductory
-session, not one of the 58 function records. Its own published edition and
+session, not one of the {{function_count}} function records. Its own published edition and
 matching transcript appear on its page when present in the verified release
 catalog.
 
@@ -49,7 +49,7 @@ reflection, explore [Function Chains](../practice-chains/).
 
 ## Learn the cues, then choose
 
-The [quick reference](../quick-reference/) lists current spoken cues. A cue
+The [quick reference](../quick-reference/) lists current cues. A cue
 identifies a command; it does not replace the documented steps. Browse
 [all functions](../functions/) by canonical category, or review
 the [listening guide](../listening/) and your [device's audio settings](../listening/).

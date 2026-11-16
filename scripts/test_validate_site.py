@@ -182,5 +182,24 @@ class CatalogValidationTests(unittest.TestCase):
                 )
 
 
+
+
+class DynamicDocumentationCountTests(unittest.TestCase):
+    def test_receipt_count_and_unique_valid_function_ids_remain_required(self):
+        import hashlib
+        source = {"schema_version": 1, "source_repository": "https://github.com/ocfproject-org/open-consciousness-functions", "source_commit": "a" * 40, "source_version": "0.1.0", "locale": "en-US", "exporter": "ocf.public-site-guides/1"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "source.json").write_text(json.dumps(source))
+            (root / "catalog.json").write_text("{}")
+            receipt = {"schema_version": 1, "builder": "ocf.audio-library-pages/1", **{k: source[k] for k in ("source_repository", "source_commit", "source_version", "locale")}, "catalog_sha256": hashlib.sha256(b"{}").hexdigest(), "publication_or_listening_approval_inferred": False}
+            cases = [([{"function_id": "OCF-FND-001"}], 1, "documentation page is missing"), ([{"function_id": "OCF-FND-001"}], 2, "function count mismatch"), ([{"function_id": "OCF-FND-001"}], True, "function count mismatch"), ([{"function_id": "OCF-FND-001"}] * 2, 2, "duplicate or missing"), ([{"function_id": "OCF-PREP-LEARN"}], 1, "invalid function ID"), ([], 0, "nonempty")]
+            for rows, count, error in cases:
+                (root / "documentation-index.json").write_text(json.dumps({"schema_version": 1, "source_commit": source["source_commit"], "functions": rows}))
+                (root / "site-build-receipt.json").write_text(json.dumps({**receipt, "function_count": count}))
+                with self.subTest(count=count, error=error), self.assertRaisesRegex(ValueError, error):
+                    validate_site._validate_documentation_site(root)
+
+
 if __name__ == "__main__":
     unittest.main()
