@@ -33,6 +33,7 @@ jobs:
         with:
           repository: ocfproject-org/open-consciousness-functions
           ref: ${{ steps.source.outputs.commit }}
+          fetch-depth: 0
           path: ocf-source
       - name: Install pinned OCF documentation dependencies
         run: python -m pip install -e ./ocf-source

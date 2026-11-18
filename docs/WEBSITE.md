@@ -127,7 +127,7 @@ function’s diff. Text, cues, narration definitions and metadata revisions do n
 establish that new audio was recorded. Audio remains bound to verified releases.
 
 The builder reads Git history from the canonical checkout at the exact exported
-source commit. Full history (`fetch-depth: 0`, already used by CI) and a HEAD
+source commit. Full history (`fetch-depth: 0`, used by both validation and Pages) and a HEAD
 matching the pin are required; unavailable or shallow history fails the build.
 Records use `git log --topo-order --max-count=5 <pin> -- <canonical path>`:
 newer revisions precede their ancestors; commit dates need not be monotonic.
