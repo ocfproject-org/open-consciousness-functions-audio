@@ -34,6 +34,14 @@ or `preparation-learning`; Preparation Learning must have a null function ID.
 Public voice identifiers and labels must be deliberate public metadata, never
 copied automatically from a private voice profile or model path.
 
+An optional `changelog` array contains 1–32 nonempty single-line entries, each
+at most 1,000 characters. These entries are part of the approved manifest digest.
+They appear in the visible release body and verified `release-notes.md` control.
+The publisher and catalog require the exact deterministic body, not merely a
+matching marker somewhere in arbitrary text. Catalog snapshots preserve the
+entries when reconstructing the manifest. Manifests without this field retain
+the historical marker-only body and byte-identical control generation.
+
 A canonical manifest digest hashes UTF-8 JSON with sorted keys, compact
 separators, unescaped Unicode and a final LF. Asset arrays preserve order.
 Approval binds that exact digest, including metadata, repository and tag.

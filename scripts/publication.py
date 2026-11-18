@@ -121,7 +121,17 @@ def validate_manifest(manifest):
             "source_version",
             "assets",
         ),
+        ("changelog",),
     )
+    if "changelog" in manifest:
+        require(
+            type(manifest["changelog"]) is list
+            and 1 <= len(manifest["changelog"]) <= 32,
+            "expected 1..32 changelog entries",
+        )
+        for entry in manifest["changelog"]:
+            text(entry)
+            require(len(entry) <= 1000, "oversized changelog entry")
     require(
         type(manifest["schema_version"]) is int and manifest["schema_version"] == 1,
         "unsupported publication schema",
@@ -379,6 +389,20 @@ def checksums(manifest):
     )
 
 
+def release_body(manifest):
+    """Bind visible release notes to the same exact approved manifest as assets."""
+    marker = "OCF publication manifest SHA-256: " + manifest_digest(manifest)
+    if "changelog" not in manifest:
+        return marker
+    return (
+        marker
+        + "\n\n# OCF audio edition "
+        + manifest["edition"]
+        + "\n\n## Changes\n\n"
+        + "\n".join("- " + entry for entry in manifest["changelog"])
+    )
+
+
 def control_artifacts(manifest):
     """Deterministic public metadata, with no local paths or approval identities."""
     validate_manifest(manifest)
@@ -399,6 +423,13 @@ def _control_artifacts(manifest):
         "## Downloads",
         "",
     ]
+    if "changelog" in manifest:
+        notes[4:4] = [
+            "## Changes",
+            "",
+            *["- " + entry for entry in manifest["changelog"]],
+            "",
+        ]
     for asset in sorted(manifest["assets"], key=lambda item: item["filename"]):
         notes.append(
             "- "

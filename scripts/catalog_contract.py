@@ -33,6 +33,7 @@ def validate_release(release):
             "collections",
             "companions",
         ),
+        ("changelog",),
     )
     require(release["channel"] == "stable", "unsupported production channel")
     require(type(release["date"]) is str, "invalid release date")
@@ -54,6 +55,8 @@ def validate_release(release):
         "source_version": release["source_ocf_version"],
         "assets": [],
     }
+    if "changelog" in release:
+        manifest["changelog"] = release["changelog"]
     identities = set()
 
     def add_asset(asset, session=None, companion=False):

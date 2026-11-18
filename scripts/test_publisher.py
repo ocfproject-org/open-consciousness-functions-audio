@@ -74,6 +74,19 @@ class PublisherTests(unittest.TestCase):
             self.manifest, self.root, self.approval, self.remote, self.receipt, **kwargs
         )
 
+    def test_changelog_body_is_bound_during_publish_and_resume(self):
+        from publication import release_body
+
+        self.manifest["changelog"] = ["Release the approved audio edition."]
+        self.approval = approval(self.manifest)
+        self.approval["publish"] = True
+        self.assertEqual(self.run_publish(finalize=True)["phase"], "published-verified")
+        self.assertEqual(self.remote.release["body"], release_body(self.manifest))
+        self.assertEqual(self.run_publish()["phase"], "published-verified")
+        self.remote.release["body"] += "\nUnapproved note"
+        with self.assertRaisesRegex(ValueError, "identity mismatch"):
+            self.run_publish()
+
     def test_draft_resume_publish_and_immutable_repeat(self):
         self.assertEqual(self.run_publish()["phase"], "draft-verified")
         self.assertEqual(self.remote.uploads, 4)
