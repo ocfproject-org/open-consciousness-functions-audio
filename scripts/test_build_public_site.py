@@ -56,6 +56,8 @@ class PublicSiteBuildTests(unittest.TestCase):
             original = ('<head><script src="../../assets/js/app.js" defer></script></head><main id="main" class="docs-main">'
                         '<article data-edition-content="0.1.0"><a href="https://example.com/old.mp3">old</a></article>'
                         '<article data-edition-content="0.2.0"><a href="https://example.com/new.mp3">new</a></article>'
+                        '<a data-format-content="mp3" href="https://example.com/audio.mp3">MP3</a>'
+                        '<a data-format-content="flac" href="https://example.com/audio.flac">FLAC</a>'
                         '<details id="function-history">pinned history</details></main>')
             page.write_text(original)
             catalog = {"releases": [{"version": version, "functions": [{"sessions": [{}, {}]}]}
@@ -66,6 +68,9 @@ class PublicSiteBuildTests(unittest.TestCase):
             self.assertIn('data-edition-content="0.2.0"><', rendered)
             self.assertIn('"version": "0.2.0", "sessions": 2', rendered)
             self.assertIn('id="edition-filter"', rendered)
+            self.assertIn('id="format-filter"', rendered)
+            self.assertIn('data-format-content="flac" href="https://example.com/audio.flac" hidden', rendered)
+            self.assertIn('data-format-content="mp3" href="https://example.com/audio.mp3">', rendered)
             self.assertIn('assets/js/app.js?v=' + hashlib.sha256(asset.read_bytes()).hexdigest()[:16], rendered)
             self.assertIn('<details id="function-history">pinned history</details>', rendered)
             self.assertIn('href="https://example.com/old.mp3"', rendered)

@@ -6,3 +6,7 @@ assert.equal(normalize('0.1.0',editions),'0.1.0');
 assert.equal(normalize('0.2.0',editions),'0.2.0');
 for(const value of ['',null,undefined,'all','0.0.0',{},'<script>']) assert.equal(normalize(value,editions),'latest');
 console.log('Shared edition preference: 10 assertions passed');
+const {normalizeFormat}=require('../site/assets/js/editions.js');
+assert.equal(normalizeFormat('flac'),'flac');
+for(const value of ['mp3','wav','',null,undefined,{}]) assert.equal(normalizeFormat(value),'mp3');
+console.log('Format normalization:7assertions passed');

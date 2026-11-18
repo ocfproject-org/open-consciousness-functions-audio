@@ -36,3 +36,8 @@ assert.equal(chooseSurprise([item('only')], ['only']).item.id,'only');
 assert.equal(chooseSurprise([...items,item('new')], ['a','b','c'], () => 0).item.id,'new');
 assert.deepEqual(chooseSurprise([item('a'),item('b')], ['a','removed'], () => 0).history,['a','b']);
 console.log('surprise selection/history: all assertions passed');
+const formats=[item('mp3-only'),item('flac-only','1','flac')];
+assert.equal(chooseSurprise(formats,[],()=>0,'flac').item.id,'flac-only');
+assert.equal(surprisePool([item('mp3-only')],'flac').size,0);
+assert.equal(chooseSurprise([item('mp3-only')],[],()=>0,'flac'),null);
+console.log('Explicit format selection never falls back: passed');

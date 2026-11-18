@@ -1022,10 +1022,19 @@ def build_public_site(
                     for session in group.get("sessions", []):
                         public_session = {key: value for key, value in session.items() if key != "assets"}
                         public_session["assets"] = [{key: value for key, value in asset.items() if key != "provenance"} for asset in session["assets"]]
+                        session_row = next((row for row in all_session_rows if row["session"] is session), None)
+                        art = session_row["companions"].get("png") if session_row else None
+                        if art:
+                            public_session["artwork"] = {key: art[key] for key in ("download_url", "sha256", "asset_id")}
                         public_group["sessions"].append(public_session)
                     public_release[group_key].append(public_group)
             for key in ("collections", "companions"):
                 public_release[key] = [{field: asset[field] for field in ("filename", "download_url", "sha256") if field in asset} for asset in release.get(key, [])]
+            # Published collection names bind their audio format; unknown names remain unfiltered.
+            for collection in public_release["collections"]:
+                match = re.search(r"---(mp3|flac)---", collection["filename"])
+                if match:
+                    collection["audio_format"] = match[1]
             browse_catalog["releases"].append(public_release)
         _write(staging / "browse-catalog.json", json.dumps(browse_catalog, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n")
         urls = [PUBLIC_ORIGIN + (path.parent.relative_to(staging).as_posix() + "/" if path.parent != staging else "") for path in sorted(staging.rglob("index.html"))]
@@ -1116,8 +1125,9 @@ def _apply_edition_presentation(staging, catalog):
     controls = ('<section class="edition-preference" data-edition-controls hidden>'
                 '<label for="edition-filter">Audio edition</label> '
                 '<select id="edition-filter" aria-describedby="edition-help"></select>'
-                '<p id="edition-help">Your edition choice applies throughout the site. Choose Latest to follow new releases.</p></section>'
-                '<noscript><p>Showing the latest audio edition. Earlier editions remain available in '
+                '<label for="format-filter">Audio format</label> <select id="format-filter"><option value="mp3">MP3</option><option value="flac">FLAC</option></select>'
+                '<p id="edition-help">Your edition and format choices apply throughout the site. Choose Latest to follow new releases.</p></section>'
+                '<noscript><p>Showing the latest audio edition in MP3. Earlier editions remain available in '
                 '<a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">published releases</a>.</p></noscript>')
     for page in staging.rglob("*.html"):
         text = page.read_text(encoding="utf-8")
@@ -1130,6 +1140,8 @@ def _apply_edition_presentation(staging, catalog):
         def default_visibility(match):
             return match.group(0) if match.group(1) == latest else match.group(0)[:-1] + ' hidden>'
         text = re.sub(r'<[^>]+data-edition-content="([^"]+)"[^>]*>', default_visibility, text)
+        text = re.sub(r'<[^>]+data-format-content="([^"]+)"[^>]*>',
+                      lambda match: match.group(0) if match[1] == "mp3" else match.group(0)[:-1] + ' hidden>', text)
         text = re.sub(r'(<span data-edition-session-count>)[^<]*(</span>)',
                       lambda match: match[1] + str(metadata[0]["sessions"] if metadata else 0) + match[2], text)
         page.write_text(text, encoding="utf-8")
@@ -1436,7 +1448,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
                 f'<a class="browse-action" href="{_html(function["function_id"])}/#{_session_anchor(row)}" aria-label="Listen to {_html(session.get("title") or function["title"]["text"])}, edition {_html(session["edition"])}">Listen</a>'
             ]
             actions.extend(
-                f'<a class="browse-action" href="{_html(asset["download_url"])}" aria-label="Download {str(asset["format"]).upper()} for {_html(session.get("title") or function["title"]["text"])}, edition {_html(session["edition"])}">{str(asset["format"]).upper()}</a>'
+                f'<a class="browse-action" data-format-content="{_html(asset["format"])}" href="{_html(asset["download_url"])}" aria-label="Download {str(asset["format"]).upper()} for {_html(session.get("title") or function["title"]["text"])}, edition {_html(session["edition"])}">{str(asset["format"]).upper()}</a>'
                 for asset in row["audio_assets"]
             )
             editions.append(
@@ -1794,7 +1806,7 @@ def _function_audio_actions(sessions):
         for asset in row["audio_assets"]:
             fmt = str(asset["format"]).upper()
             actions.append(
-                f'<a class="function-audio-action" href="{_html(asset["download_url"])}" aria-label="Download {fmt} for {label}">Download {fmt}</a>'
+                f'<a class="function-audio-action" data-format-content="{_html(asset["format"])}" href="{_html(asset["download_url"])}" aria-label="Download {fmt} for {label}">Download {fmt}</a>'
             )
         groups.append(
             f'<div class="function-audio-action-group" data-edition-content="{_html(edition)}" role="group" aria-label="{label}">'
@@ -1830,9 +1842,8 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     playable = next(
         (asset for asset in row["audio_assets"] if asset["format"] == "mp3"), None
     )
-    playable = playable or next(
-        (asset for asset in row["audio_assets"] if asset["format"] == "flac"), None
-    )
+    sources = {asset["format"]: asset["download_url"] for asset in row["audio_assets"]}
+    playable = playable or next(iter(row["audio_assets"]), None)
     if playable:
         media_type = "audio/mpeg" if playable["format"] == "mp3" else "audio/flac"
         vtt = companions.get("vtt")
@@ -1843,7 +1854,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
             else ""
         )
         audio.append(
-            f'<audio controls preload="none" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
+            f'<audio controls preload="none" data-format-sources="{_html(json.dumps(sources))}" data-session-format="{_html(playable["format"])}" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
         )
     for asset in row["audio_assets"]:
         fmt = asset["format"].upper()
@@ -1862,7 +1873,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
         )
         specification_text = _asset_specification(asset, size=size, duration=duration)
         audio.append(
-            f'''<div class="asset-download" data-download-format="{_html(asset["format"])}"><div class="download-actions"><a class="download-link" href="{_html(asset["download_url"])}" download="{_html(suggested_filename)}">Download {fmt}</a></div><p class="download-specification">{_html(specification_text)}</p><details class="file-details"><summary>File details</summary><p>Release filename: <code>{_html(asset["filename"])}</code></p><p>Suggested local filename: <code>{_html(suggested_filename)}</code></p><button type="button" class="copy-filename" data-copy="{_html(suggested_filename)}" aria-label="Copy suggested filename for {fmt}">Copy suggested filename</button><p>SHA-256: <code>{_html(asset["sha256"])}</code></p></details></div>'''
+            f'''<div class="asset-download" data-format-content="{_html(asset["format"])}" data-download-format="{_html(asset["format"])}"><div class="download-actions"><a class="download-link" href="{_html(asset["download_url"])}" download="{_html(suggested_filename)}">Download {fmt}</a></div><p class="download-specification">{_html(specification_text)}</p><details class="file-details"><summary>File details</summary><p>Release filename: <code>{_html(asset["filename"])}</code></p><p>Suggested local filename: <code>{_html(suggested_filename)}</code></p><button type="button" class="copy-filename" data-copy="{_html(suggested_filename)}" aria-label="Copy suggested filename for {fmt}">Copy suggested filename</button><p>SHA-256: <code>{_html(asset["sha256"])}</code></p></details></div>'''
         )
     transcript_controls = []
     for fmt, label in (("txt", "Read transcript"), ("vtt", "Download timed subtitles")):
@@ -1895,7 +1906,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     audio_html = "".join(audio)
     transcript_html = "".join(transcript_controls)
     source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(release["source_ocf_commit"])}</code></p></details>'
-    return f'''<article class="edition-card" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{transcript_html}{companion_html}</article>'''
+    return f'''<article class="edition-card" data-format-session="{_html(json.dumps(list(sources)))}" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{transcript_html}{companion_html}</article>'''
 
 
 def _asset_specification(asset, *, size=None, duration=None):
@@ -2126,13 +2137,13 @@ def _downloads_page(catalog, preparation_sessions):
                         f"Download {fmt} for {title}, {locale}, {voice}, edition {edition}"
                     )
                     actions.append(
-                        f'<div class="download-format"><a class="download-action" href="{_html(asset["download_url"])}" download aria-label="{accessible_name}">Download {_html(fmt)}</a><p class="download-file-specification">{_html(_asset_specification(specification))}</p></div>'
+                        f'<div class="download-format" data-format-content="{_html(asset["format"])}"><a class="download-action" href="{_html(asset["download_url"])}" download aria-label="{accessible_name}">Download {_html(fmt)}</a><p class="download-file-specification">{_html(_asset_specification(specification))}</p></div>'
                     )
                     file_details.append(
-                        f'<li><strong>{_html(fmt)}</strong> · <code>{_html(asset.get("filename", "Filename not supplied"))}</code><br>SHA-256 <code>{_html(asset.get("sha256", "Not supplied"))}</code></li>'
+                        f'<li data-format-content="{_html(asset["format"])}"><strong>{_html(fmt)}</strong> · <code>{_html(asset.get("filename", "Filename not supplied"))}</code><br>SHA-256 <code>{_html(asset.get("sha256", "Not supplied"))}</code></li>'
                     )
                 cards.append(
-                    f'<article class="download-card" aria-labelledby="{heading_id}" data-download-card data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl></header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div><details class="download-file-details"><summary>Release and file details</summary><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
+                    f'<article class="download-card" data-format-session="{_html(json.dumps([a["format"] for a in session.get("assets", [])]))}" aria-labelledby="{heading_id}" data-download-card data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl></header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div><details class="download-file-details"><summary>Release and file details</summary><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
                 )
     return f'<header class="page-intro"><p class="eyebrow">Individual published files</p><h1>Downloads</h1><p>Choose an individual MP3 or FLAC for each session. Links use the verified release catalog URLs; files are not repackaged or transcoded. Release versions and file checksums remain available in each card’s details.</p></header>{"".join(release_notes)}<section class="download-directory" aria-label="Individual session downloads">{"".join(cards)}</section>'
 
