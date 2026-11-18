@@ -107,8 +107,7 @@
   const audioFilter = document.getElementById('audio-filter');
   const locale = document.getElementById('language-filter');
   const voice = document.getElementById('voice-filter');
-  const edition = document.getElementById('edition-filter');
-  let latestEdition = '';
+  const currentEdition = () => window.ocfEditions?.current() || '';
   const resultsCount = document.getElementById('results-count');
   const noResults = document.getElementById('catalog-no-results');
   const clearFilters = document.getElementById('clear-library-filters');
@@ -116,7 +115,7 @@
   const playbackStateKey = `ocf-library-playback:${location.pathname}`;
   const navigationEntry = performance.getEntriesByType?.('navigation')?.[0];
   const returningThroughHistory = navigationEntry?.type === 'back_forward';
-  const filterControls = [['search', search], ['category', category], ['audio', audioFilter], ['locale', locale], ['voice', voice], ['edition', edition]].filter(([, control]) => control);
+  const filterControls = [['search', search], ['category', category], ['audio', audioFilter], ['locale', locale], ['voice', voice]].filter(([, control]) => control);
   const selection = new Map();
   const selectionCount = document.getElementById('selection-count');
   const selectedFilesReview = document.getElementById('selected-files-review');
@@ -205,7 +204,7 @@
     save('OCF-selection.m3u8', '#EXTM3U\n' + [...selection.values()].filter(a => a.format === 'mp3').map(a => a.download_url).join('\n') + '\n', 'audio/x-mpegurl');
   });
   function updateSelection() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', edition?.value || ''));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()));
     const hiddenCount = [...selection.values()].filter(file => !visible.has(file.sessionItem)).length;
     selectionCount.textContent = `${selection.size} ${selection.size === 1 ? 'file' : 'files'} selected${hiddenCount ? ` (${hiddenCount} hidden by filters)` : ''}`;
     document.getElementById('download-selection').disabled = selection.size === 0;
@@ -246,7 +245,8 @@
     selectionCount.focus();
   });
   function render() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', edition?.value || ''));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()));
+    count.textContent = `${catalogItems.filter(item => item.assets.length && item.edition === currentEdition()).length} recordings`;
     let pinned = 0;
     catalogItems.forEach((item, index) => {
       const card = catalogCards[index];
@@ -268,14 +268,14 @@
       ? `${visible.size} matching session ${visible.size === 1 ? 'edition' : 'editions'}${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}`
       : `No session editions match these filters${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}.`;
     if (noResults) noResults.hidden = visible.size > 0;
-    if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control === edition ? control.value !== latestEdition : control.value);
+    if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control.value);
   }
 
   function setupSurprise(items) {
     const section = el('section', undefined, 'surprise-session');
     section.setAttribute('aria-labelledby', 'surprise-heading');
     const heading = el('h3', 'Let us choose a function'); heading.id = 'surprise-heading';
-    const note = el('p', 'Choose from all functions with a playable MP3, regardless of the browse filters. Each function gets an equal chance. Selections are remembered in this browser until all eligible functions have been chosen; if storage is unavailable, history lasts only while this page stays open.');
+    const note = el('p', 'Choose from all functions with a playable MP3, in your selected audio edition, regardless of search and category filters. Changing edition applies to your next surprise choice; current playback stays unchanged. Each function gets an equal chance. Selections are remembered in this browser until all eligible functions have been chosen; if storage is unavailable, history lasts only while this page stays open.');
     const choose = el('button', 'Surprise me'); choose.type = 'button';
     const label = el('label'); const hide = el('input'); hide.type = 'checkbox';
     label.append(hide, document.createTextNode(' Hide session details until I reveal them'));
@@ -353,7 +353,7 @@
     choose.disabled = surprisePool(items).size === 0;
     if (choose.disabled) note.textContent = 'No playable function sessions are available in this catalog.';
     const selectNext = () => {
-      const selected = next(items);
+      const selected = next(items.filter(item => item.edition === currentEdition()));
       if (!selected) return;
       player.pause();
       if (!player.isConnected) title.after(player);
@@ -486,7 +486,7 @@
     catalog.releases.forEach(release => {
       const files = [...(release.collections || []), ...(release.companions || [])].filter(a => safeURL(a.download_url));
       if (!files.length) return;
-      const details = el('details'); details.append(el('summary', `Collections and companion files — v${release.version}`));
+      const details = el('details'); details.dataset.editionContent = release.version; details.hidden = release.version !== currentEdition(); details.append(el('summary', `Collections and companion files — v${release.version}`));
       files.forEach(asset => {
         const row = el('p'); const link = el('a', asset.filename); link.href = asset.download_url;
         row.append(link, el('code', asset.sha256)); details.append(row);
@@ -506,18 +506,7 @@
       if (!voice) return;
       const option = el('option', name); option.value = value; voice.append(option);
     });
-    const editions = [...new Set(audioItems.map(item => item.edition).filter(Boolean))]
-      .sort((a, b) => b.localeCompare(a, 'en', {numeric: true}));
-    latestEdition = editions[0] || '';
-    if (edition) {
-      editions.forEach(value => {
-        const option = el('option', `Edition ${value}${value === latestEdition ? ' (latest)' : ''}`);
-        option.value = value; edition.append(option);
-      });
-      edition.value = latestEdition;
-    }
     restoreFilterState();
-    if (edition && edition.selectedIndex < 0) edition.value = latestEdition;
     const params = new URLSearchParams(location.search);
     const functionId = params.get('function');
     if (functionId) search.value = functionId;
@@ -536,13 +525,15 @@
       savePlaybackState(lastPlayedItem, player);
       if (!player.paused && !player.ended) player.pause();
     });
+    window.ocfEditions?.refresh();
+    document.addEventListener('ocf-edition-change', () => { render(); updateSelection(); });
     const onFilter = () => { saveFilterState(); render(); updateSelection(); };
     filterControls.forEach(([, control]) => {
       control.addEventListener('input', onFilter);
       control.addEventListener('change', onFilter);
     });
     clearFilters?.addEventListener('click', () => {
-      filterControls.forEach(([, control]) => { control.value = control === edition ? latestEdition : ''; });
+      filterControls.forEach(([, control]) => { control.value = ''; });
       pinnedItems.clear();
       const url = new URL(location.href); url.searchParams.delete('function'); url.searchParams.delete('category');
       history.replaceState({}, '', url); saveFilterState(); render(); updateSelection(); search.focus();

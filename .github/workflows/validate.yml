@@ -45,6 +45,8 @@ jobs:
         run: node --check site/assets/js/app.js
       - name: Test catalog search and selection logic
         run: node scripts/test_catalog.js
+      - name: Test shared edition preference validation
+        run: node scripts/test_editions.js
       - name: Test surprise selection and local history
         run: node scripts/test_surprise.js
       - name: Test documentation search and transcript URL safety

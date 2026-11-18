@@ -101,20 +101,37 @@ playback, hearing experience, native operating-system setting behavior,
 release/listening approval, or medical efficacy. Record those boundaries in
 PR and release reports.
 
-## Multiple published audio editions
+## Shared audio edition preference
 
-Browse & Listen initially selects the newest numeric edition. The Edition
-control exposes each published version and an All editions option; Clear filters
-returns to the newest edition. A saved explicit selection survives navigation.
-Changing editions keeps selected downloads tied to their exact original assets
-and retains an active player so filtering does not interrupt playback. Surprise
-selection remains independent of browse filters.
+Generated pages bind script/style URLs to content hashes so a browser cache cannot
+mix the new control with earlier edition logic.
 
-Downloads and function guides retain every published edition. Downloads also
-renders the verified publication manifest's optional changelog through the safe
-inline renderer, with a link to the original release notes. Browser gates check
-both 0.1.0 and 0.2.0 manifest bindings, per-edition session/asset/ZIP counts,
-original links, selection and playback across edition changes, and accessibility.
+Every page has an Audio edition control. New visitors follow Latest; choosing a
+specific edition pins that choice until changed in this control. Browse, function
+quick actions and players, Preparation Learning, Downloads/changelog, release
+extras and home counts show the chosen edition. Documentation and source history
+remain edition-independent. Clearing search/category filters does not reset the
+edition. Surprise uses the selected edition while remaining independent of
+search/category filters; changing edition affects the next surprise choice only.
+
+The versioned localStorage preference `ocf-audio-edition:v1` is shared across
+navigation/reloads and synchronized on restored pages and storage events. A
+sessionStorage fallback retains the newest successful preference if local writes
+fail. If both stores are blocked, a namespaced same-tab window name (only when
+empty or already owned by this feature) and edition query parameters on site
+links preserve navigation/reload and Back/Forward behavior. Unrelated window
+names are never overwritten; those contexts retain the URL fallback. The previous Browse session
+preference migrates once: its numeric latest default becomes Latest; an older
+choice remains explicit. New explicit version choices stay pinned. Invalid/unavailable versions fall back to Latest.
+Without JavaScript, the built page shows Latest and links to published releases
+for historical access. Original release URLs, files and hashes never change.
+
+A playing older-edition function player remains visible with an explicit close
+control when the edition changes; it is never silently retuned. Browse retains
+its existing active-player and selected-file provenance behavior. Downloads
+renders only the selected edition's manifest-bound changelog. Browser gates cover
+both editions, persistence, history navigation, blocked storage, static fallback,
+active media, release URLs, source history and accessibility.
 
 ## Per-function source history
 

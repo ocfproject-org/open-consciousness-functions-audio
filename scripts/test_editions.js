@@ -1,0 +1,8 @@
+const assert = require('node:assert/strict');
+const {normalize} = require('../site/assets/js/editions.js');
+const editions=['0.2.0','0.1.0'];
+assert.equal(normalize('latest',editions),'latest');
+assert.equal(normalize('0.1.0',editions),'0.1.0');
+assert.equal(normalize('0.2.0',editions),'0.2.0');
+for(const value of ['',null,undefined,'all','0.0.0',{},'<script>']) assert.equal(normalize(value,editions),'latest');
+console.log('Shared edition preference: 10 assertions passed');
