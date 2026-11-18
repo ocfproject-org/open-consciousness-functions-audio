@@ -80,7 +80,7 @@ test('settings persist; corrupt and unavailable storage; empty pool',async({page
  await choose(page).click();expect(await section(page).locator('audio').evaluate(a=>a.testOriginalURL)).not.toBe(first);
  await page.route('**/browse-catalog.json',route=>route.fulfill({json:{schema_version:3,releases:[]}}));
  await page.reload();await expect(choose(page)).toBeDisabled();
- await expect(section(page)).toContainText('No playable function sessions');
+ await expect(section(page)).toContainText('No MP3 function sessions are available in edition');
 });
 
 test('mobile layout and accessible hidden/revealed states in all themes',async({page})=>{

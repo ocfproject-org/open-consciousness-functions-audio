@@ -157,3 +157,25 @@ bodies, or narration content is copied into this disclosure. No hand-maintained
 history database, export field, or build-time network fetch is added. The
 rendered records are included in the existing generated-site inventory hash.
 The native disclosure works without JavaScript.
+
+## Shared audio format and Browse artwork
+
+The same versioned preference now optionally includes `format`: MP3 (default) or
+FLAC. Existing edition-only records migrate without losing their selected edition.
+Both choices share storage fallback, history restoration and cross-tab updates;
+when storage is blocked, site links carry both values. Choosing a format scopes
+individual downloads, quick actions, file details and format-specific collection
+ZIPs. Transcripts and non-audio companions remain available. Missing selected
+formats show an unavailable message; Surprise never substitutes another format.
+Surprise uses both selected edition and format, independently of search/category.
+
+New and unused players follow the format. A used player retains its source and
+bookmark until the user explicitly chooses Switch player; that action clears
+old-format resume state, including pending metadata callbacks. Selected-file
+review retains original format, URLs and hashes when hidden by preferences.
+
+Browse cards use the existing published PNG companion matched to the session's
+verified master fingerprint. No artwork is generated, mirrored or republished.
+Images load lazily with asynchronous decoding and reserved square geometry at
+96px (72px on narrow screens); missing or failed images retain the same space
+with an Artwork unavailable fallback. Release URLs remain original.

@@ -212,10 +212,13 @@
       }
       const resumePosition = Number(audio.dataset.ocfResumePosition);
       if (Number.isFinite(resumePosition) && resumePosition > 0) {
+        const resumeGeneration = audio.dataset.formatGeneration;
         const restorePosition = () => {
+          if (audio.dataset.formatGeneration !== resumeGeneration) return;
           try {
             audio.dataset.ocfApplyingResume = 'true';
             const finishRestore = () => {
+              if (audio.dataset.formatGeneration !== resumeGeneration) return;
               if (Math.abs(audio.currentTime - resumePosition) < 0.25) {
                 delete audio.dataset.ocfResumePosition;
                 delete audio.dataset.ocfApplyingResume;

@@ -466,7 +466,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await page.keyboard.press('Escape');
 });
 
-test('Downloads cards keep every individual format action visible and named across viewport widths', async ({ page }) => {
+test('Downloads cards keep the selected individual format action visible and named across viewport widths', async ({ page }) => {
   await page.goto('/downloads/');
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
   await expect(page.locator('.download-card')).toHaveCount(receipt.published_session_count);
@@ -479,6 +479,7 @@ test('Downloads cards keep every individual format action visible and named acro
     const card = page.locator(`.download-card[data-function-id="${functionId}"][data-edition="${session.edition}"]`);
     await expect(card.locator('h2')).toContainText(title);
     for (const format of ['mp3', 'flac']) {
+      await page.getByLabel('Audio format', {exact:true}).selectOption(format);
       const asset = session.assets.find(item => item.format === format);
       const link = card.getByRole('link', { name: new RegExp(`^Download ${format.toUpperCase()} for ${title},`) });
       await expect(link).toHaveAttribute('href', asset.download_url);
@@ -494,7 +495,7 @@ test('Downloads cards keep every individual format action visible and named acro
       pageWidth: document.documentElement.scrollWidth,
       cards: [...document.querySelectorAll('.download-card:not([hidden])')].map(card => {
         const cardRect = card.getBoundingClientRect();
-        const actions = [...card.querySelectorAll('.download-action')].map(link => {
+        const actions = [...card.querySelectorAll('.download-action')].filter(link => link.getClientRects().length).map(link => {
           const rect = link.getBoundingClientRect();
           return { left: rect.left, right: rect.right, width: rect.width };
         });
@@ -974,6 +975,7 @@ test('catalog selection and download controls identify session and format', asyn
       expect(summary).toMatch(/^(?:MP3|FLAC) file details$/);
     }
     for (const format of ['MP3', 'FLAC']) {
+      await page.getByLabel('Audio format', {exact:true}).selectOption(format.toLowerCase());
       const checkboxName = `Select ${format} for ${title}, en-US, Mike — Original Voice, edition ${latestEdition}`;
       await expect(card.getByRole('checkbox', { name: checkboxName, exact: true })).toBeAttached();
       await expect(card.getByRole('link', { name: new RegExp(`^Download ${format} for ${title},`) })).toBeAttached();
@@ -1051,8 +1053,9 @@ test('selected files hidden by filters remain reviewable and removable', async (
   const relaxMp3 = page.locator(`[data-selected-asset-id="${relaxMp3Asset.asset_id}"]`);
   const brainFlac = brain.getByRole('checkbox', { name: /^Select FLAC for Brain Flow,/ });
   await relaxMp3.check();
+  await page.getByLabel('Audio format', {exact:true}).selectOption('flac');
   await brainFlac.check();
-  await expect(page.locator('#selection-count')).toHaveText('2 files selected');
+  await expect(page.locator('#selection-count')).toHaveText('2 files selected (1 hidden by filters)');
   const review = page.locator('#selected-files-review');
   await expect(review).toBeVisible();
 
@@ -1079,12 +1082,14 @@ test('selected files hidden by filters remain reviewable and removable', async (
   await expect(page.locator('#selection-count')).toBeFocused();
   expect(await brainFlac.evaluate(checkbox => checkbox.checked)).toBe(false);
 
+  await page.getByLabel('Audio format', {exact:true}).selectOption('mp3');
   await brain.getByRole('checkbox', { name: /^Select MP3 for Brain Flow,/ }).check();
+  await page.getByLabel('Audio format', {exact:true}).selectOption('flac');
   await brainFlac.check();
   await page.locator('#clear-selection').click();
   await expect(page.locator('#selection-count')).toHaveText('0 files selected');
   await expect(page.locator('#selection-count')).toBeFocused();
-  expect(await brain.getByRole('checkbox', { name: /^Select MP3 for Brain Flow,/ }).evaluate(checkbox => checkbox.checked)).toBe(false);
+  expect(await brain.getByRole('checkbox', { name: /^Select MP3 for Brain Flow,/, includeHidden:true }).evaluate(checkbox => checkbox.checked)).toBe(false);
 });
 
 test('function titles expose direct Listen/MP3/FLAC actions for each published edition', async ({ page }) => {
@@ -1098,6 +1103,7 @@ test('function titles expose direct Listen/MP3/FLAC actions for each published e
   await expect(actions).toBeVisible();
   await expect(actions.getByRole('link', { name: `Listen to ${label}` })).toHaveAttribute('href', `#session-${anchorAsset.asset_id}`);
   for (const format of ['mp3', 'flac']) {
+    await page.getByLabel('Audio format', {exact:true}).selectOption(format);
     const asset = session.assets.find(row => row.format === format);
     await expect(actions.getByRole('link', { name: `Download ${format.toUpperCase()} for ${label}` })).toHaveAttribute('href', asset.download_url);
   }
@@ -1739,7 +1745,7 @@ test('browse constructs only requested players and preserves selection and ident
   await expect(page.locator('.session-card:visible')).toHaveCount(59);
   await expect(page.locator('.session-card audio')).toHaveCount(0);
   const card = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`);
-  const checkbox = card.locator('input[type="checkbox"]').first();
+  const checkbox = card.getByRole('checkbox', {name:/^Select MP3/});
   await checkbox.check();
   await card.getByRole('button', {name: /^Show player for/}).focus();
   await page.keyboard.press('Enter');

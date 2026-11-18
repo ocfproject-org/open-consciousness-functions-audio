@@ -409,3 +409,11 @@
 @media (max-width: 600px) { .edition-preference select { max-width: 100%; } }
 
 @media print { .edition-preference { display: none; } }
+
+/* Released artwork has reserved geometry before load and on failure. */
+.session-card-heading { display: flex; align-items: center; gap: 1rem; }
+.browse-artwork { position: relative; flex: 0 0 6rem; width: 6rem; height: 6rem; overflow: hidden; border: 1px solid var(--line); border-radius: .35rem; background: var(--paper); }
+.browse-artwork img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.artwork-fallback { display: flex; align-items: center; justify-content: center; height: 100%; padding: .3rem; text-align: center; font-size: .75rem; color: var(--muted); }
+[data-format-player-notice] { font-size: .9rem; }
+@media (max-width: 480px) { .browse-artwork { flex-basis: 4.5rem; width: 4.5rem; height: 4.5rem; } .session-card-heading { gap: .75rem; } }
