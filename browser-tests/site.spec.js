@@ -116,9 +116,16 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     const expectedUses = source.common_uses.filter(item => publicStatuses.includes(item.status)).map(item => item.text);
     await expect(uses.locator('li')).toHaveText(expectedUses);
     if (expectedUses.length) await uses.locator('summary').click();
+    const tags = page.locator('details.discovery-details').filter({
+      has: page.locator('summary', { hasText: /^Tags$/ }),
+    });
+    await expect(tags.locator('li')).toHaveText(source.tags
+      .filter(item => publicStatuses.includes(item.status)).map(item => item.text));
+    const renderedDiscovery = await page.locator('.discovery-details li').allTextContents();
     for (const item of [...source.tags, ...source.common_uses].filter(item => !publicStatuses.includes(item.status))) {
-      expect(row.search_terms).not.toContain(item.text);
-      expect(await page.locator('main').textContent()).not.toContain(item.text);
+      // A draft tag may also be an ordinary word in an approved description.
+      // Check discovery entries, not arbitrary prose substrings.
+      if (!row.search_terms.includes(item.text)) expect(renderedDiscovery).not.toContain(item.text);
     }
     await noAxeViolations(page);
   }
