@@ -117,3 +117,10 @@ test('Surprise follows the selected edition while ignoring search/category filte
     await expect(page.locator('.surprise-session audio')).toHaveAttribute('src',new RegExp('/releases/download/'+(edition==='0.1.0'?'audio-0.1.0-a6-20261111':'audio-0.2.0')+'/'));
   }
 });
+
+test('the old numeric latest default migrates to following Latest, while new explicit pins remain explicit',async({page})=>{
+  await page.addInitScript(()=>sessionStorage.setItem('ocf-library-filters:/functions/',JSON.stringify({edition:'0.2.0'})));
+  await page.goto('/downloads/');await assertEdition(page,'0.2.0','latest');
+  await page.getByLabel('Audio edition',{exact:true}).selectOption('0.2.0');
+  await page.reload();await assertEdition(page,'0.2.0','0.2.0');
+});

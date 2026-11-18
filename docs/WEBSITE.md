@@ -118,7 +118,8 @@ fail. If both stores are blocked, a namespaced same-tab window name (only when
 empty or already owned by this feature) and edition query parameters on site
 links preserve navigation/reload and Back/Forward behavior. Unrelated window
 names are never overwritten; those contexts retain the URL fallback. The previous Browse session
-preference migrates once. Invalid/unavailable versions fall back to Latest.
+preference migrates once: its numeric latest default becomes Latest; an older
+choice remains explicit. New explicit version choices stay pinned. Invalid/unavailable versions fall back to Latest.
 Without JavaScript, the built page shows Latest and links to published releases
 for historical access. Original release URLs, files and hashes never change.
 

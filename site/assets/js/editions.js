@@ -49,7 +49,9 @@
       const parameter = new URL(location.href).searchParams.get('edition');
       let legacy;
       try { legacy = JSON.parse(sessionStorage.getItem('ocf-library-filters:/functions/') || '{}').edition; } catch (_) { /* No legacy preference. */ }
-      selection = normalize(parameter || legacy || 'latest', versions);
+      // The old Browse control saved its numeric default even when no version was chosen.
+      const inherited = legacy === latest ? 'latest' : legacy;
+      selection = normalize(parameter || inherited || 'latest', versions);
       remember();
     }
   };
