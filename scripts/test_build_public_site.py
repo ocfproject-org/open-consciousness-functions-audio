@@ -44,6 +44,23 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_downloads_render_verified_changelog_without_interpreting_html(self):
+        release = {"functions": [], "tag": "audio-0.2.0", "version": "0.2.0",
+                   "release_url": "https://github.com/example/repo/releases/tag/audio-0.2.0",
+                   "changelog": ["Preserves historical downloads.",
+                                 "Paired [source](https://github.com/example/source/releases/tag/audio-0.2.0).",
+                                 "<script>alert(1)</script> [unsafe](javascript:alert)"]}
+        rendered = _downloads_page({"releases": [release]}, [])
+        self.assertIn("What changed in edition 0.2.0", rendered)
+        self.assertIn("Preserves historical downloads.", rendered)
+        self.assertIn('href="https://github.com/example/source/releases/tag/audio-0.2.0"', rendered)
+        self.assertIn("&lt;script&gt;", rendered)
+        self.assertNotIn("<script>", rendered)
+        self.assertNotIn('href="javascript:', rendered)
+        self.assertIn('href="' + release["release_url"] + '"', rendered)
+        self.assertNotIn("What changed", _downloads_page({"releases": [{"functions": []}]}, []))
+
+
     def test_header_and_favicon_reuse_pinned_public_brand_assets(self):
         import json
         root = Path(__file__).resolve().parents[1] / "site/assets/branding"
