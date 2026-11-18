@@ -2,6 +2,28 @@ const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
+async function pinnedSource(page) {
+  const pin = JSON.parse(await fs.readFile(path.join(__dirname, '../site/source.json'), 'utf8'));
+  expect(pin.source_commit).toMatch(/^[a-f0-9]{40}$/);
+  expect(pin.source_repository).toBe('https://github.com/ocfproject-org/open-consciousness-functions');
+  const servedPin = await page.request.get('/source.json').then(response => response.json());
+  expect(servedPin).toEqual(pin);
+  const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
+  expect(receipt.source_commit).toBe(pin.source_commit);
+  expect(receipt.source_repository).toBe(pin.source_repository);
+  return pin;
+}
+
+async function pinnedGuide(page) {
+  const pin = await pinnedSource(page);
+  const guide = JSON.parse(await fs.readFile(process.env.GUIDE_EXPORT || 'public-guide-export.json', 'utf8'));
+  expect(guide.source_commit).toBe(pin.source_commit);
+  const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
+  expect(guide.build_receipt.export_content_sha256).toBe(receipt.guide_export_sha256);
+  expect(guide.functions).toHaveLength(58);
+  return guide;
+}
+
 async function noAxeViolations(page, context = undefined) {
   await page.addScriptTag({ path: require.resolve('axe-core/axe.min.js') });
   const result = await page.evaluate(async contextSelector => axe.run(contextSelector || document, {
@@ -47,10 +69,17 @@ test('accessibility failure is detected by the same fail-closed gate', async ({ 
 
 test('all 58 generated function pages expose spoken cues only and pass axe', async ({ page }) => {
   test.setTimeout(120000); // Aggregate 58 page visits and axe scans; assertion timeouts are unchanged.
+  const guide = await pinnedGuide(page);
   const index = await page.request.get('/documentation-index.json').then(response => response.json());
+  expect(index.source_commit).toBe(guide.source_commit);
   expect(index.functions).toHaveLength(58);
   for (const row of index.functions) {
     const id = row.function_id;
+    const source = guide.functions.find(item => item.function_id === id);
+    expect(source).toBeDefined();
+    const publicStatuses = ['canonical', 'reviewed'];
+    expect(row.search_terms).toEqual([...source.tags, ...source.common_uses]
+      .filter(item => publicStatuses.includes(item.status)).map(item => item.text));
     await page.goto(`/functions/${id}/`);
     await expect(page.locator('h1')).toBeVisible();
     for (const [target, label] of [['cues', 'How to use this function'], ['behavior', 'Use and duration']]) {
@@ -81,25 +110,49 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     }
     expect(await blocks.locator('.spoken-cue strong').allTextContents()).toEqual(row.cues);
     expect(new Set(row.cues).size).toBe(row.cues.length);
+    const uses = page.locator('details.discovery-details').filter({
+      has: page.locator('summary', { hasText: 'Common-use examples' }),
+    });
+    const expectedUses = source.common_uses.filter(item => publicStatuses.includes(item.status)).map(item => item.text);
+    await expect(uses.locator('li')).toHaveText(expectedUses);
+    if (expectedUses.length) await uses.locator('summary').click();
+    const tags = page.locator('details.discovery-details').filter({
+      has: page.locator('summary', { hasText: /^Tags$/ }),
+    });
+    await expect(tags.locator('li')).toHaveText(source.tags
+      .filter(item => publicStatuses.includes(item.status)).map(item => item.text));
+    const renderedDiscovery = await page.locator('.discovery-details li').allTextContents();
+    for (const item of [...source.tags, ...source.common_uses].filter(item => !publicStatuses.includes(item.status))) {
+      // A draft tag may also be an ordinary word in an approved description.
+      // Check discovery entries, not arbitrary prose substrings.
+      if (!row.search_terms.includes(item.text)) expect(renderedDiscovery).not.toContain(item.text);
+    }
     await noAxeViolations(page);
   }
-  const intuition = index.functions.find(row => row.function_id === 'OCF-EXP-006');
-  expect(intuition.search_terms).toEqual([]);
 });
 
 test('Sleep has no duplicate step or generic command filler, while distinct guidance remains', async ({ page }) => {
   await page.goto('/functions/OCF-SLP-002/');
-  expect(await page.locator('.command-block ol li').allTextContents()).toEqual([
-    'Choose the purpose for using this function.',
-    'Breathe slowly and deeply.',
-    'Think the command during exhalation.',
-    'Continue breathing normally.',
+  const guide = await pinnedGuide(page);
+  const canonicalSteps = guide.functions.find(row => row.function_id === 'OCF-SLP-002')
+    .commands.flatMap(command => command.procedure_steps.map(step => step.instruction));
+  expect(canonicalSteps).toEqual([
+    'Close your eyes.',
+    'Take a deep breath in.',
+    'Gently hold your breath.',
+    'While holding your breath, silently say the command to yourself.',
+    'Then slowly exhale and continue breathing naturally.',
+    'Continue breathing naturally; keep your eyes closed.',
   ]);
+  const renderedSteps = await page.locator('.command-block ol li').allTextContents();
+  expect(renderedSteps).toEqual(canonicalSteps);
+  expect(new Set(renderedSteps).size).toBe(renderedSteps.length);
   const sleepText = await page.locator('#cues').evaluate(element => element.parentElement.textContent);
   expect(sleepText).not.toContain('Display cues and spoken cues are different fields');
   expect(sleepText).not.toContain('Use only when you choose to activate the documented function.');
   expect(sleepText).not.toContain('This is the primary command for the function.');
-  expect(sleepText.match(/Choose the purpose for using this function\./g)).toHaveLength(1);
+  expect(sleepText).not.toContain('Choose the purpose for using this function.');
+  expect(sleepText.match(/Close your eyes\./g)).toHaveLength(1);
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).toContain('temporary');
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).not.toContain('No additional lifecycle scopes are declared.');
   expect(await page.locator('#safety').evaluate(element => element.parentElement.textContent)).not.toBe('');
@@ -169,10 +222,10 @@ test('historical title map hides cue history, unchanged names and unmapped lists
   await page.goto('/historical-names/');
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
   // Complete source provenance stays intact; the public map is a title-only projection.
-  expect(receipt.historical_mapping_count).toBe(43);
-  expect(receipt.historical_name_count).toBe(94);
+  expect(receipt.historical_mapping_count).toBe(44);
+  expect(receipt.historical_name_count).toBe(95);
   expect(receipt.historical_name_kind_counts).toEqual({
-    'former-primary': 24, 'former-teaching': 34, 'former-title': 34, 'legacy-phrase': 2,
+    'former-primary': 24, 'former-teaching': 35, 'former-title': 34, 'legacy-phrase': 2,
   });
   await expect(page.locator('[data-historical-name-entry]')).toHaveCount(32);
   await expect(page.locator('[data-historical-kind="former-title"]')).toHaveCount(32);
@@ -190,7 +243,9 @@ test('historical title map hides cue history, unchanged names and unmapped lists
   await expect(innerPower).not.toContainText('Plus Eight Great');
   await expect(innerPower).not.toContainText('PLUS-STRONG');
   await expect(page.locator('[data-function-id="OCF-BOD-006"] .historical-name-text')).toHaveCount(1);
-  await expect(page.locator('a[href*="OCF_HISTORICAL_LOOKUP_CURRENT.md"]')).toHaveAttribute('href', /704440da8e0379cee8dfd332203bc0001c0a5f27/);
+  const pin = await pinnedSource(page);
+  await expect(page.locator('a[href*="OCF_HISTORICAL_LOOKUP_CURRENT.md"]')).toHaveAttribute('href', `${pin.source_repository}/blob/${pin.source_commit}/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md`);
+  await expect(page.locator('[data-historical-name-entry][data-function-id="OCF-PRF-006"]')).toHaveCount(0);
   await page.setViewportSize({ width: 375, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
   await noAxeViolations(page);
@@ -1322,7 +1377,7 @@ test('generated listening and all platform guides require stereo for binaural de
   expect(receipt.published_releases[0].publication_manifest_sha256).toBe('48cb39bcc3dfd7f7e211b3093cd927c3a790cd9ad28d6b47faad956014c85c14');
   await page.goto('/historical-names/');
   await expect(page.locator('[data-historical-name-entry]')).toHaveCount(32);
-  expect(receipt.historical_name_count).toBe(94);
+  expect(receipt.historical_name_count).toBe(95);
   await noAxeViolations(page);
 });
 
@@ -1609,7 +1664,9 @@ test('About leads with reader context and keeps provenance in native disclosure'
   const transparency = page.locator('.technical-transparency');
   await expect(transparency).not.toHaveAttribute('open', '');
   await transparency.locator(':scope > summary').click();
-  await expect(transparency).toContainText('704440da8e0379cee8dfd332203bc0001c0a5f27');
+  const pin = await pinnedSource(page);
+  await expect(transparency).toContainText(pin.source_commit);
+  await expect(transparency.getByRole('link', { name: 'Pinned source tree' })).toHaveAttribute('href', `${pin.source_repository}/tree/${pin.source_commit}`);
   await expect(transparency).toContainText('audio-0.1.0-a6-20261111');
   await expect(page.locator('main')).toContainText('freely accessible, clearly documented, and open to improvement');
   await noAxeViolations(page);

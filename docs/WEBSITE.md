@@ -64,6 +64,10 @@ therefore fails validation and prevents deployment. The public-safe browser
 artifact includes test results, a print PDF and an acceptance receipt bound to
 the pinned source commit, PR head (or pushed audio commit), exact CI-tested
 commit, catalog and generated-site inventory hashes, and browser/tool versions.
+The browser checks compare discovery status and Sleep steps against the exact
+`public-guide-export.json` used for the build (override its path with
+`GUIDE_EXPORT` for a custom local workspace). Served source provenance must
+match the checked-in pin and build receipt.
 CI installs and gates Chromium; Firefox and WebKit can be run locally with
 `BROWSER=firefox` or `BROWSER=webkit`.
 
