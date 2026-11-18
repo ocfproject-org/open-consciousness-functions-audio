@@ -13,6 +13,7 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_public_site import (
     _asset_specification,
+    _source_histories,
     _catalog_sessions,
     _discovery_section,
     _downloads_page,
@@ -60,6 +61,31 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn('href="' + release["release_url"] + '"', rendered)
         self.assertNotIn("What changed", _downloads_page({"releases": [{"functions": []}]}, []))
 
+
+    def test_source_history_is_bounded_pinned_and_preserves_revision_order(self):
+        from types import SimpleNamespace
+        records = 'b' * 40 + '\x002026-11-17\x00Later <subject> & title\n' + 'c' * 40 + '\x002026-11-18\x00Ancestor'
+        with patch('build_public_site.subprocess.run', side_effect=[
+            SimpleNamespace(stdout='false\n'), SimpleNamespace(stdout='a' * 40),
+            SimpleNamespace(stdout=records), SimpleNamespace(stdout=''),
+        ]) as run:
+            histories = _source_histories(Path('/source'), 'a' * 40, [
+                {'function_id': 'ONE', 'canonical_resource': 'locales/en-US/OCF-ONE.yaml'},
+                {'function_id': 'EMPTY', 'canonical_resource': 'locales/en-US/OCF-EMPTY.yaml'},
+            ])
+        self.assertEqual([r['subject'] for r in histories['ONE']], ['Later <subject> & title', 'Ancestor'])
+        self.assertEqual(histories['EMPTY'], [])
+        command = run.call_args_list[2].args[0]
+        self.assertEqual(command[-7:], ['log', '--topo-order', '--max-count=5', '--format=%H%x00%cs%x00%s', 'a' * 40, '--', 'locales/en-US/OCF-ONE.yaml'])
+
+    def test_source_history_rejects_shallow_or_wrong_revision(self):
+        from types import SimpleNamespace
+        with patch('build_public_site.subprocess.run', return_value=SimpleNamespace(stdout='true')):
+            with self.assertRaisesRegex(ValueError, 'full checkout'):
+                _source_histories(Path('/source'), 'a' * 40, [])
+        with patch('build_public_site.subprocess.run', side_effect=[SimpleNamespace(stdout='false'), SimpleNamespace(stdout='b' * 40)]):
+            with self.assertRaisesRegex(ValueError, 'match the pinned'):
+                _source_histories(Path('/source'), 'a' * 40, [])
 
     def test_header_and_favicon_reuse_pinned_public_brand_assets(self):
         import json
@@ -599,6 +625,25 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertEqual(html.count("A documented purpose."), 1)
         self.assertNotIn("Intended purpose", html)
         self.assertIn('<details class="source-details">', html)
+        self.assertIn('<details class="function-history" id="function-history">', html)
+        self.assertIn('<summary>Function change history</summary>', html)
+        self.assertIn('/commits/' + 'a' * 40 + '/' + function["canonical_resource"], html)
+        self.assertIn('No source revision records are available', html)
+        self.assertNotIn('id="function-history" open', html)
+        self.assertIn('They do not establish that a new recording was made.', html)
+        escaped_function = copy.deepcopy(function)
+        escaped_function["title"]["text"] = '<script>alert("history")</script>'
+        escaped = _function_page(escaped_function, [], {}, "a" * 40)
+        self.assertNotIn('<script>alert', escaped)
+        self.assertIn('View source changes for &lt;script&gt;', escaped)
+        revisions = [{'commit': 'b' * 40, 'date': '2026-11-17', 'subject': '<script>bad</script> & change'},
+                     {'commit': 'c' * 40, 'date': '2026-11-18', 'subject': 'Ancestor revision'}]
+        history_page = _function_page(function, [], {}, 'a' * 40, revisions)
+        self.assertIn('&lt;script&gt;bad&lt;/script&gt; &amp; change', history_page)
+        self.assertNotIn('<script>bad', history_page)
+        self.assertLess(history_page.index('bad&lt;'), history_page.index('Ancestor revision'))
+        self.assertNotIn('No source revision records are available', history_page)
+
         self.assertEqual(function, original)
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
         secondary = copy.deepcopy(function["commands"][0])

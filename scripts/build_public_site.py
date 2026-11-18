@@ -8,6 +8,7 @@ import html
 import json
 import re
 import shutil
+import subprocess
 import tempfile
 import time
 import unicodedata
@@ -682,6 +683,41 @@ def _verified_sidecars(releases, output, fetcher):
     return local, counts
 
 
+def _source_histories(source_root, source_commit, functions):
+    """Read bounded canonical-file revision records, never YAML editorial content."""
+    _require(bool(re.fullmatch(r"[a-f0-9]{40}", source_commit)), "history requires an exact source commit")
+
+    def git(*args):
+        try:
+            return subprocess.run(
+                ["git", "--no-replace-objects", "-C", str(source_root), *args],
+                check=True, capture_output=True, text=True, encoding="utf-8", timeout=30,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError("canonical source history is unavailable; use a complete pinned Git checkout") from exc
+
+    _require(git("rev-parse", "--is-shallow-repository") == "false",
+             "canonical source history requires a full checkout (fetch-depth: 0)")
+    _require(git("rev-parse", "HEAD") == source_commit,
+             "canonical source history checkout must match the pinned commit")
+    histories = {}
+    for function in functions:
+        resource = function["canonical_resource"]
+        _require(bool(re.fullmatch(r"locales/en-US/[A-Za-z0-9_.-]+\.yaml", resource)),
+                 "history target must be a canonical en-US YAML resource")
+        output = git("log", "--topo-order", "--max-count=5", "--format=%H%x00%cs%x00%s",
+                     source_commit, "--", resource)
+        records = []
+        for line in output.splitlines():
+            commit, date, subject = line.split("\x00", 2)
+            _require(bool(re.fullmatch(r"[a-f0-9]{40}", commit))
+                     and bool(re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", date)),
+                     "invalid canonical source revision record")
+            records.append({"commit": commit, "date": date, "subject": subject})
+        histories[function["function_id"]] = records
+    return histories
+
+
 def build_public_site(
     *,
     site_root: Path,
@@ -722,6 +758,7 @@ def build_public_site(
     historical_rows = _historical_lookup_rows(
         historical_reference_markdown, functions, source_root
     )
+    histories = _source_histories(source_root, guide_export["source_commit"], functions)
     sessions_by_function, preparation_sessions = _catalog_sessions(catalog)
     all_session_rows = [
         row for rows in sessions_by_function.values() for row in rows
@@ -769,7 +806,7 @@ def build_public_site(
         for function in functions:
             fid = function["function_id"]
             sessions = sessions_by_function.get(fid, [])
-            body = _function_page(function, sessions, transcript_paths, source_commit)
+            body = _function_page(function, sessions, transcript_paths, source_commit, histories[function["function_id"]])
             _write(
                 docs_dir / fid / "index.html",
                 _shell(
@@ -1539,7 +1576,7 @@ def _normalized_public_paragraph(text):
     return " ".join(unicodedata.normalize("NFKC", text).split()).casefold()
 
 
-def _function_page(function, sessions, transcript_paths, source_commit):
+def _function_page(function, sessions, transcript_paths, source_commit, history_records=()):
     categories = " · ".join(
         _html(category["label"]) for category in function["categories"]
     )
@@ -1670,12 +1707,36 @@ def _function_page(function, sessions, transcript_paths, source_commit):
     _require(bool(re.fullmatch(r"locales/en-US/[A-Za-z0-9_.-]+\.yaml", resource)),
              "function contribution target must be a canonical en-US YAML resource")
     contribution = f'<section class="guide-section function-contribution"><h2>Help improve this guide</h2><p><a href="{SOURCE_REPOSITORY}/edit/main/{_html(resource)}">Propose an edit to this function’s YAML on GitHub</a>. GitHub will guide you through a branch or fork and pull request; a proposed change is reviewed before publication.</p><p><a href="../../get-involved/">Contribution and translation guidance</a> · <a href="../../get-involved/#feedback">Send feedback</a></p></section>'
+    revision_list = "".join(
+        f'<li><time datetime="{_html(row["date"])}">{_html(row["date"])}</time> — '
+        f'<a href="{SOURCE_REPOSITORY}/commit/{_html(row["commit"])}">'
+        f'{_html(row["subject"])}</a> <code>{_html(row["commit"][:12])}</code></li>'
+        for row in history_records
+    )
+    revision_list = (f'<ol class="source-revisions">{revision_list}</ol>' if revision_list else
+                     '<p>No source revision records are available for this path at this revision.</p>')
+    history = (
+        '<details class="function-history" id="function-history">'
+        '<summary>Function change history</summary>'
+        '<p>Up to five latest source revision records for this function’s canonical file, '
+        'in Git revision order (newest first), through this guide’s pinned source. '
+        'Dates are commit dates; titles are the recorded commit subjects, not curated function summaries.</p>'
+        + revision_list +
+        f'<p><a href="{SOURCE_REPOSITORY}/commits/{source_commit}/{_html(resource)}">'
+        f'View source changes for {_html(function["title"]["text"])}</a> '
+        f'(through <code>{_html(source_commit[:12])}</code>).</p>'
+        '<p>A commit may cover several functions; inspect this file’s diff for its changes. '
+        'Source changes can include text, cues, narration definitions, or metadata. '
+        'They do not establish that a new recording was made. '
+        'Published audio editions are listed under <a href="#listening">Listen and download</a>.</p>'
+        '</details>'
+    )
     source_details = (
         f'<details class="source-details"><summary>Sources and versions</summary><p>Canonical function source: <a href="{SOURCE_REPOSITORY}/tree/{source_commit}/{_html(function["canonical_resource"])}">locale resource at pinned commit {_html(source_commit[:12])}</a>.</p></details>'
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 
