@@ -53,7 +53,7 @@ class PublicSiteBuildTests(unittest.TestCase):
             asset = root / "assets/js/app.js"
             asset.parent.mkdir(parents=True)
             asset.write_text("/* current edition logic */")
-            original = ('<head><script src="../../assets/js/app.js" defer></script></head><main id="main" class="docs-main">' 
+            original = ('<head><script src="../../assets/js/app.js" defer></script></head><main id="main" class="docs-main">'
                         '<article data-edition-content="0.1.0"><a href="https://example.com/old.mp3">old</a></article>'
                         '<article data-edition-content="0.2.0"><a href="https://example.com/new.mp3">new</a></article>'
                         '<details id="function-history">pinned history</details></main>')
