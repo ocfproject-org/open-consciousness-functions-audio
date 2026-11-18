@@ -1720,6 +1720,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
         '<summary>Function change history</summary>'
         '<p>Up to five latest source revision records for this function’s canonical file, '
         'in Git revision order (newest first), through this guide’s pinned source. '
+        'This bounded file history is incomplete: it omits older revisions and changes in shared files. '
         'Dates are commit dates; titles are the recorded commit subjects, not curated function summaries.</p>'
         + revision_list +
         f'<p><a href="{SOURCE_REPOSITORY}/commits/{source_commit}/{_html(resource)}">'

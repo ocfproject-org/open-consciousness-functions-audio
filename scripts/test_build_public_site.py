@@ -629,6 +629,7 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn('<summary>Function change history</summary>', html)
         self.assertIn('/commits/' + 'a' * 40 + '/' + function["canonical_resource"], html)
         self.assertIn('No source revision records are available', html)
+        self.assertIn('This bounded file history is incomplete', html)
         self.assertNotIn('id="function-history" open', html)
         self.assertIn('They do not establish that a new recording was made.', html)
         escaped_function = copy.deepcopy(function)

@@ -121,7 +121,8 @@ original links, selection and playback across edition changes, and accessibility
 Each function guide has a native, initially collapsed **Function change history**
 disclosure with up to five canonical-file revision records: commit date, verbatim
 subject, and a commit link. These are source revision records, not curated
-function-specific summaries. A commit may cover several files; inspect this
+function-specific summaries. This bounded history is incomplete: older revisions
+and changes to shared files are omitted. A commit may cover several files; inspect this
 function’s diff. Text, cues, narration definitions and metadata revisions do not
 establish that new audio was recorded. Audio remains bound to verified releases.
 
