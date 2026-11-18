@@ -50,7 +50,10 @@ class PublicSiteBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             page = root / "index.html"
-            original = ('<head></head><main id="main" class="docs-main">'
+            asset = root / "assets/js/app.js"
+            asset.parent.mkdir(parents=True)
+            asset.write_text("/* current edition logic */")
+            original = ('<head><script src="../../assets/js/app.js" defer></script></head><main id="main" class="docs-main">' 
                         '<article data-edition-content="0.1.0"><a href="https://example.com/old.mp3">old</a></article>'
                         '<article data-edition-content="0.2.0"><a href="https://example.com/new.mp3">new</a></article>'
                         '<details id="function-history">pinned history</details></main>')
@@ -63,6 +66,7 @@ class PublicSiteBuildTests(unittest.TestCase):
             self.assertIn('data-edition-content="0.2.0"><', rendered)
             self.assertIn('"version": "0.2.0", "sessions": 2', rendered)
             self.assertIn('id="edition-filter"', rendered)
+            self.assertIn('assets/js/app.js?v=' + hashlib.sha256(asset.read_bytes()).hexdigest()[:16], rendered)
             self.assertIn('<details id="function-history">pinned history</details>', rendered)
             self.assertIn('href="https://example.com/old.mp3"', rendered)
             self.assertIn('Earlier editions remain available', rendered)

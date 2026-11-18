@@ -1121,6 +1121,10 @@ def _apply_edition_presentation(staging, catalog):
                 '<a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">published releases</a>.</p></noscript>')
     for page in staging.rglob("*.html"):
         text = page.read_text(encoding="utf-8")
+        # Pages caches assets for ten minutes; never mix a new page/control with old code.
+        text = re.sub(r'((?:src|href)="[^"]*assets/((?:js|css)/[^"?]+))"',
+                      lambda match: match[1] + "?v=" + hashlib.sha256(
+                          (staging / "assets" / match[2]).read_bytes()).hexdigest()[:16] + '"', text)
         text = text.replace("</head>", '<script type="application/json" id="audio-editions">' + json.dumps(metadata) + '</script></head>')
         text = text.replace('<main id="main" class="docs-main">', '<main id="main" class="docs-main">' + controls)
         def default_visibility(match):

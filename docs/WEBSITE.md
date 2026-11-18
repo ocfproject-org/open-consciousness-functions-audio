@@ -103,6 +103,9 @@ PR and release reports.
 
 ## Shared audio edition preference
 
+Generated pages bind script/style URLs to content hashes so a browser cache cannot
+mix the new control with earlier edition logic.
+
 Every page has an Audio edition control. New visitors follow Latest; choosing a
 specific edition pins that choice until changed in this control. Browse, function
 quick actions and players, Preparation Learning, Downloads/changelog, release

@@ -124,3 +124,12 @@ test('the old numeric latest default migrates to following Latest, while new exp
   await page.getByLabel('Audio edition',{exact:true}).selectOption('0.2.0');
   await page.reload();await assertEdition(page,'0.2.0','0.2.0');
 });
+
+test('generated pages request content-bound assets instead of cached legacy edition code',async({page})=>{
+  let legacyRequested=false;
+  await page.route('**/assets/js/app.js',async route=>{legacyRequested=true;await route.fulfill({contentType:'application/javascript',body:'throw new Error("cached legacy code")'});});
+  await page.goto('/functions/');await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await expect(page.locator('script[src*="assets/js/app.js"]')).toHaveAttribute('src',/app\.js\?v=[a-f0-9]{16}$/);
+  await expect(page.locator('script[src*="assets/js/editions.js"]')).toHaveAttribute('src',/editions\.js\?v=[a-f0-9]{16}$/);
+  expect(legacyRequested).toBe(false);
+});
