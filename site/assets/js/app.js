@@ -41,13 +41,14 @@
     .replace(/[\p{P}\p{S}]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const filterEntries = (items, query, category, audio, locale, voice) => {
+  const filterEntries = (items, query, category, audio, locale, voice, edition = '') => {
     const terms = normalizeSearch(query);
     return items.filter(item =>
       (!terms || normalizeSearch(`${item.id} ${item.title} ${item.description} ${item.searchText}`).includes(terms)) &&
       (!category || (item.categories || []).includes(category)) &&
       (!audio || (item.assets.length ? 'yes' : 'no') === audio) &&
-      (!locale || item.locale === locale) && (!voice || item.voiceId === voice));
+      (!locale || item.locale === locale) && (!voice || item.voiceId === voice) &&
+      (!edition || !item.assets.length || item.edition === edition));
   };
   const downloadActionName = (action, format, item) =>
     `${action} ${String(format || 'file').toUpperCase()} for ${item.title}, ${item.locale}, ${item.voice}, edition ${item.edition}`;
@@ -106,6 +107,8 @@
   const audioFilter = document.getElementById('audio-filter');
   const locale = document.getElementById('language-filter');
   const voice = document.getElementById('voice-filter');
+  const edition = document.getElementById('edition-filter');
+  let latestEdition = '';
   const resultsCount = document.getElementById('results-count');
   const noResults = document.getElementById('catalog-no-results');
   const clearFilters = document.getElementById('clear-library-filters');
@@ -113,7 +116,7 @@
   const playbackStateKey = `ocf-library-playback:${location.pathname}`;
   const navigationEntry = performance.getEntriesByType?.('navigation')?.[0];
   const returningThroughHistory = navigationEntry?.type === 'back_forward';
-  const filterControls = [['search', search], ['category', category], ['audio', audioFilter], ['locale', locale], ['voice', voice]].filter(([, control]) => control);
+  const filterControls = [['search', search], ['category', category], ['audio', audioFilter], ['locale', locale], ['voice', voice], ['edition', edition]].filter(([, control]) => control);
   const selection = new Map();
   const selectionCount = document.getElementById('selection-count');
   const selectedFilesReview = document.getElementById('selected-files-review');
@@ -202,7 +205,7 @@
     save('OCF-selection.m3u8', '#EXTM3U\n' + [...selection.values()].filter(a => a.format === 'mp3').map(a => a.download_url).join('\n') + '\n', 'audio/x-mpegurl');
   });
   function updateSelection() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || ''));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', edition?.value || ''));
     const hiddenCount = [...selection.values()].filter(file => !visible.has(file.sessionItem)).length;
     selectionCount.textContent = `${selection.size} ${selection.size === 1 ? 'file' : 'files'} selected${hiddenCount ? ` (${hiddenCount} hidden by filters)` : ''}`;
     document.getElementById('download-selection').disabled = selection.size === 0;
@@ -243,7 +246,7 @@
     selectionCount.focus();
   });
   function render() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || ''));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', edition?.value || ''));
     let pinned = 0;
     catalogItems.forEach((item, index) => {
       const card = catalogCards[index];
@@ -265,7 +268,7 @@
       ? `${visible.size} matching session ${visible.size === 1 ? 'edition' : 'editions'}${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}`
       : `No session editions match these filters${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}.`;
     if (noResults) noResults.hidden = visible.size > 0;
-    if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control.value);
+    if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control === edition ? control.value !== latestEdition : control.value);
   }
 
   function setupSurprise(items) {
@@ -379,6 +382,7 @@
   function createSessionCard(item) {
     const card = el('article', undefined, 'session-card');
     card.dataset.functionId = item.id;
+    card.dataset.edition = item.edition;
     const title = el('h3'); const page = el('a', item.title);
     page.href = item.href; title.append(page); card.append(title);
     const metadata = [item.categoryLabel || item.category, item.id, item.locale, item.voice, item.edition && `v${item.edition}`].filter(Boolean).join(' · ');
@@ -502,7 +506,18 @@
       if (!voice) return;
       const option = el('option', name); option.value = value; voice.append(option);
     });
+    const editions = [...new Set(audioItems.map(item => item.edition).filter(Boolean))]
+      .sort((a, b) => b.localeCompare(a, 'en', {numeric: true}));
+    latestEdition = editions[0] || '';
+    if (edition) {
+      editions.forEach(value => {
+        const option = el('option', `Edition ${value}${value === latestEdition ? ' (latest)' : ''}`);
+        option.value = value; edition.append(option);
+      });
+      edition.value = latestEdition;
+    }
     restoreFilterState();
+    if (edition && edition.selectedIndex < 0) edition.value = latestEdition;
     const params = new URLSearchParams(location.search);
     const functionId = params.get('function');
     if (functionId) search.value = functionId;
@@ -527,7 +542,7 @@
       control.addEventListener('change', onFilter);
     });
     clearFilters?.addEventListener('click', () => {
-      filterControls.forEach(([, control]) => { control.value = ''; });
+      filterControls.forEach(([, control]) => { control.value = control === edition ? latestEdition : ''; });
       pinnedItems.clear();
       const url = new URL(location.href); url.searchParams.delete('function'); url.searchParams.delete('category');
       history.replaceState({}, '', url); saveFilterState(); render(); updateSelection(); search.focus();

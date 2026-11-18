@@ -100,3 +100,18 @@ a Blob or buffer large files. The repository's three-platform test matrix runs P
 playback, hearing experience, native operating-system setting behavior,
 release/listening approval, or medical efficacy. Record those boundaries in
 PR and release reports.
+
+## Multiple published audio editions
+
+Browse & Listen initially selects the newest numeric edition. The Edition
+control exposes each published version and an All editions option; Clear filters
+returns to the newest edition. A saved explicit selection survives navigation.
+Changing editions keeps selected downloads tied to their exact original assets
+and retains an active player so filtering does not interrupt playback. Surprise
+selection remains independent of browse filters.
+
+Downloads and function guides retain every published edition. Downloads also
+renders the verified publication manifest's optional changelog through the safe
+inline renderer, with a link to the original release notes. Browser gates check
+both 0.1.0 and 0.2.0 manifest bindings, per-edition session/asset/ZIP counts,
+original links, selection and playback across edition changes, and accessibility.

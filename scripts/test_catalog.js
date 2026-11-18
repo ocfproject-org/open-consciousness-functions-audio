@@ -38,3 +38,9 @@ const completeDirectory = entries(catalog, {byId: {
 assert.strictEqual(completeDirectory.length, 3);
 assert.deepEqual(filterEntries(completeDirectory, '', 'body', 'no', '', '').map(item => item.id), ['OCF-FND-002']);
 console.log('Catalog logic: 26 assertions passed');
+const editions = [{...rows[1], edition: '0.1.0'}, {...rows[1], edition: '0.2.0'}, {...rows[1], edition: '', assets: []}];
+assert.deepEqual(filterEntries(editions, '', '', '', '', '', '0.2.0'), [editions[1], editions[2]]);
+assert.deepEqual(filterEntries(editions, '', '', '', '', '', '0.1.0'), [editions[0], editions[2]]);
+assert.deepEqual(filterEntries(editions, '', '', '', '', '', ''), editions);
+assert.deepEqual(filterEntries(editions, '', '', 'yes', '', '', '0.2.0'), [editions[1]]);
+console.log('Edition filtering: 4 assertions passed');

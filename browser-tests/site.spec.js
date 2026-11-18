@@ -1,6 +1,13 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { createHash } = require('node:crypto');
+let latestEdition;
+let publishedCatalog;
+test.beforeEach(async ({ request }) => {
+  publishedCatalog = await request.get('/catalog.json').then(response => response.json());
+  latestEdition = publishedCatalog.releases[0]?.version;
+});
 
 async function pinnedSource(page) {
   const pin = JSON.parse(await fs.readFile(path.join(__dirname, '../site/source.json'), 'utf8'));
@@ -315,7 +322,8 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
   await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
   await page.goto('/preparation-learning/');
-  await expect(page.locator('.edition-card audio')).toBeVisible();
+  for (const player of await page.locator('.edition-card audio').all()) await expect(player).toBeVisible();
+  await expect(page.locator('.edition-card audio')).toHaveCount(publishedCatalog.releases.length);
 });
 
 test('homepage stays concise, keeps the legacy library fragment, and sends old function queries to Browse & Listen', async ({ page }) => {
@@ -339,7 +347,7 @@ test('Browse & Listen stays truthful without JavaScript or when catalog loading 
   await noScriptPage.goto('/functions/');
   await expect(noScriptPage.locator('.function-card')).toHaveCount(58);
   await expect(noScriptPage.locator('.function-card').first()).toContainText('Published recording available');
-  await expect(noScriptPage.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2);
+  await expect(noScriptPage.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2 * publishedCatalog.releases.length);
   await expect(noScriptPage.locator('audio')).toHaveCount(0);
   await noScriptContext.close();
 
@@ -348,7 +356,7 @@ test('Browse & Listen stays truthful without JavaScript or when catalog loading 
   await expect(page.locator('.function-card')).toHaveCount(58);
   await expect(page.locator('#empty-state')).toContainText('could not be loaded');
   await expect(page.locator('#empty-state')).not.toContainText('No published recordings');
-  await expect(page.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2);
+  await expect(page.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2 * publishedCatalog.releases.length);
   await expect(page.locator('audio')).toHaveCount(0);
 });
 
@@ -468,7 +476,7 @@ test('Downloads cards keep every individual format action visible and named acro
   const release = catalog.releases[0];
   for (const [functionId, title] of [['OCF-FND-004', 'Relax'], ['OCF-BOD-001', 'Brain Flow']]) {
     const session = release.functions.find(row => row.function_id === functionId).sessions[0];
-    const card = page.locator(`.download-card[data-function-id="${functionId}"]`);
+    const card = page.locator(`.download-card[data-function-id="${functionId}"][data-edition="${session.edition}"]`);
     await expect(card.locator('h2')).toContainText(title);
     for (const format of ['mp3', 'flac']) {
       const asset = session.assets.find(item => item.format === format);
@@ -642,7 +650,7 @@ test('current-cue search normalizes separators, offers clear/no-results, and kee
   const visibleFunctionIds = await page.locator('.session-card:visible').evaluateAll(cards => cards.map(card => card.dataset.functionId));
   expect(visibleFunctionIds.length).toBeGreaterThan(0);
   expect(visibleFunctionIds.every(id => categoryFunctionIds.includes(id))).toBe(true);
-  await expect(page.locator('.session-card[data-function-id="OCF-FND-004"]')).toBeVisible();
+  await expect(page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`)).toBeVisible();
 
   await page.goto('/quick-reference/');
   const referenceSearch = page.locator('[data-reference-search]');
@@ -663,7 +671,7 @@ test('filtered-out synthetic media remains focused, understandable, seekable and
   page.on('request', request => { if (/\.(?:mp3|flac)(?:$|[?#])/i.test(request.url())) audioRequests.push(request.url()); });
   await useSilentWavFixture(page);
   await page.goto('/functions/');
-  const relax = page.locator('.session-card').filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
+  const relax = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
   await relax.getByRole('button', {name: /^Show player for/}).click();
   const player = relax.locator('audio');
   await expect(player).toBeAttached();
@@ -766,7 +774,7 @@ test('Back navigation preserves the same active synthetic player position and fi
   });
   await useSilentWavFixture(page);
   await page.goto('/functions/');
-  const relax = page.locator('.session-card').filter({has: page.getByRole('link', {name: 'Relax', exact: true})});
+  const relax = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({has: page.getByRole('link', {name: 'Relax', exact: true})});
   await relax.getByRole('button', {name: /^Show player for/}).click();
   const player = relax.locator('audio');
   await player.evaluate(audio => audio.load());
@@ -798,7 +806,7 @@ test('Back navigation preserves the same active synthetic player position and fi
   await expect(page).toHaveURL(/\/functions\/OCF-FND-004\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  const restoredPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  const restoredPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(restoredPlayer).toBeAttached();
   await expect(page.locator('#search')).toHaveValue('OCF-BOD-001');
   expect(await restoredPlayer.evaluate(audio => audio.currentSrc.startsWith('data:audio/wav'))).toBe(true);
@@ -815,7 +823,7 @@ test('Back navigation preserves the same active synthetic player position and fi
   await expect(page).toHaveURL(/\/functions\/OCF-FND-004\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  const secondRestorePlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  const secondRestorePlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(secondRestorePlayer).toBeAttached();
   await expect(page.locator('#search')).toHaveValue('OCF-BOD-001');
   pendingPosition = Number(await secondRestorePlayer.getAttribute('data-ocf-resume-position')) || 0;
@@ -859,22 +867,22 @@ test('Back navigation preserves the same active synthetic player position and fi
   await expect(page).toHaveURL(/\/functions\/OCF-FND-004\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  let zeroPositionPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  let zeroPositionPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(zeroPositionPlayer).toBeAttached();
   await expect.poll(() => zeroPositionPlayer.getAttribute('data-ocf-resume-position-explicit')).toBe('true');
   await expect(zeroPositionPlayer).toHaveAttribute('data-ocf-restored-bookmark-pending', 'true');
   expect(await zeroPositionPlayer.evaluate(audio => audio.paused && audio.currentTime === 0)).toBe(true);
-  await expect(page.locator('.session-card[data-function-id="OCF-FND-004"] [data-playback-status]')).toContainText('Paused at 0:00');
+  await expect(page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-playback-status]`)).toContainText('Paused at 0:00');
   await relax.getByRole('link', {name: 'Relax', exact: true}).click();
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  zeroPositionPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  zeroPositionPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(zeroPositionPlayer).toBeAttached();
   expect(await zeroPositionPlayer.evaluate(audio => audio.paused && audio.currentTime === 0)).toBe(true);
   await zeroPositionPlayer.evaluate(audio => { audio.dataset.fixtureIdentity = 'back-navigation-synthetic-wav'; });
-  const zeroResumeControl = page.locator('.session-card[data-function-id="OCF-FND-004"] [data-back-navigation-control]');
+  const zeroResumeControl = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-back-navigation-control]`);
   if (await zeroResumeControl.count() === 0) {
-    await page.locator('.session-card[data-function-id="OCF-FND-004"]').evaluate(card => {
+    await page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`).evaluate(card => {
       const audio = card.querySelector('audio');
       const button = document.createElement('button');
       button.type = 'button';
@@ -901,14 +909,14 @@ test('Back navigation preserves the same active synthetic player position and fi
   await expect(page).toHaveURL(/\/functions\/OCF-FND-004\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  const endedPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  const endedPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(endedPlayer).toBeAttached();
   await expect(page.locator('#search')).toHaveValue('OCF-BOD-001');
   expect(await endedPlayer.evaluate(audio => audio.paused && !audio.ended)).toBe(true);
-  await expect(page.locator('.session-card[data-function-id="OCF-FND-004"] [data-playback-status]')).toContainText('Playback ended');
-  let replayControl = page.locator('.session-card[data-function-id="OCF-FND-004"] [data-back-navigation-control]');
+  await expect(page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-playback-status]`)).toContainText('Playback ended');
+  let replayControl = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-back-navigation-control]`);
   if (await replayControl.count() === 0) {
-    await page.locator('.session-card[data-function-id="OCF-FND-004"]').evaluate(card => {
+    await page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`).evaluate(card => {
       const audio = card.querySelector('audio');
       const button = document.createElement('button');
       button.type = 'button';
@@ -917,7 +925,7 @@ test('Back navigation preserves the same active synthetic player position and fi
       button.addEventListener('click', async () => { if (audio.paused || audio.ended) await audio.play(); else audio.pause(); });
       card.append(button);
     });
-    replayControl = page.locator('.session-card[data-function-id="OCF-FND-004"] [data-back-navigation-control]');
+    replayControl = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-back-navigation-control]`);
   }
   await replayControl.focus();
   await page.keyboard.press('Enter');
@@ -940,16 +948,16 @@ test('Back navigation preserves the same active synthetic player position and fi
   await expect(page).toHaveURL(/\/functions\/OCF-FND-004\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/functions\/$/);
-  let soughtAfterEndPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  let soughtAfterEndPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect(soughtAfterEndPlayer).toBeAttached();
   await expect.poll(() => soughtAfterEndPlayer.getAttribute('data-ocf-resume-position')).toBe('1.25');
   await expect(soughtAfterEndPlayer).toHaveAttribute('data-ocf-restored-bookmark-pending', 'true');
   expect(await soughtAfterEndPlayer.evaluate(audio => audio.paused && !audio.ended)).toBe(true);
-  await expect(page.locator('.session-card[data-function-id="OCF-FND-004"] [data-playback-status]')).toContainText('Paused at 0:01');
+  await expect(page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] [data-playback-status]`)).toContainText('Paused at 0:01');
   await relax.getByRole('link', {name: 'Relax', exact: true}).click();
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
-  soughtAfterEndPlayer = page.locator('.session-card[data-function-id="OCF-FND-004"] audio');
+  soughtAfterEndPlayer = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"] audio`);
   await expect.poll(() => soughtAfterEndPlayer.getAttribute('data-ocf-resume-position')).toBe('1.25');
   await expect(soughtAfterEndPlayer).toHaveAttribute('data-ocf-restored-bookmark-pending', 'true');
   expect(await soughtAfterEndPlayer.evaluate(audio => audio.paused && !audio.ended)).toBe(true);
@@ -959,15 +967,15 @@ test('Back navigation preserves the same active synthetic player position and fi
 test('catalog selection and download controls identify session and format', async ({ page }) => {
   await page.goto('/functions/');
   for (const title of ['Relax', 'Brain Flow']) {
-    const card = page.locator('.session-card').filter({ has: page.getByRole('link', { name: title, exact: true }) });
+    const card = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: title, exact: true }) });
     await expect(card).toBeVisible();
     await expect(card.locator('.function-status')).toHaveText('Published recording available');
     for (const summary of await card.locator('details summary').allTextContents()) {
       expect(summary).toMatch(/^(?:MP3|FLAC) file details$/);
     }
     for (const format of ['MP3', 'FLAC']) {
-      const checkboxName = new RegExp(`^Select ${format} for ${title}, en-US, Mike — Original Voice, edition 0\\.1\\.0$`);
-      await expect(card.getByRole('checkbox', { name: checkboxName })).toBeAttached();
+      const checkboxName = `Select ${format} for ${title}, en-US, Mike — Original Voice, edition ${latestEdition}`;
+      await expect(card.getByRole('checkbox', { name: checkboxName, exact: true })).toBeAttached();
       await expect(card.getByRole('link', { name: new RegExp(`^Download ${format} for ${title},`) })).toBeAttached();
     }
   }
@@ -978,8 +986,8 @@ test('catalog keeps one synthetic player active and announces a controlled media
   page.on('request', request => { if (/\.(?:mp3|flac)(?:$|[?#])/i.test(request.url())) audioRequests.push(request.url()); });
   await useSilentWavFixture(page);
   await page.goto('/functions/');
-  const relax = page.locator('.session-card').filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
-  const brain = page.locator('.session-card').filter({ has: page.getByRole('link', { name: 'Brain Flow', exact: true }) });
+  const relax = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
+  const brain = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: 'Brain Flow', exact: true }) });
   await relax.getByRole('button', {name: /^Show player for/}).click();
   await brain.getByRole('button', {name: /^Show player for/}).click();
   const relaxPlayer = relax.locator('audio');
@@ -1034,8 +1042,8 @@ test('catalog keeps one synthetic player active and announces a controlled media
 
 test('selected files hidden by filters remain reviewable and removable', async ({ page }) => {
   await page.goto('/functions/');
-  const relax = page.locator('.session-card').filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
-  const brain = page.locator('.session-card').filter({ has: page.getByRole('link', { name: 'Brain Flow', exact: true }) });
+  const relax = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: 'Relax', exact: true }) });
+  const brain = page.locator(`.session-card[data-edition="${latestEdition}"]`).filter({ has: page.getByRole('link', { name: 'Brain Flow', exact: true }) });
   const catalog = await page.request.get('/catalog.json').then(response => response.json());
   const relaxMp3Asset = catalog.releases.flatMap(release => release.functions)
     .find(row => row.function_id === 'OCF-FND-004').sessions[0].assets.find(asset => asset.format === 'mp3');
@@ -1055,10 +1063,10 @@ test('selected files hidden by filters remain reviewable and removable', async (
   await page.keyboard.press('Enter');
   await expect(review).toHaveAttribute('open', '');
   await expect(review.locator('#selected-files-summary')).toContainText('1 hidden by filters');
-  await expect(review).toContainText('Relax, en-US, Mike — Original Voice, edition 0.1.0 — MP3 (hidden by filters)');
-  await expect(review.getByRole('link', { name: 'Open MP3 download for Relax, en-US, edition 0.1.0' })).toHaveAttribute('href', relaxAssetURL);
+  await expect(review).toContainText(`Relax, en-US, Mike — Original Voice, edition ${latestEdition} — MP3 (hidden by filters)`);
+  await expect(review.getByRole('link', { name: `Open MP3 download for Relax, en-US, edition ${latestEdition}` })).toHaveAttribute('href', relaxAssetURL);
 
-  await review.getByRole('button', { name: 'Remove MP3 for Relax, edition 0.1.0 from selected files' }).click();
+  await review.getByRole('button', { name: `Remove MP3 for Relax, edition ${latestEdition} from selected files` }).click();
   await expect(page.locator('#selection-count')).toHaveText('1 file selected');
   expect(await relaxMp3.evaluate(checkbox => checkbox.checked)).toBe(false);
   await expect(page.locator('#selection-count')).toBeFocused();
@@ -1371,10 +1379,15 @@ test('generated listening and all platform guides require stereo for binaural de
   }
 
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
-  expect(receipt.catalog_sha256).toBe('db878436e6e15fc64bd9f4b96a398d2612fbc78cf34033ff11f6a526ce137eac');
-  expect(receipt.published_session_count).toBe(59);
-  expect(receipt.audio_asset_count).toBe(118);
-  expect(receipt.published_releases[0].publication_manifest_sha256).toBe('48cb39bcc3dfd7f7e211b3093cd927c3a790cd9ad28d6b47faad956014c85c14');
+  const catalogBytes = await page.request.get('/catalog.json').then(response => response.body());
+  expect(receipt.catalog_sha256).toBe(createHash('sha256').update(catalogBytes).digest('hex'));
+  const sessions = publishedCatalog.releases.flatMap(release => [...release.functions, ...(release.preparations || [])].flatMap(row => row.sessions));
+  expect(receipt.published_session_count).toBe(sessions.length);
+  expect(receipt.audio_asset_count).toBe(sessions.flatMap(session => session.assets).length);
+  for (const release of publishedCatalog.releases) {
+    expect(receipt.published_releases.find(row => row.tag === release.tag).publication_manifest_sha256)
+      .toBe(release.publication_manifest_sha256);
+  }
   await page.goto('/historical-names/');
   await expect(page.locator('[data-historical-name-entry]')).toHaveCount(32);
   expect(receipt.historical_name_count).toBe(95);
@@ -1402,7 +1415,7 @@ test('release downloads stay direct and mobile users get a truthful copy-and-ren
 
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto('/functions/OCF-FND-004/');
-  const row = page.locator('.asset-download[data-download-format="mp3"]');
+  const row = page.locator('.asset-download[data-download-format="mp3"]').filter({has: page.locator(`a[href="${mp3.download_url}"]`)});
   await expect(row).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
   expect(await row.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -1469,7 +1482,7 @@ test('cross-origin release response behavior is explicit without buffering the r
     body: deliveredBytes,
   }));
   await page.goto('/functions/OCF-FND-004/');
-  const row = page.locator('.asset-download[data-download-format="mp3"]');
+  const row = page.locator('.asset-download[data-download-format="mp3"]').filter({has: page.locator(`a[href="${mp3.download_url}"]`)});
   const friendly = await row.locator('.download-link').getAttribute('download');
   expect(friendly).not.toBe(mp3.filename);
   if (browserName === 'webkit') {
@@ -1645,11 +1658,11 @@ test('mobile transcript expands into natural page reading and retries a failed e
   expect(mediaLayout.overflowY).toBe('visible');
   expect(mediaLayout.scrollHeight).toBeLessThanOrEqual(mediaLayout.clientHeight + 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
-  await expect(transcript.getByRole('link', {name: /Download transcript text for Relax, edition 0.1.0, en-US/})).toHaveAttribute('href', /\/transcripts\/.*\.txt$/);
-  await expect(transcript.getByRole('link', {name: /Original release asset, TXT for Relax, edition 0.1.0, en-US/})).toHaveAttribute('href', /^https:\/\/github\.com\//);
-  const timed = page.getByRole('link', {name: /Download timed subtitles for Relax, edition 0.1.0, en-US/});
+  await expect(transcript.getByRole('link', {name: `Download transcript text for Relax, edition ${latestEdition}, en-US`})).toHaveAttribute('href', /\/transcripts\/.*\.txt$/);
+  await expect(transcript.getByRole('link', {name: `Original release asset, TXT for Relax, edition ${latestEdition}, en-US`})).toHaveAttribute('href', /^https:\/\/github\.com\//);
+  const timed = page.getByRole('link', {name: `Download timed subtitles for Relax, edition ${latestEdition}, en-US`});
   await expect(timed).toHaveAttribute('href', /\/transcripts\/.*\.vtt$/);
-  await expect(page.getByRole('link', {name: /Original release asset, VTT for Relax, edition 0.1.0, en-US/})).toHaveAttribute('href', /^https:\/\/github\.com\//);
+  await expect(page.getByRole('link', {name: `Original release asset, VTT for Relax, edition ${latestEdition}, en-US`})).toHaveAttribute('href', /^https:\/\/github\.com\//);
   expect(transcriptRequests).toBe(2);
 });
 
@@ -1722,9 +1735,10 @@ test('quality metadata, slim catalog, static fallback and narrow print stay trut
 
 test('browse constructs only requested players and preserves selection and identity', async ({ page }) => {
   await page.goto('/functions/');
-  await expect(page.locator('.session-card')).toHaveCount(59);
+  await expect(page.locator('.session-card')).toHaveCount(59 * publishedCatalog.releases.length);
+  await expect(page.locator('.session-card:visible')).toHaveCount(59);
   await expect(page.locator('.session-card audio')).toHaveCount(0);
-  const card = page.locator('.session-card[data-function-id="OCF-FND-004"]');
+  const card = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`);
   const checkbox = card.locator('input[type="checkbox"]').first();
   await checkbox.check();
   await card.getByRole('button', {name: /^Show player for/}).focus();
@@ -1889,4 +1903,83 @@ test('exact lead duplicates are omitted without losing distinct command instruct
     await expect(page.locator('.command-block .spoken-cue').first()).toBeVisible();
     expect(await page.locator('.command-block ol li').count()).toBeGreaterThan(0);
   }
+});
+
+test('both published editions retain exact provenance, downloads and accessible version selection', async ({ page }) => {
+  const contracts = [
+    ['audio-0.2.0', '0.2.0', 5, 'd75262e2ebd70fcb768bfb6f7cca207fa644bfbee83d6be9cfa94924319e3c43'],
+    ['audio-0.1.0-a6-20261111', '0.1.0', 6, '48cb39bcc3dfd7f7e211b3093cd927c3a790cd9ad28d6b47faad956014c85c14'],
+  ];
+  for (const [tag, version, zipCount, manifestHash] of contracts) {
+    const release = publishedCatalog.releases.find(row => row.tag === tag);
+    expect(release, `required published edition ${tag}`).toBeDefined();
+    expect(release.version).toBe(version);
+    expect(release.publication_manifest_sha256).toBe(manifestHash);
+    expect(release.functions).toHaveLength(58);
+    expect(release.preparations).toHaveLength(1);
+    const sessions = [...release.preparations, ...release.functions].flatMap(row => row.sessions);
+    expect(sessions).toHaveLength(59);
+    expect(sessions.flatMap(session => session.assets)).toHaveLength(118);
+    expect(release.collections).toHaveLength(zipCount);
+    for (const asset of [...sessions.flatMap(session => session.assets), ...release.collections, ...release.companions]) {
+      expect(asset.download_url).toBe(`https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/${tag}/${asset.filename}`);
+      expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/);
+    }
+  }
+  await page.goto('/functions/');
+  const selector = page.getByLabel('Edition', {exact: true});
+  await expect(selector).toHaveValue('0.2.0');
+  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  for (const [, version] of contracts) {
+    await selector.selectOption(version);
+    await expect(page.locator('.session-card:visible')).toHaveCount(59);
+    expect(await page.locator('.session-card:visible').evaluateAll(cards => [...new Set(cards.map(card => card.dataset.edition))])).toEqual([version]);
+    const release = publishedCatalog.releases.find(row => row.version === version);
+    const actualURLs = await page.locator('.session-card:visible .asset-row a').evaluateAll(links => links.map(link => link.href).sort());
+    const expectedURLs = [...release.preparations, ...release.functions].flatMap(row => row.sessions.flatMap(session => session.assets.map(asset => asset.download_url))).sort();
+    expect(actualURLs).toEqual(expectedURLs);
+    await noAxeViolations(page, '.library-section');
+  }
+  await page.reload();
+  await expect(selector).toHaveValue('0.1.0');
+  await selector.selectOption('');
+  await expect(page.locator('.session-card:visible')).toHaveCount(118);
+  await page.locator('#clear-library-filters').click();
+  await expect(selector).toHaveValue('0.2.0');
+  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await page.goto('/downloads/');
+  await expect(page.locator('.download-card[data-edition="0.2.0"]')).toHaveCount(59);
+  await expect(page.locator('.download-card[data-edition="0.1.0"]')).toHaveCount(59);
+  const current = publishedCatalog.releases.find(row => row.tag === 'audio-0.2.0');
+  for (const entry of current.changelog) {
+    // The safe renderer turns Markdown links into their visible labels.
+    const visible = entry.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    await expect(page.locator('main')).toContainText(visible);
+  }
+});
+
+test('edition changes retain selected-file provenance and an active historical player', async ({ page }) => {
+  await useSilentWavFixture(page);
+  await page.goto('/functions/');
+  const latest = page.locator('.session-card[data-function-id="OCF-FND-004"][data-edition="0.2.0"]');
+  const historical = page.locator('.session-card[data-function-id="OCF-FND-004"][data-edition="0.1.0"]');
+  const checkbox = latest.getByRole('checkbox', {name: /^Select MP3/});
+  await checkbox.check();
+  const expectedURL = await latest.getByRole('link', {name: /^Download MP3/}).getAttribute('href');
+  await page.getByLabel('Edition', {exact: true}).selectOption('0.1.0');
+  await expect(page.locator('#selection-count')).toHaveText('1 file selected (1 hidden by filters)');
+  await page.locator('#selected-files-summary').click();
+  await expect(page.locator('#selected-files-review').getByRole('link')).toHaveAttribute('href', expectedURL);
+  await historical.getByRole('button', {name: /^Show player/}).click();
+  const player = historical.locator('audio');
+  await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
+  await page.getByLabel('Edition', {exact: true}).selectOption('0.2.0');
+  await expect(historical).toBeVisible();
+  await expect(historical).toHaveAttribute('data-filtered-out', 'true');
+  await expect(player).toHaveAttribute('data-edition-identity', 'historical');
+  await expect(player).toHaveAttribute('data-session-edition', '0.1.0');
+  await expect(checkbox).toBeChecked();
+  await expect(page.locator('#selection-count')).toHaveText('1 file selected');
+  await player.evaluate(audio => audio.pause());
+  await expect(historical).toBeVisible();
 });
