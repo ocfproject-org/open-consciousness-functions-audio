@@ -322,8 +322,8 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
   await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
   await page.goto('/preparation-learning/');
-  for (const player of await page.locator('.edition-card audio').all()) await expect(player).toBeVisible();
-  await expect(page.locator('.edition-card audio')).toHaveCount(publishedCatalog.releases.length);
+  for (const player of await page.locator('.edition-card:visible audio').all()) await expect(player).toBeVisible();
+  await expect(page.locator('.edition-card:visible audio')).toHaveCount(1);
 });
 
 test('homepage stays concise, keeps the legacy library fragment, and sends old function queries to Browse & Listen', async ({ page }) => {
@@ -492,7 +492,7 @@ test('Downloads cards keep every individual format action visible and named acro
     const layout = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       pageWidth: document.documentElement.scrollWidth,
-      cards: [...document.querySelectorAll('.download-card')].map(card => {
+      cards: [...document.querySelectorAll('.download-card:not([hidden])')].map(card => {
         const cardRect = card.getBoundingClientRect();
         const actions = [...card.querySelectorAll('.download-action')].map(link => {
           const rect = link.getBoundingClientRect();
@@ -502,7 +502,7 @@ test('Downloads cards keep every individual format action visible and named acro
       }),
     }));
     expect(layout.pageWidth, `document overflow at ${width}px`).toBeLessThanOrEqual(width);
-    expect(layout.cards).toHaveLength(receipt.published_session_count);
+    expect(layout.cards).toHaveLength(59);
     for (const card of layout.cards) {
       expect(card.width).toBeGreaterThan(0);
       expect(card.scrollWidth, `card overflow at ${width}px`).toBeLessThanOrEqual(card.clientWidth + 1);
@@ -1927,8 +1927,8 @@ test('both published editions retain exact provenance, downloads and accessible 
     }
   }
   await page.goto('/functions/');
-  const selector = page.getByLabel('Edition', {exact: true});
-  await expect(selector).toHaveValue('0.2.0');
+  const selector = page.getByLabel('Audio edition', {exact: true});
+  await expect(selector).toHaveValue('latest');
   await expect(page.locator('.session-card:visible')).toHaveCount(59);
   for (const [, version] of contracts) {
     await selector.selectOption(version);
@@ -1942,10 +1942,8 @@ test('both published editions retain exact provenance, downloads and accessible 
   }
   await page.reload();
   await expect(selector).toHaveValue('0.1.0');
-  await selector.selectOption('');
-  await expect(page.locator('.session-card:visible')).toHaveCount(118);
-  await page.locator('#clear-library-filters').click();
-  await expect(selector).toHaveValue('0.2.0');
+  await selector.selectOption('latest');
+  await expect(selector).toHaveValue('latest');
   await expect(page.locator('.session-card:visible')).toHaveCount(59);
   await page.goto('/downloads/');
   await expect(page.locator('.download-card[data-edition="0.2.0"]')).toHaveCount(59);
@@ -1954,7 +1952,7 @@ test('both published editions retain exact provenance, downloads and accessible 
   for (const entry of current.changelog) {
     // The safe renderer turns Markdown links into their visible labels.
     const visible = entry.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-    await expect(page.locator('main')).toContainText(visible);
+    await expect(page.locator('.release-changelog:visible')).toContainText(visible);
   }
 });
 
@@ -1966,14 +1964,14 @@ test('edition changes retain selected-file provenance and an active historical p
   const checkbox = latest.getByRole('checkbox', {name: /^Select MP3/});
   await checkbox.check();
   const expectedURL = await latest.getByRole('link', {name: /^Download MP3/}).getAttribute('href');
-  await page.getByLabel('Edition', {exact: true}).selectOption('0.1.0');
+  await page.getByLabel('Audio edition', {exact: true}).selectOption('0.1.0');
   await expect(page.locator('#selection-count')).toHaveText('1 file selected (1 hidden by filters)');
   await page.locator('#selected-files-summary').click();
   await expect(page.locator('#selected-files-review').getByRole('link')).toHaveAttribute('href', expectedURL);
   await historical.getByRole('button', {name: /^Show player/}).click();
   const player = historical.locator('audio');
   await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
-  await page.getByLabel('Edition', {exact: true}).selectOption('0.2.0');
+  await page.getByLabel('Audio edition', {exact: true}).selectOption('0.2.0');
   await expect(historical).toBeVisible();
   await expect(historical).toHaveAttribute('data-filtered-out', 'true');
   await expect(player).toHaveAttribute('data-edition-identity', 'historical');

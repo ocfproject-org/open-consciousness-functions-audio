@@ -402,3 +402,10 @@
 .function-history p { margin: .4rem 0; }
 .function-history > summary { display: list-item; min-height: 44px; padding: .6rem 0; cursor: pointer; font-weight: 650; }
 .function-history > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+.edition-preference { padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.edition-preference label { font-weight: 650; }
+.edition-preference p { margin: .5rem 0 0; color: var(--muted); font-size: .85rem; }
+@media (max-width: 600px) { .edition-preference select { max-width: 100%; } }
+
+@media print { .edition-preference { display: none; } }

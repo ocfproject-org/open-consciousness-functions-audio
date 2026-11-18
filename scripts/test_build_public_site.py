@@ -13,6 +13,7 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_public_site import (
     _asset_specification,
+    _apply_edition_presentation,
     _source_histories,
     _catalog_sessions,
     _discovery_section,
@@ -45,6 +46,28 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_shared_editions_static_default_preserves_historical_files_and_history(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            page = root / "index.html"
+            original = ('<head></head><main id="main" class="docs-main">'
+                        '<article data-edition-content="0.1.0"><a href="https://example.com/old.mp3">old</a></article>'
+                        '<article data-edition-content="0.2.0"><a href="https://example.com/new.mp3">new</a></article>'
+                        '<details id="function-history">pinned history</details></main>')
+            page.write_text(original)
+            catalog = {"releases": [{"version": version, "functions": [{"sessions": [{}, {}]}]}
+                                    for version in ("0.1.0", "0.2.0", "0.1.5-rc1")]}
+            _apply_edition_presentation(root, catalog)
+            rendered = page.read_text()
+            self.assertIn('data-edition-content="0.1.0" hidden', rendered)
+            self.assertIn('data-edition-content="0.2.0"><', rendered)
+            self.assertIn('"version": "0.2.0", "sessions": 2', rendered)
+            self.assertIn('id="edition-filter"', rendered)
+            self.assertIn('<details id="function-history">pinned history</details>', rendered)
+            self.assertIn('href="https://example.com/old.mp3"', rendered)
+            self.assertIn('Earlier editions remain available', rendered)
+
+
     def test_downloads_render_verified_changelog_without_interpreting_html(self):
         release = {"functions": [], "tag": "audio-0.2.0", "version": "0.2.0",
                    "release_url": "https://github.com/example/repo/releases/tag/audio-0.2.0",
