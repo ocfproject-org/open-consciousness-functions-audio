@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from import_candidates import import_candidates
+from import_candidates import import_candidates, validate_lyrics_receipt
 from publication import canonical_bytes, verify_files
 from test_publication import fixture
 
@@ -87,6 +87,95 @@ def candidate(root, preparation=False):
 
 
 class ImportTests(unittest.TestCase):
+    def test_timed_lyrics_extension_is_strict_and_hash_bound(self):
+        lyrics = {
+            "verified": True,
+            "compressed_audio_unchanged": True,
+            "timed_event_count": 12,
+            "mp3_id3_version": "2.3",
+            "flac_lrc_sha256": "a" * 64,
+            "transcript_sha256": "b" * 64,
+        }
+        operation = {
+            "operation": "embed-measured-timed-lyrics-without-changing-audio-packets",
+            "implementation_sha256": "c" * 64,
+        }
+        receipt = {"embedded_lyrics": lyrics, "post_export_operations": operation}
+        assets = [
+            {"format": "lrc", "sha256": "a" * 64},
+            {"format": "txt", "sha256": "b" * 64},
+        ]
+        validate_lyrics_receipt({}, assets)
+        validate_lyrics_receipt(receipt, assets)
+        for field, value in (
+            ("verified", False),
+            ("compressed_audio_unchanged", False),
+            ("timed_event_count", True),
+            ("timed_event_count", 0),
+            ("mp3_id3_version", "2.4"),
+            ("flac_lrc_sha256", "d" * 64),
+            ("private_path", "/private/secret"),
+        ):
+            changed = copy.deepcopy(receipt)
+            changed["embedded_lyrics"][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                validate_lyrics_receipt(changed, assets)
+        for changed in (
+            {"embedded_lyrics": lyrics},
+            {"post_export_operations": operation},
+            {**receipt, "post_export_operations": {**operation, "path": "/private"}},
+            {
+                **receipt,
+                "post_export_operations": {**operation, "operation": "reencode"},
+            },
+        ):
+            with self.assertRaises(ValueError):
+                validate_lyrics_receipt(changed, assets)
+        with self.assertRaises(ValueError):
+            validate_lyrics_receipt(receipt, assets + [assets[0]])
+
+    def test_timed_lyrics_receipt_is_preserved_in_public_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            path, document = candidate(root / "source")
+            record = document["artifacts"][-1]
+            receipt_path = path.parent / record["file"]
+            technical = json.loads(receipt_path.read_text())
+            hashes = {}
+            for fmt in ("txt", "lrc"):
+                name = str(Path(record["file"]).with_suffix("." + fmt))
+                data = b"public measured lyrics"
+                (path.parent / name).write_bytes(data)
+                hashes[fmt] = hashlib.sha256(data).hexdigest()
+                document["artifacts"].append(
+                    {"file": name, "bytes": len(data), "sha256": hashes[fmt]}
+                )
+            technical["embedded_lyrics"] = {
+                "verified": True,
+                "compressed_audio_unchanged": True,
+                "timed_event_count": 1,
+                "mp3_id3_version": "2.3",
+                "flac_lrc_sha256": hashes["lrc"],
+                "transcript_sha256": hashes["txt"],
+            }
+            technical["post_export_operations"] = {
+                "operation": "embed-measured-timed-lyrics-without-changing-audio-packets",
+                "implementation_sha256": "c" * 64,
+            }
+            data = canonical_bytes(technical)
+            receipt_path.write_bytes(data)
+            record.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+            document["technical_receipt_sha256"] = record["sha256"]
+            path.write_bytes(canonical_bytes(document))
+            result = import_candidates(
+                [path],
+                root / "out",
+                tag="audio-v1",
+                edition=document["session"]["edition"],
+            )
+            verify_files(result, root / "out")
+            self.assertEqual((root / "out" / record["file"]).read_bytes(), data)
+
     def test_verified_copy_and_preparation_first(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

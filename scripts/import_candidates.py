@@ -21,6 +21,50 @@ from publication import (
 )
 
 
+def validate_lyrics_receipt(technical, assets):
+    """Accept only the public, hash-bound timed-lyrics receipt extension."""
+    present = {"embedded_lyrics", "post_export_operations"} & technical.keys()
+    if not present:
+        return
+    require(len(present) == 2, "incomplete timed-lyrics receipt")
+    lyrics = technical["embedded_lyrics"]
+    fields(
+        lyrics,
+        (
+            "verified",
+            "timed_event_count",
+            "mp3_id3_version",
+            "flac_lrc_sha256",
+            "transcript_sha256",
+            "compressed_audio_unchanged",
+        ),
+    )
+    require(
+        lyrics["verified"] is True and lyrics["compressed_audio_unchanged"] is True,
+        "unverified timed lyrics or changed compressed audio",
+    )
+    require(
+        type(lyrics["timed_event_count"]) is int and lyrics["timed_event_count"] > 0,
+        "invalid timed event count",
+    )
+    require(lyrics["mp3_id3_version"] == "2.3", "unsupported timed-lyrics ID3 version")
+    for field, fmt in (("flac_lrc_sha256", "lrc"), ("transcript_sha256", "txt")):
+        digest(lyrics[field])
+        matches = [a for a in assets if a["format"] == fmt]
+        require(
+            len(matches) == 1 and matches[0]["sha256"] == lyrics[field],
+            "timed-lyrics companion checksum mismatch",
+        )
+    operation = technical["post_export_operations"]
+    fields(operation, ("operation", "implementation_sha256"))
+    require(
+        operation["operation"]
+        == "embed-measured-timed-lyrics-without-changing-audio-packets",
+        "unsupported post-export operation",
+    )
+    digest(operation["implementation_sha256"])
+
+
 def import_candidates(paths, destination, *, tag, edition):
     destination = Path(destination).absolute()
     require(not destination.exists(), "destination already exists")
@@ -171,7 +215,9 @@ def import_candidates(paths, destination, *, tag, edition):
                 "clipped_sample_count",
                 "audio",
             ),
+            ("embedded_lyrics", "post_export_operations"),
         )
+        validate_lyrics_receipt(technical, candidate_assets)
         require(
             type(technical["schema_version"]) is int
             and technical["schema_version"] == 1
