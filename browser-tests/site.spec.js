@@ -1983,3 +1983,51 @@ test('edition changes retain selected-file provenance and an active historical p
   await player.evaluate(audio => audio.pause());
   await expect(historical).toBeVisible();
 });
+
+test('function source history is pinned, keyboard operable, and responsive', async ({ page }) => {
+  const guide = await pinnedGuide(page);
+  for (const fn of guide.functions) {
+    await page.goto(`/functions/${fn.function_id}/`);
+    const history = page.locator('#function-history');
+    await expect(history).not.toHaveAttribute('open', '');
+    await expect(history.locator('a[href*="/commits/"]')).toHaveAttribute('href',
+      `${guide.source_repository}/commits/${guide.source_commit}/${fn.canonical_resource}`);
+    expect(await history.locator('.source-revisions li').count()).toBeGreaterThan(0);
+    expect(await history.locator('.source-revisions li').count()).toBeLessThanOrEqual(5);
+  }
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const history = page.locator('#function-history');
+    const summary = history.locator('summary');
+    await summary.focus();
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await page.keyboard.press('Enter');
+      await expect(history).toHaveAttribute('open', '');
+      await expect(history.locator('a').first()).toBeVisible();
+      await expect(summary).toBeFocused();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.keyboard.press('Space');
+      await expect(history).not.toHaveAttribute('open', '');
+    }
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    await expect(history.locator('a').first()).toBeFocused();
+    await noAxeViolations(page, '#function-history');
+    await summary.click();
+  }
+});
+
+test('function source history works without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4173/functions/OCF-BOD-003/');
+    const history = page.locator('#function-history');
+    await history.locator('summary').click();
+    await expect(history.locator('a').first()).toBeVisible();
+    await history.locator('summary').click();
+    await expect(history.locator('a').first()).not.toBeVisible();
+  } finally {
+    await context.close();
+  }
+});

@@ -396,3 +396,9 @@
 .surprise-session > label { display: block; margin-block: 1rem; }
 .surprise-session audio { display: block; width: 100%; max-width: 36rem; }
 .surprise-session .edition-card { margin-top: 1rem; min-width: 0; }
+
+/* Retain the native disclosure marker and keyboard focus for source history. */
+.function-history { margin-top: .75rem; overflow-wrap: anywhere; }
+.function-history p { margin: .4rem 0; }
+.function-history > summary { display: list-item; min-height: 44px; padding: .6rem 0; cursor: pointer; font-weight: 650; }
+.function-history > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }

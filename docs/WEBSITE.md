@@ -115,3 +115,28 @@ renders the verified publication manifest's optional changelog through the safe
 inline renderer, with a link to the original release notes. Browser gates check
 both 0.1.0 and 0.2.0 manifest bindings, per-edition session/asset/ZIP counts,
 original links, selection and playback across edition changes, and accessibility.
+
+## Per-function source history
+
+Each function guide has a native, initially collapsed **Function change history**
+disclosure with up to five canonical-file revision records: commit date, verbatim
+subject, and a commit link. These are source revision records, not curated
+function-specific summaries. This bounded history is incomplete: older revisions
+and changes to shared files are omitted. A commit may cover several files; inspect this
+function’s diff. Text, cues, narration definitions and metadata revisions do not
+establish that new audio was recorded. Audio remains bound to verified releases.
+
+The builder reads Git history from the canonical checkout at the exact exported
+source commit. Full history (`fetch-depth: 0`, used by both validation and Pages) and a HEAD
+matching the pin are required; unavailable or shallow history fails the build.
+Records use `git log --topo-order --max-count=5 <pin> -- <canonical path>`:
+newer revisions precede their ancestors; commit dates need not be monotonic.
+No rename traversal or history of shared templates is inferred. The full file
+history link remains pinned to the same revision. An empty path history gets an
+explicit unavailable-records message, not a claim that it never changed.
+
+Subjects are escaped as text. No YAML history, draft editorial notes, commit
+bodies, or narration content is copied into this disclosure. No hand-maintained
+history database, export field, or build-time network fetch is added. The
+rendered records are included in the existing generated-site inventory hash.
+The native disclosure works without JavaScript.
