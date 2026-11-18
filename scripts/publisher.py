@@ -12,6 +12,7 @@ from publication import (
     canonical_bytes,
     control_artifacts,
     manifest_digest,
+    release_body,
     require,
     verify_approval,
     verify_files,
@@ -58,7 +59,7 @@ def _publish(
     verify_approval(manifest, approval, publication=finalize)
     identity = manifest_digest(manifest)
     tag = manifest["tag"]
-    marker = "OCF publication manifest SHA-256: " + identity
+    marker = release_body(manifest)
     receipt_path = Path(receipt_path)
     prior = {}
     if receipt_path.exists():

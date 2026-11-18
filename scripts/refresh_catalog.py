@@ -23,7 +23,9 @@ from publication import (
     require,
 )
 
-MARKER = re.compile(r"OCF publication manifest SHA-256: ([a-f0-9]{64})\Z")
+MARKER = re.compile(
+    r"OCF publication manifest SHA-256: ([a-f0-9]{64})(?:\n\n[\s\S]+)?\Z"
+)
 
 
 def build_catalog(

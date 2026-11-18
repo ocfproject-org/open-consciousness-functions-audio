@@ -3,7 +3,7 @@ import hashlib
 import unittest
 
 from catalog import append_release, release_entry
-from publication import control_artifacts, manifest_digest
+from publication import control_artifacts, manifest_digest, release_body
 from test_publication import fixture
 from test_validate_site import empty_catalog
 
@@ -26,7 +26,7 @@ def evidence(manifest):
         "id": 1,
         "draft": False,
         "tag_name": manifest["tag"],
-        "body": "OCF publication manifest SHA-256: " + manifest_digest(manifest),
+        "body": release_body(manifest),
         "published_at": "2026-01-01T00:00:00Z",
     }
     return receipt, remote

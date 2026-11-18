@@ -9,6 +9,7 @@ from publication import (
     asset_url,
     control_artifacts,
     manifest_digest,
+    release_body,
     require,
 )
 from validate_site import validate_catalog
@@ -29,8 +30,7 @@ def release_entry(manifest, receipt, remote_release):
     )
     require(
         remote_release.get("tag_name") == manifest["tag"]
-        and remote_release.get("body")
-        == "OCF publication manifest SHA-256: " + identity,
+        and remote_release.get("body") == release_body(manifest),
         "remote publication identity mismatch",
     )
     expected = {(a["asset_id"], a["sha256"]) for a in manifest["assets"]}
@@ -74,6 +74,8 @@ def _project_entry(manifest, identity, published):
         "collections": [],
         "companions": [],
     }
+    if "changelog" in manifest:
+        release["changelog"] = list(manifest["changelog"])
     groups = {}
     sessions = {}
     for asset in manifest["assets"]:
