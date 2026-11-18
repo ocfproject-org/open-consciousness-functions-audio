@@ -329,7 +329,7 @@ test('Start Here leads the home paths while Preparation Learning stays available
 test('homepage stays concise, keeps the legacy library fragment, and sends old function queries to Browse & Listen', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('audio')).toHaveCount(0);
-  await expect(page.locator('script[src*="/assets/js/app.js"]')).toHaveCount(0);
+  await expect(page.locator('script[src*="assets/js/app.js"]')).toHaveCount(0);
   await expect(page.locator('#library')).toBeVisible();
   await expect(page.locator('.hero-actions a[href="functions/"]')).toContainText('Browse & Listen');
   await expect(page.locator('.category-link').first()).toBeVisible();
