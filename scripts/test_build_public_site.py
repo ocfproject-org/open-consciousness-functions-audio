@@ -697,6 +697,22 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertLess(history_page.index('bad&lt;'), history_page.index('Ancestor revision'))
         self.assertNotIn('No source revision records are available', history_page)
 
+        self.assertIn("Documented practice intent:", html)
+        self.assertIn("not a guaranteed result or medical treatment", html)
+        self.assertIn("not evidence of lasting biological change", html)
+        self.assertIn("Persistence described by the practice: temporary", html)
+        permanent = copy.deepcopy(function)
+        permanent["lifecycle"]["persistence"] = "permanent"
+        permanent["lifecycle"]["scopes"] = [{"label": "Reinforcement", "persistence": "permanent", "description": "Documented intent"}]
+        permanent["commands"][0]["effect_scope"] = "permanent"
+        permanent["safety_notes"] = ["Existing function-specific precaution."]
+        snapshot = copy.deepcopy(permanent)
+        permanent_page = _function_page(permanent, [], {}, "a" * 40)
+        self.assertIn("Documented command scope: permanent", permanent_page)
+        self.assertIn("Persistence described by the practice: permanent", permanent_page)
+        self.assertIn("Existing function-specific precaution.", permanent_page)
+        self.assertLess(permanent_page.index("not evidence of lasting biological change"), permanent_page.index("<strong>Reinforcement</strong>"))
+        self.assertEqual(permanent, snapshot)
         self.assertEqual(function, original)
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
         secondary = copy.deepcopy(function["commands"][0])
@@ -932,32 +948,24 @@ class PublicSiteBuildTests(unittest.TestCase):
         page = _quick_reference([function], {})
         assert 'data-category="experimental foundation"' in page
 
-    def test_recommended_settings_link_to_required_stereo_and_keep_optional_controls_distinct(self):
+    def test_recommended_settings_distinguish_stereo_delivery_from_access_to_guidance(self):
         content = _recommended_settings("a" * 40)
         self.assertIn("automatic loudness normalization", content)
         self.assertIn("normal playback speed (1.0x)", content)
         self.assertIn('href="#headphones-and-stereo"', content)
         self.assertNotIn("Speakers, mono mixing, or a single earpiece", content)
-        self.assertIn("Optional processing choices are separate from the required stereo delivery.", content)
+        self.assertIn("Optional processing choices do not prevent you from listening to the spoken guidance.", content)
         self.assertNotIn("when the selected edition is designed", content)
 
-    def test_platform_guides_all_state_required_stereo_delivery_and_accessible_alternatives(self):
-        required = (
-            "Stereo headphones or stereo earbuds with separate left/right playback are\n"
-            "  required for the intended binaural/channel-separated audio."
-        )
+    def test_platform_guides_allow_spoken_guidance_without_promising_stereo_equivalence(self):
         for platform in ("android", "ios", "linux", "macos", "windows"):
             with self.subTest(platform=platform):
-                content = Path(f"docs/website/listening/{platform}.md").read_text(
-                    encoding="utf-8"
-                )
-                self.assertIn(required, content)
-                self.assertIn(
-                    "Speakers, mono\n  mixing, or a single earpiece are not equivalent delivery of that audio.",
-                    content,
-                )
-                self.assertIn("or skip the audio", content)
-                self.assertNotIn("stereo baseline is optional", content)
+                content = " ".join(Path(f"docs/website/listening/{platform}.md").read_text().split())
+                self.assertIn("You may listen to the spoken guidance through speakers, mono audio or one earpiece.", content)
+                self.assertIn("For the recording's intended separate left/right delivery, use stereo headphones or earbuds.", content)
+                self.assertIn("equivalent binaural effects are not promised", content)
+                self.assertIn("Keep accessibility settings you need", content)
+                self.assertNotIn("or skip the audio", content)
 
     def test_audio_asset_specs_include_format_rate_channels_size_and_duration(self):
         specification = _asset_specification(

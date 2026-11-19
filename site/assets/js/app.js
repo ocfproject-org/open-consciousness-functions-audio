@@ -330,7 +330,7 @@
       more.hidden = !concealed; more.setAttribute('aria-expanded', String(!concealed));
       if (!concealed) {
         const link = el('a', 'Read the function guide'); link.href = current.href;
-        details.append(el('p', current.description), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
+        details.append(el('p', `Documented practice intent: ${current.description}`), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
       }
       if (ownsMetadata) metadata();
       window.ocfUpdateMediaPlayerStatus?.(player);
@@ -415,7 +415,7 @@
     const pinned = el('p', undefined, 'playback-status');
     pinned.hidden = true; pinned.setAttribute('data-playback-status', ''); pinned.setAttribute('role', 'status'); pinned.setAttribute('aria-live', 'polite');
     card.append(pinned);
-    if (item.description) card.append(el('p', item.description));
+    if (item.description) card.append(el('p', `Documented practice intent: ${item.description}`));
     card.append(el('p', item.assets.length ? 'Published recording available' : 'No recording in the verified catalog', 'function-status'));
     if (item.assets.some(a => ['mp3', 'flac'].includes(a.format))) {
       const launch = el('button', 'Show player', 'show-player');

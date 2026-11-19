@@ -103,7 +103,7 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     expect(pageText).not.toContain('Draft metadata — not reviewed guidance');
     expect(pageText).not.toContain('description review status not recorded');
     expect(pageText).not.toContain('Procedure wording is not published while review is pending.');
-    await expect(page.locator('.function-intro .lead')).toHaveText(row.description);
+    await expect(page.locator('.function-intro .lead')).toHaveText(`Documented practice intent: ${row.description}`);
     await expect(page.locator('.function-intro .lead')).toHaveCount(1);
     await expect(page.getByRole('heading', {name: 'Intended purpose', exact: true})).toHaveCount(0);
     await expect(page.getByRole('heading', {name: 'Purpose', exact: true})).toHaveCount(0);
@@ -1346,7 +1346,7 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
   await expect(page.locator('main')).not.toContainText('Michael');
   await expect(page.locator('main')).not.toContainText('not a verified official OCF policy');
   const guideText = await page.locator('main').innerText();
-  expect(guideText.match(/Stereo headphones or stereo earbuds with separate left\/right playback are required/g)).toHaveLength(1);
+  expect(guideText.match(/You may listen to the spoken guidance through speakers, mono audio or one earpiece\./g)).toHaveLength(1);
   expect(guideText.match(/Do not listen while driving, operating equipment, or doing anything requiring vigilance\./g)).toHaveLength(1);
   expect(guideText).not.toContain('What OCF is');
   expect(guideText).not.toContain('mono mixing does not provide equivalent delivery. Separately');
@@ -1369,14 +1369,14 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
   await noAxeViolations(page);
 });
 
-test('generated listening and all platform guides require stereo for binaural delivery without changing assets', async ({ page }) => {
-  const required = 'Stereo headphones or stereo earbuds with separate left/right playback are required for the intended binaural/channel-separated audio.';
+test('generated listening and platform guides allow spoken guidance and distinguish stereo delivery without changing assets', async ({ page }) => {
+  const required = 'You may listen to the spoken guidance through speakers, mono audio or one earpiece.';
   await page.goto('/listening/');
   const guide = await page.locator('main').innerText();
   expect(guide).toContain(required);
-  expect(guide).toContain('Speakers, mono mixing, or a single earpiece are not equivalent delivery of that audio.');
-  expect(guide).toContain('use the written guide or an edition-matched transcript if available, or skip the audio');
-  expect(guide).toContain('no equivalent effects are promised');
+  expect(guide).toContain("For the recording's intended separate left/right delivery, use stereo headphones or earbuds.");
+  expect(guide).not.toContain('or skip the audio');
+  expect(guide).toContain('equivalent binaural effects are not promised');
   expect(guide).not.toContain('Can I listen without stereo headphones?');
   expect(guide).not.toContain('Yes. Speakers, mono playback');
 
@@ -1388,8 +1388,8 @@ test('generated listening and all platform guides require stereo for binaural de
     await page.goto(`/listening/${platform}/`);
     const text = await page.locator('main').innerText();
     expect(text, platform).toContain(required);
-    expect(text, platform).toContain('not equivalent delivery of that audio');
-    expect(text, platform).toContain('or skip the audio');
+    expect(text, platform).toContain('equivalent binaural effects are not promised');
+    expect(text, platform).not.toContain('or skip the audio');
     expect(text, platform).not.toContain('stereo baseline is optional');
   }
 
@@ -2051,4 +2051,17 @@ test('function source history works without JavaScript', async ({ browser }) => 
   } finally {
     await context.close();
   }
+});
+
+// Presentation only: source values and exact-edition assets remain untouched.
+test('function intent and duration qualifications remain visible without opening details', async ({ page }) => {
+  await page.goto('/functions/OCF-BOD-008/');
+  await expect(page.locator('#overview')).toContainText('Documented practice intent:');
+  await expect(page.locator('.intent-note')).toBeVisible();
+  await expect(page.locator('.intent-note')).toContainText('not a guaranteed result or medical treatment');
+  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toBeVisible();
+  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toContainText('not evidence of lasting biological change');
+  await expect(page.locator('#safety')).toHaveCount(1);
+  await expect(page.locator('main')).toContainText('Persistence described by the practice: permanent');
+  await noAxeViolations(page);
 });

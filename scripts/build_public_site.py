@@ -548,12 +548,31 @@ def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_f
     _require(repeated_stereo in accessibility, "accessibility stereo alternatives changed")
     accessibility = accessibility.replace(
         repeated_stereo,
-        "For the required stereo setup and available text alternatives, see "
+        "You may use speakers or mono to hear the spoken guidance. For stereo delivery and text alternatives, see "
         "[Headphones and stereo](#headphones-and-stereo). The text alternatives provide access to wording; "
         "they are not equivalent delivery of the binaural audio or a promise of equivalent effects.",
         1,
     )
     markdown = _replace_markdown_section(markdown, "Accessibility", accessibility)
+
+    stereo_source = _markdown_section_body(markdown, "Headphones and stereo")
+    _require(
+        " ".join(stereo_source.split()) ==
+        "Stereo headphones or stereo earbuds with separate left/right playback are "
+        "required for the intended binaural/channel-separated audio. Speakers, mono "
+        "mixing, or a single earpiece are not equivalent delivery of that audio. If you "
+        "cannot use this setup, use the written guide or an edition-matched transcript if "
+        "available, or skip the audio; no equivalent effects are promised.",
+        "spoken guidance and stereo source changed",
+    )
+    markdown = _replace_markdown_section(
+        markdown, "Headphones and stereo",
+        "You may listen to the spoken guidance through speakers, mono audio or one earpiece. "
+        "For the recording's intended separate left/right delivery, use stereo headphones or earbuds. "
+        "Speakers and mono playback do not preserve that delivery; equivalent binaural effects are not promised. "
+        "Keep accessibility settings you need and use a comfortable volume. "
+        "The written guide and edition-matched transcripts are additional ways to access the wording.",
+    )
 
     availability_answer = _function_audio_availability(functions, catalog, sessions_by_function)
     markdown = _replace_markdown_wrapped_once(
@@ -569,7 +588,7 @@ def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_f
         "binaural/channel-separated audio. Speakers, mono mixing, or a single earpiece are not equivalent delivery "
         "of that audio. If you cannot use this setup, use the written guide or an edition-matched transcript if "
         "available, or skip the audio; no equivalent effects are promised. Keep any accessibility settings you rely on.",
-        "See [Headphones and stereo](#headphones-and-stereo) for the required setup, limitations, and available text alternatives.",
+        "See [Headphones and stereo](#headphones-and-stereo) for spoken-guidance options, stereo delivery and its limitations.",
         "stereo FAQ cross-link",
     )
     markdown = _replace_markdown_wrapped_once(
@@ -816,7 +835,7 @@ def build_public_site(
                     source_commit,
                     toc=True,
                     toc_items=_function_toc_items(),
-                    description=_public_description(function),
+                    description="Documented practice intent: " + _public_description(function),
                 ),
             )
 
@@ -1494,7 +1513,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
             for row in sessions
         )
         cards_by_domain.setdefault(function["primary_category"], []).append(
-            f'''<article class="function-card" data-function-card data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p>{_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
+            f'''<article class="function-card" data-function-card data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
         )
     groups = "".join(
         f'<section class="domain-group" data-domain-group="{_html(category["id"])}"><h2>{_html(category["label"].title())}</h2><div class="function-grid" data-function-grid>{"".join(cards_by_domain.get(category["id"], []))}</div></section>'
@@ -1709,7 +1728,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
             else ""
         )
         scope_html = (
-            '<details class="technical-details"><summary>Technical details</summary><p class="scope-note">Effect scope: '
+            '<details class="technical-details"><summary>Technical details</summary><p class="scope-note">Documented command scope: '
             + _html(command["effect_scope"])
             + "</p></details>"
             if command.get("effect_scope")
@@ -1747,7 +1766,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
         if release_command
         else ""
     )
-    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Use and duration</h2>{scopes_html}{trigger_html}{release_html}<details class="technical-details"><summary>Technical details</summary><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Intended persistence: {_html(lifecycle["persistence"] or "not specified")}.</p></details></section>"""
+    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Use and duration</h2><p class="scope-note">Duration labels describe the pattern intended by the practice, not evidence of lasting biological change or a guaranteed outcome.</p>{scopes_html}{trigger_html}{release_html}<details class="technical-details"><summary>Technical details</summary><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p></details></section>"""
     safety_html = "".join(
         f"<li>{_html(note)}</li>" for note in function["safety_notes"]
     )
@@ -1817,7 +1836,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="intent-note">This describes what the practice intends to teach, not a guaranteed result or medical treatment. <a href="#safety">Read the function-specific precautions</a>.</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 
@@ -2042,7 +2061,7 @@ def _quick_reference(functions, sessions_by_function):
             if sessions_by_function.get(function["function_id"]) else "Audio unavailable"
         )
         rows.append(
-            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
+            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
         )
     options = "".join(
         f'<option value="{_html(item["id"])}">{_html(item["label"].title())}</option>'
@@ -2233,7 +2252,7 @@ def _about_page(guide_export, catalog, source_docs_url, transcript_counts):
 
 
 def _recommended_settings(source_commit):
-    return """<section class="guide-section" id="recommended-audio-settings"><h2>Optional audio processing</h2><p>For the required stereo setup and its alternatives, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3>Processing preferences</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices are separate from the required stereo delivery. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
+    return """<section class="guide-section" id="recommended-audio-settings"><h2>Optional audio processing</h2><p>For spoken-guidance options and stereo delivery, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3>Processing preferences</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices do not prevent you from listening to the spoken guidance. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
 
 
 def _device_links():
