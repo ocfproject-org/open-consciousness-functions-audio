@@ -109,3 +109,21 @@ test('missing artwork keeps a stable readable fallback and FLAC view passes acce
  await page.goto('/functions/');await selectPreference(page,'Audio format','flac');const card=page.locator('.session-card:visible').first();await expect(card.locator('.browse-artwork img')).toHaveCount(0);await expect(card.locator('.artwork-fallback')).toBeVisible();
  await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});expect(await page.evaluate(async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations)).toEqual([]);
 });
+
+test('Browse artwork is a keyboard-accessible exact Guide link with no playback side effects',async({page})=>{
+ const media=[];page.on('request',r=>{if(/\.(mp3|flac)(?:\?|$)/i.test(r.url()))media.push(r.url());});
+ for(const edition of ['latest','0.1.0']){
+  await page.goto('/functions/');await selectPreference(page,'Audio edition',edition);
+  for(const id of ['OCF-FND-004','preparation-learning']){
+   const card=page.locator(`.session-card[data-function-id="${id}"]:visible`).first();
+   const art=card.locator('a.browse-artwork');
+   await expect(art).toHaveAttribute('href',await card.locator('h3 a').getAttribute('href'));
+   await expect(art).toHaveAccessibleName(/^(?:Artwork unavailable\. )?Open .+ guide$/);
+   await art.focus();await page.keyboard.press('Enter');
+   await expect(page).toHaveURL(id==='preparation-learning'?/\/preparation-learning\//:new RegExp(`/functions/${id}/`));
+   expect(await page.locator('audio').evaluateAll(nodes=>nodes.every(a=>a.paused))).toBe(true);
+   await page.goBack();await expect(page).toHaveURL(/\/functions\//);
+  }
+ }
+ expect(media).toEqual([]);
+});

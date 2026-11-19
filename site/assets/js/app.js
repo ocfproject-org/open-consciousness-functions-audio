@@ -401,13 +401,16 @@
     const title = el('h3'); const page = el('a', item.title);
     page.href = item.href; title.append(page);
     const header = el('div', undefined, 'session-card-heading');
-    const art = el('div', undefined, 'browse-artwork');
+    const art = el('a', undefined, 'browse-artwork');
+    art.href = item.href;
+    const guideLabel = `Open ${item.title} guide`;
+    art.setAttribute('aria-label', `Artwork unavailable. ${guideLabel}`);
     const fallback = el('span', 'Artwork unavailable', 'artwork-fallback'); art.append(fallback);
     if (item.artwork) {
       const image = el('img'); image.alt = ''; image.width = 96; image.height = 96;
       image.loading = 'lazy'; image.decoding = 'async';
-      image.addEventListener('load', () => { fallback.hidden = true; });
-      image.addEventListener('error', () => { image.hidden = true; fallback.hidden = false; });
+      image.addEventListener('load', () => { fallback.hidden = true; art.setAttribute('aria-label', guideLabel); });
+      image.addEventListener('error', () => { image.hidden = true; fallback.hidden = false; art.setAttribute('aria-label', `Artwork unavailable. ${guideLabel}`); });
       image.src = item.artwork; art.append(image);
     }
     header.append(art, title); card.append(header);
