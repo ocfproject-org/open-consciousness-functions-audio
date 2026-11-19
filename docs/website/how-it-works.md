@@ -17,7 +17,7 @@ After learning a function, use its cue silently in your mind, following that fun
 
 [Start Here](../start/#choose-your-path) shows the learning path. Once familiar,
 use the [Quick Reference](../quick-reference/) to find a cue or explore
-[Function Chains](../practice-chains/) for optional examples.
+[Function Chains](../function-chains/) for optional examples.
 
 ## What you hear
 

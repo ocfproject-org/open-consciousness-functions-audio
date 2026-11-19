@@ -31,7 +31,8 @@ from build_public_site import (
     _renamed_title_rows,
     _quick_reference,
     _relationships_page,
-    _practice_chains_page,
+    _function_chains_page,
+    _chains_redirect_page,
     _recommended_settings,
     _shell,
     _request_public_asset,
@@ -46,6 +47,15 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_function_chains_legacy_page_has_canonical_accessible_fallback(self):
+        page = _chains_redirect_page("a" * 40)
+        self.assertIn('<h1>Function Chains</h1>', page)
+        self.assertIn('<link rel="canonical" href="https://ocfproject.org/function-chains/">', page)
+        self.assertIn('<meta name="robots" content="noindex,follow">', page)
+        self.assertIn('id="chains-new-link" href="../function-chains/">Continue to Function Chains</a>', page)
+        self.assertIn('<script src="../assets/js/chains-redirect.js" defer>', page)
+        self.assertNotIn('http-equiv="refresh"', page)
+
     def test_shared_editions_static_default_preserves_historical_files_and_history(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -133,7 +143,7 @@ class PublicSiteBuildTests(unittest.TestCase):
 
 
     def test_optional_chains_are_exactly_the_seventeen_owner_approved_orders(self):
-        source = (Path(__file__).resolve().parents[1] / "docs/website/practice-chains.md").read_text()
+        source = (Path(__file__).resolve().parents[1] / "docs/website/function-chains.md").read_text()
         expected = {
             "Learning": ["OCF-FND-004", "OCF-FND-002", "OCF-COG-007", "OCF-COG-004", "OCF-COG-006"],
             "Performance": ["OCF-FND-004", "OCF-COG-007", "OCF-PRF-003", "OCF-FND-002"],
@@ -166,7 +176,7 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn("optional sequences", source)
         self.assertIn("official Human Plus", source)
         self.assertIn("Each step links to its function", source)
-        self.assertIn("practice-chains/", (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text())
+        self.assertIn("function-chains/", (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text())
 
 
     def test_chain_cues_use_active_pinned_spoken_text_and_explicit_food_less(self):
@@ -175,7 +185,7 @@ class PublicSiteBuildTests(unittest.TestCase):
             {"command_id": "OCF-CMD-BOD-010-FOOD-LESS", "designation": "secondary", "command_status": "active", "spoken_cue": "Plus Food Less"},
         ]}]
         source = "1. [Nutricia](../functions/OCF-BOD-010/) — A selected mode."
-        html = _practice_chains_page(source, functions)
+        html = _function_chains_page(source, functions)
         self.assertEqual(html.count("Plus Food Less"), 1)
         self.assertNotIn("Plus Food More", html)
         self.assertNotIn("button", html)
@@ -183,19 +193,19 @@ class PublicSiteBuildTests(unittest.TestCase):
             {"designation": "primary", "command_status": "active", "spoken_cue": "Plus Relax"},
         ]}]
         link = "[Relax](../functions/OCF-FND-004/)"
-        self.assertIn("(Plus Relax)", _practice_chains_page(link, primary))
+        self.assertIn("(Plus Relax)", _function_chains_page(link, primary))
         primary[0]["commands"][0]["spoken_cue"] = ""
         with self.assertRaises(ValueError):
-            _practice_chains_page(link, primary)
+            _function_chains_page(link, primary)
         primary[0]["commands"][0]["spoken_cue"] = "Plus Relax"
         primary[0]["commands"].append(dict(primary[0]["commands"][0]))
         with self.assertRaises(ValueError):
-            _practice_chains_page(link, primary)
+            _function_chains_page(link, primary)
         functions[0]["commands"][1]["command_status"] = "inactive"
         with self.assertRaises(ValueError):
-            _practice_chains_page(source, functions)
+            _function_chains_page(source, functions)
         with self.assertRaises(ValueError):
-            _practice_chains_page("[Unknown](../functions/OCF-XXX-001/)", functions)
+            _function_chains_page("[Unknown](../functions/OCF-XXX-001/)", functions)
 
     def test_function_title_actions_link_to_edition_player_and_direct_formats(self):
         rows = []

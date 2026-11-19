@@ -1762,12 +1762,12 @@ test('browse constructs only requested players and preserves selection and ident
 });
 
 
-test('approved practice chains are discoverable, optional, accessible and retain navigation', async ({ page }) => {
+test('approved function chains are discoverable, optional, accessible and retain navigation', async ({ page }) => {
   for (const width of [320, 1280]) {
     await page.setViewportSize({width, height: 900});
     await page.goto('/start/');
-    await page.locator('main a[href$="practice-chains/"]').click();
-    await expect(page).toHaveURL(/practice-chains\/$/);
+    await page.locator('main a[href$="function-chains/"]').click();
+    await expect(page).toHaveURL(/function-chains\/$/);
     await expect(page.locator('h1')).toHaveText('Function Chains');
     await expect(page).toHaveTitle('Function Chains — OCF');
     await expect(page.locator('.mobile-nav a[aria-current="page"]')).toHaveText('Function Chains');
@@ -1778,7 +1778,7 @@ test('approved practice chains are discoverable, optional, accessible and retain
     await expect(page).toHaveURL(/#daily-learning$/);
     await expect(page.locator('#daily-learning')).toBeInViewport();
     await page.goBack();
-    await expect(page).toHaveURL(/practice-chains\/$/);
+    await expect(page).toHaveURL(/function-chains\/$/);
 
     await expect(page.locator('main ol').nth(0).locator('a')).toHaveText(['Relax', 'Focus', 'Think Fast', 'Imprint', 'Recall']);
     await expect(page.locator('main ol').nth(1).locator('a')).toHaveText(['Relax', 'Think Fast', 'Coordination', 'Focus']);
@@ -1839,7 +1839,7 @@ test('branding and four theme choices preserve device defaults and persistent ov
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000');
   await noAxeViolations(page);
   await page.emulateMedia({colorScheme: 'dark'});
-  await page.goto('/practice-chains/');
+  await page.goto('/function-chains/');
   await expect(control).toHaveText('Theme: Black');
   await expect.poll(background).toBe('rgb(0, 0, 0)');
   await page.setViewportSize({width:320,height:900});

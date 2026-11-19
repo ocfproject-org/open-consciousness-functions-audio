@@ -123,7 +123,7 @@
   const legacyFunction = legacyParams.get('function');
   const legacyCategory = legacyParams.get('category');
   const pathParts = location.pathname.replace(/index\.html$/, '').split('/').filter(Boolean);
-  const atSiteRoot = pathParts.length <= 1 && !/(?:^|\/)(?:functions|start|listening|quick-reference|historical-names|relationships|downloads|about|preparation-learning|how-it-works|get-involved|practice-chains)(?:\/|$)/.test(location.pathname);
+  const atSiteRoot = pathParts.length <= 1 && !/(?:^|\/)(?:functions|start|listening|quick-reference|historical-names|relationships|downloads|about|preparation-learning|how-it-works|get-involved|function-chains|practice-chains)(?:\/|$)/.test(location.pathname);
   if (atSiteRoot && ((legacyFunction && /^OCF-[A-Z]{3}-\d{3}$/.test(legacyFunction)) || (legacyCategory && /^[a-z][a-z-]*$/.test(legacyCategory)))) {
     const destination = new URL('functions/', location.href);
     if (legacyFunction) destination.searchParams.set('function', legacyFunction);
