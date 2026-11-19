@@ -1,0 +1,13 @@
+.learned-panel { border: 1px solid var(--border, #888); border-radius: .6rem; padding: 1rem; margin: 1.5rem 0; overflow-wrap: anywhere; }
+.learned-panel [hidden] { display: none !important; }
+.learned-panel label { display: block; margin: .8rem 0; }
+.learned-panel button, .learned-panel select, .learned-panel input:not([type=checkbox]) { min-height: 44px; max-width: 100%; font: inherit; }
+.learned-panel select { display: block; width: 100%; }
+.learned-panel button { margin: .4rem .5rem .4rem 0; white-space: normal; }
+.learned-panel input[type=checkbox] { width: 1.3rem; height: 1.3rem; vertical-align: middle; }
+.learned-panel details { margin: .7rem 0; padding: .5rem; border: 1px solid var(--border, #888); }
+.learned-panel summary { min-height: 44px; cursor: pointer; }
+.learned-panel :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.learned-panel [role=status] { font-weight: 600; }
+.learned-panel > details { border: 0; padding: 0; }
+.learned-panel a { margin-inline-end: .7rem; }

@@ -474,3 +474,5 @@ body:has(#preferences[open]) { overflow: hidden; }
 .chain-step-links span { flex: 1 1 10rem; }
 .chain-step-links a { display: inline-block; min-height: 44px; padding: .5rem 0; }
 @media print { .chain-directory, .chain-learning-links { display: none; } }
+/* Complete fragment navigation before reload/Back can interrupt smooth scrolling. */
+html:has(:target) { scroll-behavior: auto; }

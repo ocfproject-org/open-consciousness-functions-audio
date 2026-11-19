@@ -103,7 +103,7 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     expect(pageText).not.toContain('Draft metadata — not reviewed guidance');
     expect(pageText).not.toContain('description review status not recorded');
     expect(pageText).not.toContain('Procedure wording is not published while review is pending.');
-    await expect(page.locator('.function-intro .lead')).toHaveText(row.description);
+    await expect(page.locator('.function-intro .lead')).toHaveText(`Documented practice intent: ${row.description}`);
     await expect(page.locator('.function-intro .lead')).toHaveCount(1);
     await expect(page.getByRole('heading', {name: 'Intended purpose', exact: true})).toHaveCount(0);
     await expect(page.getByRole('heading', {name: 'Purpose', exact: true})).toHaveCount(0);
@@ -1379,6 +1379,8 @@ test('generated listening and all platform guides require stereo for binaural de
   expect(guide).toContain('no equivalent effects are promised');
   expect(guide).not.toContain('Can I listen without stereo headphones?');
   expect(guide).not.toContain('Yes. Speakers, mono playback');
+  expect(guide).not.toContain('You may listen to the spoken guidance through speakers');
+  expect(guide).not.toContain('You may use speakers or mono');
 
   const settings = page.locator('#recommended-audio-settings');
   await expect(settings).toContainText('Headphones and stereo');
@@ -1391,6 +1393,8 @@ test('generated listening and all platform guides require stereo for binaural de
     expect(text, platform).toContain('not equivalent delivery of that audio');
     expect(text, platform).toContain('or skip the audio');
     expect(text, platform).not.toContain('stereo baseline is optional');
+    expect(text, platform).not.toContain('You may listen to the spoken guidance through speakers');
+    expect(text, platform).not.toContain('You may still listen to the spoken guidance');
   }
 
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
@@ -2052,4 +2056,17 @@ test('function source history works without JavaScript', async ({ browser }) => 
   } finally {
     await context.close();
   }
+});
+
+// Presentation only: source values and exact-edition assets remain untouched.
+test('function intent and duration qualifications remain visible without opening details', async ({ page }) => {
+  await page.goto('/functions/OCF-BOD-008/');
+  await expect(page.locator('#overview')).toContainText('Documented practice intent:');
+  await expect(page.locator('.intent-note')).toBeVisible();
+  await expect(page.locator('.intent-note')).toContainText('not a guaranteed result or medical treatment');
+  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toBeVisible();
+  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toContainText('not evidence of lasting biological change');
+  await expect(page.locator('#safety')).toHaveCount(1);
+  await expect(page.locator('main')).toContainText('Persistence described by the practice: permanent');
+  await noAxeViolations(page);
 });
