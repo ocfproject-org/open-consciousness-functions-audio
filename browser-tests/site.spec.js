@@ -122,8 +122,8 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
       has: page.locator('summary', { hasText: 'Common-use examples' }),
     });
     const expectedUses = source.common_uses.filter(item => publicStatuses.includes(item.status)).map(item => item.text);
-    await expect(uses.locator('li')).toHaveText(expectedUses);
-    if (expectedUses.length) await uses.locator('summary').click();
+    await expect(uses.locator(':scope > ul > li')).toHaveText(expectedUses);
+    if (expectedUses.length) await uses.locator(':scope > summary').click();
     const tags = page.locator('details.discovery-details').filter({
       has: page.locator('summary', { hasText: /^Tags$/ }),
     });
@@ -1787,7 +1787,7 @@ test('approved function chains are discoverable, optional, accessible and retain
     await expect(page.locator('h1')).toHaveText('Function Chains');
     await expect(page).toHaveTitle('Function Chains — OCF');
     await expect(page.locator('.mobile-nav a[aria-current="page"]')).toHaveText('Function Chains');
-    await expect(page.locator('main ol')).toHaveCount(17);
+    await expect(page.locator('.chain-original ol')).toHaveCount(17);
     const toc = page.locator(width === 320 ? '.mobile-toc' : '.desktop-toc');
     if (width === 320) await toc.locator('summary').click();
     await toc.locator('a[href="#daily-learning"]').click();
@@ -1796,41 +1796,41 @@ test('approved function chains are discoverable, optional, accessible and retain
     await page.goBack();
     await expect(page).toHaveURL(/function-chains\/$/);
 
-    await expect(page.locator('main ol').nth(0).locator('a')).toHaveText(['Relax', 'Focus', 'Think Fast', 'Imprint', 'Recall']);
-    await expect(page.locator('main ol').nth(1).locator('a')).toHaveText(['Relax', 'Think Fast', 'Coordination', 'Focus']);
-    await expect(page.locator('main ol').nth(2).locator('a')).toHaveText(['Relax', 'Focus', 'Speak Up', 'Inner Power', 'Think Fast']);
-    await expect(page.locator('main ol').nth(3).locator('a')).toHaveText(['Relax', 'Let Go', 'Reset']);
-    await expect(page.locator('main ol').nth(4).locator('a')).toHaveText(["Relax", "Let Go", "Options", "Manifest"]);
-    await expect(page.locator('main ol').nth(5).locator('a')).toHaveText(["Relax", "Inner Power", "Think Fast", "Focus", "Options", "Manifest"]);
-    await expect(page.locator('main ol').nth(6).locator('a')).toHaveText(["Think Fast", "Focus", "Coordination", "Do This Now"]);
-    await expect(page.locator('main ol').nth(7).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Restorative Sleep"]);
-    await expect(page.locator('main ol').nth(8).locator('a')).toHaveText(["Relax", "Sleep", "Restorative Sleep"]);
-    await expect(page.locator('main ol').nth(9).locator('a')).toHaveText(["Relax", "Dream Theme", "Sleep"]);
-    await expect(page.locator('main ol').nth(10).locator('a')).toHaveText(["Relax", "Options", "Contemplation", "Sleep Insight"]);
-    await expect(page.locator('main ol').nth(11).locator('a')).toHaveText(["Relax", "Habit Freedom", "Let Go", "Offload"]);
-    await expect(page.locator('main ol').nth(12).locator('a')).toHaveText(["Relax", "Do This Now", "Think Fast", "Coordination"]);
-    await expect(page.locator('main ol').nth(13).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Circulation", "Restorative Sleep"]);
-    await expect(page.locator('main ol').nth(14).locator('a')).toHaveText(["Relax", "Focus", "Think Fast", "Imprint", "Recall", "Information Access"]);
-    await expect(page.locator('main ol').nth(15).locator('a')).toHaveText(["Relax", "Options", "Sleep Insight"]);
-    await expect(page.locator('main ol').nth(16).locator('a')).toHaveText(['Nutricia', 'Appetite Choice', 'Habit Freedom', 'Detox']);
-    await expect(page.locator('main ol').nth(16).locator('.chain-spoken-cue')).toHaveText(['(Plus Food Less)', '(Plus Satisfied)', '(Plus Free This Habit)', '(Plus Detox)']);
-    await expect(page.locator('main ol li .chain-spoken-cue')).toHaveCount(69);
+    await expect(page.locator('.chain-original ol').nth(0).locator('a')).toHaveText(['Relax', 'Focus', 'Think Fast', 'Imprint', 'Recall']);
+    await expect(page.locator('.chain-original ol').nth(1).locator('a')).toHaveText(['Relax', 'Think Fast', 'Coordination', 'Focus']);
+    await expect(page.locator('.chain-original ol').nth(2).locator('a')).toHaveText(['Relax', 'Focus', 'Speak Up', 'Inner Power', 'Think Fast']);
+    await expect(page.locator('.chain-original ol').nth(3).locator('a')).toHaveText(['Relax', 'Let Go', 'Reset']);
+    await expect(page.locator('.chain-original ol').nth(4).locator('a')).toHaveText(["Relax", "Let Go", "Options", "Manifest"]);
+    await expect(page.locator('.chain-original ol').nth(5).locator('a')).toHaveText(["Relax", "Inner Power", "Think Fast", "Focus", "Options", "Manifest"]);
+    await expect(page.locator('.chain-original ol').nth(6).locator('a')).toHaveText(["Think Fast", "Focus", "Coordination", "Do This Now"]);
+    await expect(page.locator('.chain-original ol').nth(7).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Restorative Sleep"]);
+    await expect(page.locator('.chain-original ol').nth(8).locator('a')).toHaveText(["Relax", "Sleep", "Restorative Sleep"]);
+    await expect(page.locator('.chain-original ol').nth(9).locator('a')).toHaveText(["Relax", "Dream Theme", "Sleep"]);
+    await expect(page.locator('.chain-original ol').nth(10).locator('a')).toHaveText(["Relax", "Options", "Contemplation", "Sleep Insight"]);
+    await expect(page.locator('.chain-original ol').nth(11).locator('a')).toHaveText(["Relax", "Habit Freedom", "Let Go", "Offload"]);
+    await expect(page.locator('.chain-original ol').nth(12).locator('a')).toHaveText(["Relax", "Do This Now", "Think Fast", "Coordination"]);
+    await expect(page.locator('.chain-original ol').nth(13).locator('a')).toHaveText(["Relax", "Body Tune-Up", "Circulation", "Restorative Sleep"]);
+    await expect(page.locator('.chain-original ol').nth(14).locator('a')).toHaveText(["Relax", "Focus", "Think Fast", "Imprint", "Recall", "Information Access"]);
+    await expect(page.locator('.chain-original ol').nth(15).locator('a')).toHaveText(["Relax", "Options", "Sleep Insight"]);
+    await expect(page.locator('.chain-original ol').nth(16).locator('a')).toHaveText(['Nutricia', 'Appetite Choice', 'Habit Freedom', 'Detox']);
+    await expect(page.locator('.chain-original ol').nth(16).locator('.chain-spoken-cue')).toHaveText(['(Plus Food Less)', '(Plus Satisfied)', '(Plus Free This Habit)', '(Plus Detox)']);
+    await expect(page.locator('.chain-original ol li .chain-spoken-cue')).toHaveCount(69);
     await expect(page.locator('.chain-original button')).toHaveCount(0);
     await expect(page.locator('.chain-directory button')).toHaveCount(1);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await noAxeViolations(page);
-    const link = page.locator('main ol').nth(3).getByRole('link', {name: 'Let Go', exact: true});
+    const link = page.locator('.chain-original ol').nth(3).getByRole('link', {name: 'Let Go', exact: true});
     await link.focus();
     await expect(link).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/functions\/OCF-EMO-001\/$/);
     await page.goBack();
     await expect(page.locator('h1')).toHaveText('Function Chains');
-    await page.locator('main ol').nth(3).getByRole('link', {name: 'Reset', exact: true}).click();
+    await page.locator('.chain-original ol').nth(3).getByRole('link', {name: 'Reset', exact: true}).click();
     await expect(page).toHaveURL(/functions\/OCF-FND-005\/$/);
     await page.goBack();
-    await expect(page.locator('main ol')).toHaveCount(17);
+    await expect(page.locator('.chain-original ol')).toHaveCount(17);
   }
 });
 

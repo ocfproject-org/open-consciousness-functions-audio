@@ -226,3 +226,25 @@ ordered step, paragraph, cue and deep-link anchor remains available below the
 directory, including without JavaScript. Separate native disclosures link each
 existing step to its function's listening and use-instruction anchors; they do
 not activate a cue or start audio. The legacy route remains unchanged.
+
+### Bounded historical references
+
+The local reference prototype adds native, initially collapsed References
+disclosures after selected common-use examples and outside original chain text.
+`scripts/site_references.json` contains citation metadata only: public archive
+PDF URLs, page locators, inspected-file hashes, and the limited scope supported
+by each passage. It is not copied into the site as a second function registry.
+Canonical example text still comes exclusively from the pinned guide export.
+
+An example reference requires both its function ID and the exact approved-text
+digest. Chain references require the unchanged chain document digest. Changed
+content therefore omits stale references until its evidence is reviewed again.
+Draft filtering runs before citation matching. Original examples, chain order,
+anchors and instructions remain untouched. Historical overlap does not establish
+the entire current chain, its order, clinical efficacy or safety. References
+explicitly distinguish OCF additions from the documented pairing or context.
+
+This initial subset is deliberately incomplete: absence of a citation is not a
+claim that no historical context exists. Research inputs, OCR and page images
+remain outside the repository; only verified public links and concise scope notes
+belong in the presentation metadata. No archived teaching text is reproduced.
