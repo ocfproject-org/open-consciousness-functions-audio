@@ -286,3 +286,14 @@ Tests: `node scripts/test_affirmations.js` exercises the private data model;
 imports, compatibility, storage failures, cross-tab behavior, keyboard, reflow,
 accessibility and screenshots. Production user progress must not be read or used
 for tests. Public builds contain only starter prompts and empty page shells.
+
+Import selection is bound to its tracking epoch and generation before any file or
+cryptographic awaits. Only a still-current selection can render a preview; its
+Confirm closure retains that exact candidate and epoch. A cross-tab reset clears
+both pending and displayed previews, even if tracking is immediately re-enabled.
+Legacy backup scopes skip affirmation validation/merging entirely, so unrelated
+corrupt affirmation storage cannot block learned-record recovery. Schema 3 checks
+local affirmation integrity and merge bounds before learned/flag writes. If a
+cross-tab interruption occurs after some additions, the error reports their counts
+rather than suggesting an atomic failure; quota fallback reports page-only memory
+and retains readable existing marks for export. No unrelated records are deleted.

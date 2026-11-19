@@ -64,3 +64,60 @@ test('375px and desktop keyboard, readable Morning, reflow and axe; screenshots 
  for(let i=0;i<3;i++){await openPreferences(page);await page.locator('[data-theme-toggle]').click();await closePreferences(page);expect((await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}))).violations).toEqual([]);}
  await page.setViewportSize({width:320,height:700});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+async function holdConflictDigest(page, marker) {
+ await page.evaluate(marker=>{
+  const original=crypto.subtle.digest.bind(crypto.subtle);
+  window.__importGate={entered:false,finished:false};
+  crypto.subtle.digest=async(...args)=>{
+   const held=new TextDecoder().decode(args[1]).includes(marker);
+   if(held){window.__importGate.entered=true;await new Promise(resolve=>{window.__importGate.release=resolve;});}
+   try{return await original(...args);}finally{if(held)window.__importGate.finished=true;}
+  };
+ },marker);
+}
+function affirmationBackup(custom,favorites=[]) {return {schema:3,records:[],flags:[],affirmations:{custom,favorites}};}
+test('overlapping file selections discard a digest-delayed preview and detached confirmations cannot import another candidate',async({page})=>{
+ await ready(page);await enable(page);await add(page,'Original race-test line');const original=(await state(page)).custom[0];
+ await holdConflictDigest(page,'Delayed conflict A');
+ await backup(page,affirmationBackup([{...original,text:'Delayed conflict A'}],[original.id]));
+ await expect.poll(()=>page.evaluate(()=>window.__importGate.entered)).toBe(true);
+ await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(0);
+ const selected={...original,id:'custom:11111111-1111-4111-8111-111111111111',text:'Selected candidate B'};
+ await backup(page,affirmationBackup([selected],[selected.id]));await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(1);
+ await page.evaluate(()=>window.__importGate.release());await expect.poll(()=>page.evaluate(()=>window.__importGate.finished)).toBe(true);
+ await expect(page.locator('.personal-settings')).not.toContainText('Delayed conflict A');
+ await page.getByText('Preview personal affirmation text',{exact:true}).click();await expect(page.locator('.personal-settings')).toContainText('Selected candidate B');
+ await page.getByRole('button',{name:'Confirm import and merge'}).evaluate(button=>{window.__oldImportConfirm=button;});
+ const latest={...selected,id:'custom:22222222-2222-4222-8222-222222222222',text:'Latest candidate C'};
+ await backup(page,affirmationBackup([latest],[latest.id]));await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(1);
+ await page.evaluate(()=>window.__oldImportConfirm.click());await expect(page.locator('.personal-settings')).toContainText('file selection changed');
+ expect((await state(page)).custom.map(line=>line.text)).toEqual(['Original race-test line']);
+ await page.getByRole('button',{name:'Confirm import and merge'}).click();await expect.poll(async()=>(await state(page)).custom.length).toBe(2);
+ expect((await state(page)).custom.map(line=>line.text)).toEqual(['Original race-test line','Latest candidate C']);
+});
+test('cross-tab reset and re-enable invalidate both a digest-delayed selection and an already rendered preview',async({page,context})=>{
+ await ready(page);await enable(page);await add(page,'Original reset-test line');const original=(await state(page)).custom[0];
+ await holdConflictDigest(page,'Delayed reset conflict');await backup(page,affirmationBackup([{...original,text:'Delayed reset conflict'}],[original.id]));await expect.poll(()=>page.evaluate(()=>window.__importGate.entered)).toBe(true);
+ const other=await context.newPage();await ready(other);await openPreferences(other);await other.getByText('Backup and reset',{exact:true}).click();
+ async function resetAndEnable(){other.once('dialog',d=>d.accept());await other.getByRole('button',{name:'Reset all private tracking'}).click();await other.locator('.personal-settings').getByRole('button',{name:'Enable private tracking',exact:true}).click();}
+ await resetAndEnable();await expect(page.locator('.personal-settings input[type=file]')).toHaveValue('');
+ await page.evaluate(()=>window.__importGate.release());await expect.poll(()=>page.evaluate(()=>window.__importGate.finished)).toBe(true);
+ await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(0);await expect(page.locator('.personal-settings')).not.toContainText('Delayed reset conflict');expect(await state(page)).toEqual({custom:[],favorites:[]});
+ await backup(page,affirmationBackup([original],[original.id]));await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(1);
+ await resetAndEnable();await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(0);expect(await state(page)).toEqual({custom:[],favorites:[]});await other.close();
+});
+test('legacy private backup previews and recovery bypass corrupt affirmation data; schema3 rejects before any writes',async({page})=>{
+ await ready(page);await enable(page);
+ const corruptKey=await page.evaluate(()=>{const key=`ocf-learned:v1:affirmation:${window.ocfPrivateLibrary.store.config().epoch}:line:bad`;localStorage.setItem(key,'{');return key;});
+ const record={id:'33333333-3333-4333-8333-333333333333',subject:'preparation:human-plus',markedAt:'2026-11-19T00:00:00.000Z',guide:null,recording:null,external:{edition:'legacy one',date:null}};
+ for(const schema of [1,2]){
+  const candidate={schema,records:[{...record,external:{edition:`legacy ${schema}`,date:null}}],...(schema===2?{flags:[{subject:'OCF-AUT-001',kind:'favorite'}]}:{})};
+  await backup(page,candidate);await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(1);await page.getByRole('button',{name:'Confirm import and merge'}).click();await expect(page.locator('.personal-settings')).toContainText('1 learned versions imported');
+ }
+ expect(await page.evaluate(()=>window.ocfPrivateLibrary.store.read().then(records=>records.length))).toBe(2);
+ const before=await page.evaluate(()=>JSON.stringify({...localStorage}));
+ await backup(page,{schema:3,records:[{...record,external:{edition:'must not import',date:null}}],flags:[],affirmations:{custom:[],favorites:[]}});
+ await expect(page.locator('.personal-settings')).toContainText('unreadable');await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(0);
+ expect(await page.evaluate(()=>JSON.stringify({...localStorage}))).toBe(before);expect(await page.evaluate(key=>localStorage.getItem(key),corruptKey)).toBe('{');
+});

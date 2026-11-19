@@ -9,7 +9,7 @@
   function exact(value, keys) { if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join('|') !== [...keys].sort().join('|')) fail(); }
   function line(value) {
     exact(value, ['id', 'text', 'category']);
-    if (!customId(value.id) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > MAX_TEXT || /[\u0000-\u001f\u007f]/u.test(value.text) || !Object.hasOwn(data.categories, value.category)) fail();
+    if (!customId(value.id) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > MAX_TEXT || /[\u0000-\u001f\u007f]/u.test(value.text) || typeof value.category !== 'string' || !Object.hasOwn(data.categories, value.category)) fail();
     return value;
   }
   function validate(value) {
