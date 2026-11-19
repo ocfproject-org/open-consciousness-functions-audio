@@ -3,6 +3,18 @@
   'use strict';
   const data = typeof module !== 'undefined' && module.exports ? require('./affirmations-data.js') : root.ocfAffirmationsData;
   const MAX_CUSTOM = 1500, MAX_TEXT = 500;
+  // Public records are trusted only after bounded validation; archived IDs stay resolvable.
+  function validatePublic(catalog) {
+    if (!catalog || !catalog.categories || !Array.isArray(catalog.lines) || catalog.lines.length > 2000) throw Error('Invalid public affirmation catalog.');
+    const ids=new Set(), currentText=new Set();
+    for (const item of catalog.lines) {
+      if (!item || typeof item.id!=='string' || !/^(starter:[a-z-]+:[1-9][0-9]*|public:[a-z0-9][a-z0-9-]{0,79})$/.test(item.id) || ids.has(item.id) || typeof item.category!=='string' || !Object.hasOwn(catalog.categories,item.category) || typeof item.text!=='string' || !item.text.trim() || item.text.length>1000 || /[\u0000-\u001f\u007f]/u.test(item.text) || (item.archived!==undefined && typeof item.archived!=='boolean') || (item.subtopic!==undefined && (typeof item.subtopic!=='string' || !item.subtopic.trim() || item.subtopic.length>80)) || Object.keys(item).some(key=>!['id','category','text','archived','subtopic'].includes(key))) throw Error('Invalid public affirmation record.');
+      ids.add(item.id);
+      if (!item.archived) { if(currentText.has(item.text))throw Error('Duplicate current public affirmation.');currentText.add(item.text); }
+    }
+    return catalog;
+  }
+  validatePublic(data);
   const starterIds = new Set(data.lines.map(line => line.id));
   const MAX_STORED = MAX_CUSTOM * 2 + starterIds.size;
   const customId = id => typeof id === 'string' && /^custom:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
@@ -42,7 +54,7 @@
     const result = {custom: [...custom.values()], favorites: [...new Set([...existing.favorites, ...incoming.favorites.map(id => remap.get(id) || id)])]};
     validate(result); return result;
   }
-  const api = {data, MAX_CUSTOM, MAX_STORED, MAX_TEXT, starterIds, customId, line, validate, empty, same, merge};
+  const api = {data, validatePublic, MAX_CUSTOM, MAX_STORED, MAX_TEXT, starterIds, customId, line, validate, empty, same, merge};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ocfAffirmationsState = api;
 })(globalThis);
