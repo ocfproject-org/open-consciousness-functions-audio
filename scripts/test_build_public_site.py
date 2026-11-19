@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import io
+import json
 import re
 import sys
 import tempfile
@@ -322,6 +323,30 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn("320 kbps", page)
         self.assertNotIn("MP3 · MP3", page)
         self.assertNotIn("FLAC · flac", page)
+
+    def test_download_search_uses_separate_escaped_title_and_current_cues(self):
+        from html import unescape
+        title = 'Manifest & "Explore"'
+        function = {
+            "function_id": "OCF-EXP-001", "description": {"text": "Choose an intention."},
+            "commands": [
+                {"spoken_cue": 'Plus Manifest & "Explore"', "command_status": "active", "spoken_status": "reviewed"},
+                {"spoken_cue": "Old cue", "command_status": "retired", "spoken_status": "reviewed"},
+                {"spoken_cue": "Draft cue", "command_status": "active", "spoken_status": "draft"},
+            ], "categories": [{"id": "experimental", "label": "experimental"}],
+        }
+        page = _downloads_page({"releases": [{"version": "0.2.0", "release_url": "https://example.test/release",
+            "functions": [{"function_id": "OCF-EXP-001", "title": title,
+                           "sessions": [{"title": title, "assets": []}]}]}]}, [], [function])
+        self.assertIn('data-download-title="Manifest &amp; &quot;Explore&quot;"', page)
+        self.assertIn('Spoken cue: Plus Manifest &amp; &quot;Explore&quot;', page)
+        cues = re.search(r'data-download-cues="([^"]*)"', page).group(1)
+        self.assertEqual(json.loads(unescape(cues)), ['Plus Manifest & "Explore"'])
+        self.assertNotIn("Old cue", page)
+        self.assertNotIn("Draft cue", page)
+        self.assertIn("Choose an intention.", page)
+        self.assertLess(page.index('id="download-count"'), page.index('data-download-intro'))
+        self.assertLess(page.index('data-download-intro'), page.index('id="download-results"'))
 
     def test_shell_navigation_keeps_routes_and_marks_current_location(self):
         page = _shell("Function list", "<p>Directory</p>", "functions", "a" * 40)

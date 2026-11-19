@@ -15,6 +15,38 @@
     const voiceMatches = !voice || (node.dataset.voice || '').split('|').includes(voice);
     return categoryMatches && audioMatches && languageMatches && voiceMatches && (!terms || normalize(node.dataset.search).includes(terms));
   };
+  // Downloads only: retain all direct matches, then offer bounded typo fallback.
+  const normalizeCue = value => normalize(value).replace(/^plus\s+/, '');
+  const editDistance = (left, right) => {
+    const rows = Array.from({length: left.length + 1}, (_, i) => [i]);
+    for (let j = 1; j <= right.length; j++) rows[0][j] = j;
+    for (let i = 1; i <= left.length; i++) for (let j = 1; j <= right.length; j++) {
+      rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && left[i - 1] === right[j - 2] && left[i - 2] === right[j - 1]) rows[i][j] = Math.min(rows[i][j], rows[i - 2][j - 2] + 1);
+    }
+    return rows[left.length][right.length];
+  };
+  const rankDownloads = (cards, query) => {
+    const term = normalize(query), cueTerm = normalizeCue(query);
+    if (!term) return {matches: [...cards], fuzzy: false};
+    const rows = cards.map((card, index) => {
+      const title = normalize(card.dataset.downloadTitle);
+      const cues = JSON.parse(card.dataset.downloadCues || '[]').map(normalizeCue);
+      let rank = Infinity;
+      if (title === term || (cueTerm && cues.includes(cueTerm))) rank = 0;
+      else if (title.startsWith(term) || (cueTerm && cues.some(cue => cue.startsWith(cueTerm)))) rank = 1;
+      else if (title.includes(term) || (cueTerm && cues.some(cue => cue.includes(cueTerm)))) rank = 2;
+      else if (normalize(card.dataset.downloadSearch).includes(term)) rank = 3;
+      return {card, index, rank, primary: [title, ...cues]};
+    });
+    const direct = rows.filter(row => Number.isFinite(row.rank));
+    if (direct.length) return {matches: direct.sort((a, b) => a.rank - b.rank || a.index - b.index).map(row => row.card), fuzzy: false};
+    if (cueTerm.length < 4 || cueTerm.length > 64) return {matches: [], fuzzy: false};
+    const threshold = cueTerm.length >= 8 ? 2 : 1;
+    const close = rows.map(row => ({...row, distance: Math.min(...row.primary.filter(value => Math.abs(value.length - cueTerm.length) <= threshold).map(value => editDistance(value, cueTerm)))}))
+      .filter(row => row.distance <= threshold).sort((a, b) => a.distance - b.distance || a.index - b.index);
+    return {matches: close.map(row => row.card), fuzzy: close.length > 0};
+  };
   const safeTranscript = (value, currentURL) => {
     try {
       const url = new URL(value, currentURL);
@@ -35,7 +67,7 @@
     }
     if (cursor < text.length) pre.append(document.createTextNode(text.slice(cursor)));
   };
-  if (typeof module !== 'undefined') module.exports = {normalize, matches, safeTranscript, highlight};
+  if (typeof module !== 'undefined') module.exports = {normalize, matches, safeTranscript, highlight, normalizeCue, rankDownloads};
   if (typeof document === 'undefined') return;
 
   document.querySelectorAll('[data-no-script-note]').forEach(note => { note.hidden = true; });
@@ -308,6 +340,9 @@
     const cards = [...document.querySelectorAll('[data-download-card]')];
     const more = document.getElementById('downloads-more');
     const count = document.getElementById('download-count');
+    const clear = document.getElementById('download-clear');
+    const directory = document.getElementById('download-results');
+    const intro = document.querySelector('[data-download-intro]');
     const storageKey = 'ocf-downloads-view:v1';
     let limit = 12;
     let identity = '';
@@ -326,17 +361,26 @@
       if (identity && identity !== nextIdentity) limit = 12;
       identity = nextIdentity;
       const query = normalize(downloadSearch.value);
-      const matches = cards.filter(card => card.dataset.edition === edition && JSON.parse(card.dataset.formatSession).includes(format) && normalize(card.dataset.downloadSearch).includes(query));
+      const ranked = rankDownloads(cards.filter(card => card.dataset.edition === edition && JSON.parse(card.dataset.formatSession).includes(format)), downloadSearch.value);
+      const matches = ranked.matches;
+      const matched = new Set(matches);
+      const order = [...matches, ...cards.filter(card => !matched.has(card))];
+      const focused = document.activeElement;
+      order.forEach((card, index) => { if (directory.children[index] !== card) directory.insertBefore(card, directory.children[index] || null); });
       const visible = new Set(matches.slice(0, limit));
       cards.forEach(card => { card.hidden = !visible.has(card); });
+      if (focused && focused !== document.body && focused.isConnected && !focused.closest('[hidden]') && document.activeElement !== focused) focused.focus({preventScroll: true});
+      intro.hidden = Boolean(query);
+      clear.disabled = !downloadSearch.value;
       more.hidden = matches.length <= limit;
-      count.textContent = `${visible.size} of ${matches.length} sessions · ${format.toUpperCase()} · Edition ${edition}${matches.length ? '' : ' — No matching downloads.'}`;
+      count.textContent = `${visible.size} of ${matches.length} sessions · ${format.toUpperCase()} · Edition ${edition}${matches.length ? (ranked.fuzzy ? ' — No direct matches; showing close title or cue matches.' : '') : ' — No matching downloads.'}`;
       try { sessionStorage.setItem(storageKey, JSON.stringify({query: downloadSearch.value, limit, identity})); } catch (_) { /* No storage required to search. */ }
       return matches;
     };
     restore();
     document.querySelector('.download-tools').hidden = false;
     downloadSearch.addEventListener('input', () => { limit = 12; render(); });
+    clear.addEventListener('click', () => { downloadSearch.value = ''; limit = 12; render(); downloadSearch.focus({preventScroll: true}); });
     more.addEventListener('click', () => { const firstNew = limit; limit += 12; const matches = render(); matches[firstNew]?.querySelector('h2 a')?.focus(); });
     document.addEventListener('ocf-edition-change', render);
     window.addEventListener('pageshow', () => { restore(); render(); });

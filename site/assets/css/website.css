@@ -476,3 +476,9 @@ body:has(#preferences[open]) { overflow: hidden; }
 @media print { .chain-directory, .chain-learning-links { display: none; } }
 /* Complete fragment navigation before reload/Back can interrupt smooth scrolling. */
 html:has(:target) { scroll-behavior: auto; }
+
+/* Downloads search controls stay ahead of optional introductory copy. */
+.download-search-row { display: flex; gap: .5rem; align-items: center; }
+.download-search-row #download-search { flex: 1; min-width: 0; }
+#download-clear { flex: none; min-height: 44px; }
+.download-cues { margin: .25rem 0 0; font-size: .9rem; }
