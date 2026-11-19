@@ -215,3 +215,14 @@ is available; changing edition or format resets the visible subset. Without Java
 all latest-edition files remain available, with historical release access unchanged.
 Release notes and file metadata/checksums use native disclosures. Search and
 preferences never fetch audio or change the immutable file targets.
+
+### Function Chains discovery
+
+The Function Chains directory groups the existing seventeen titles under the
+page's introductory themes (Learning, Daily life, Rest, Reflection). This is
+presentation metadata, not a new function registry or a new suggested sequence.
+Search and goal selection narrow only directory cards. Every original section,
+ordered step, paragraph, cue and deep-link anchor remains available below the
+directory, including without JavaScript. Separate native disclosures link each
+existing step to its function's listening and use-instruction anchors; they do
+not activate a cue or start audio. The legacy route remains unchanged.

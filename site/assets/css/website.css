@@ -456,3 +456,21 @@ body:has(#preferences[open]) { overflow: hidden; }
   .docs-main { padding-top: 1.25rem; }
 }
 @media print { #preferences, [data-preferences-open], .audio-preferences-context, .download-tools, #downloads-more { display: none !important; } }
+
+/* Function Chains directory; original sequences stay fully available below it. */
+.chain-directory { margin: 2rem 0; }
+.chain-directory-tools { display: grid; gap: .5rem; max-width: 38rem; }
+.chain-directory-tools input { min-height: 44px; padding: .6rem; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
+.chain-directory-tools button { justify-self: start; min-height: 44px; }
+.chain-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .75rem; }
+.chain-card { border: 1px solid var(--line); background: var(--card); border-radius: .35rem; padding: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.chain-card h4 { font-size: 1.15rem; margin: 0 0 .5rem; }
+.chain-card p { font-size: .9rem; margin: .5rem 0; }
+.chain-card > a { display: inline-block; min-height: 44px; padding: .5rem 0; }
+.chain-section { margin: 2rem 0; }
+.chain-learning-links { border-top: 1px solid var(--line); padding-top: .5rem; }
+.chain-learning-links summary { min-height: 44px; cursor: pointer; }
+.chain-step-links { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem 1rem; padding: .3rem 0; }
+.chain-step-links span { flex: 1 1 10rem; }
+.chain-step-links a { display: inline-block; min-height: 44px; padding: .5rem 0; }
+@media print { .chain-directory, .chain-learning-links { display: none; } }

@@ -1811,7 +1811,8 @@ test('approved function chains are discoverable, optional, accessible and retain
     await expect(page.locator('main ol').nth(16).locator('a')).toHaveText(['Nutricia', 'Appetite Choice', 'Habit Freedom', 'Detox']);
     await expect(page.locator('main ol').nth(16).locator('.chain-spoken-cue')).toHaveText(['(Plus Food Less)', '(Plus Satisfied)', '(Plus Free This Habit)', '(Plus Detox)']);
     await expect(page.locator('main ol li .chain-spoken-cue')).toHaveCount(69);
-    await expect(page.locator('main button')).toHaveCount(0);
+    await expect(page.locator('.chain-original button')).toHaveCount(0);
+    await expect(page.locator('.chain-directory button')).toHaveCount(1);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await noAxeViolations(page);
