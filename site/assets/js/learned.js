@@ -104,11 +104,11 @@
   class Store {
     constructor(storage, subjects) { this.storage = storage; this.subjects = subjects; this.memory = new Map(); this.warning = ''; this.blocked = false; }
     fallback() { this.storage = null; this.warning = 'Changes are only in memory and will be lost when you leave this page. Browser storage is unavailable; saved data in other tabs may differ.'; }
-    config() {
+    config(includeManual = false) {
       let raw;
       try { raw = this.storage ? this.storage.getItem(KEY) : this.memory.get(KEY); } catch (_) { this.fallback(); raw = this.memory.get(KEY); }
       if (!raw) { this.blocked = false; return null; }
-      try { const value = JSON.parse(raw); object(value, ['schema', 'epoch']); if (value.schema !== 1) fail(); uuid(value.epoch); this.blocked = false; return value; }
+      try { const value = JSON.parse(raw); const scoped=Object.hasOwn(value||{},'manualOnly'); object(value, scoped?['schema','epoch','manualOnly']:['schema','epoch']); if (value.schema !== 1 || (scoped && value.manualOnly !== true)) fail(); uuid(value.epoch); this.blocked = false; return scoped&&!includeManual?null:value; }
       catch (_) { this.blocked = true; this.warning = 'Stored learned settings are unsupported or corrupt. They have not been overwritten. Export any readable records before deliberately resetting.'; return null; }
     }
     put(key, value) {
@@ -116,8 +116,25 @@
       this.memory.set(key, value);
     }
     enable() {
+      const current=this.config(true);
       if (this.blocked) throw new Error('Reset unsupported settings before enabling tracking.');
-      if (!this.config()) this.put(KEY, JSON.stringify({schema: 1, epoch: globalThis.crypto.randomUUID()}));
+      // Explicitly enabling the other tools adopts an existing affirmation epoch.
+      if (!current || current.manualOnly) this.put(KEY, JSON.stringify({schema:1,epoch:current?.epoch||globalThis.crypto.randomUUID()}));
+    }
+    manualConfig() { return this.config(true); }
+    affirmationConfig() { return this.manualConfig(); }
+    enableAffirmations() { return this.enableManual(); }
+    enableManual() {
+      const current=this.affirmationConfig();
+      if(this.blocked)throw Error('Saved local settings are unreadable. They were not overwritten; use Preferences to recover or deliberately reset them.');
+      if(!current)this.put(KEY,JSON.stringify({schema:1,epoch:globalThis.crypto.randomUUID(),manualOnly:true}));
+      return this.affirmationConfig();
+    }
+    chooseAffirmationFavorite(id,on) {
+      const current=this.readAffirmations();
+      if(!affirmations.starterIds.has(id)&&!current.custom.some(item=>item.id===id))throw Error('This affirmation is no longer saved.');
+      const config=this.enableAffirmations();
+      this.favoriteAffirmation(id,on,config.epoch);
     }
     async read() {
       const config = this.config(); if (!config) return [];
@@ -244,7 +261,7 @@
     }
     readRoutine() {
       this.routineBlocked=false;
-      const config=this.config();if(!config)return {revision:null,rows:[]};
+      const config=this.manualConfig();if(!config)return {revision:null,rows:[]};
       const key=`${KEY}:routine:${config.epoch}`;let raw;
       try{raw=this.storage?this.storage.getItem(key):this.memory.get(key);if(this.storage){this.memory.set(KEY,JSON.stringify(config));if(raw)this.memory.set(key,raw);else this.memory.delete(key);}}
       catch(_){this.fallback();raw=this.memory.get(key);}
@@ -254,8 +271,15 @@
     }
     routineContext(epoch){
       if(this.routineBlocked)throw Error('Saved morning routine is unreadable; it has not been overwritten.');
-      if(!epoch||this.config()?.epoch!==epoch)throw Error('Private tracking changed. Reopen the routine or preview the backup again.');
+      if(!epoch||this.manualConfig()?.epoch!==epoch)throw Error('Saved local data changed. Reopen the routine or preview the backup again.');
       return `${KEY}:routine:${epoch}`;
+    }
+    async saveRoutineIntent(rows,previous,expectedEpoch){
+      await routine.verify(rows,this.subjects,validateRecord);
+      if((this.manualConfig()?.epoch??null)!==expectedEpoch)throw Error('Saved local data changed. Reopen the routine before saving.');
+      if(!expectedEpoch&&!rows.length)return false;
+      const epoch=expectedEpoch||this.enableManual().epoch;
+      await this.saveRoutine(rows,previous,epoch);return true;
     }
     async saveRoutine(rows,previous,epoch){
       await routine.verify(rows,this.subjects,validateRecord);
@@ -271,7 +295,7 @@
     }
     readAffirmations() {
       this.affirmationsBlocked=false;
-      const config = this.config(); if (!config) return affirmations.empty();
+      const config = this.affirmationConfig(); if (!config) return affirmations.empty();
       const prefix = `${KEY}:affirmation:${config.epoch}:`;
       let entries;
       try {
@@ -294,9 +318,9 @@
       return result;
     }
     affirmationContext(epoch) {
-      const config=this.config();
+      const config=this.affirmationConfig();
       if(this.affirmationsBlocked) throw Error('Some saved affirmation data is unreadable. Export readable data and deliberately reset before saving; nothing unreadable has been overwritten.');
-      if(!config || config.epoch!==epoch) throw Error('Private tracking changed in another tab. Review before saving.');
+      if(!config || config.epoch!==epoch) throw Error('Saved local data changed in another tab. Review before saving.');
       return `${KEY}:affirmation:${epoch}:`;
     }
     removeKey(key) {
@@ -501,13 +525,13 @@
     }
     const manage=node('details',undefined,settings);node('summary','Backup and reset',manage);
     button('Export private backup',manage,()=>act(async()=>{
-      const epoch=store.config()?.epoch??null;
+      const epoch=store.affirmationConfig()?.epoch??null;
       const payload=JSON.stringify({schema:4,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2);
       const blob=new Blob([payload],{type:'application/json'});
       if(blob.size>LIMIT)throw new Error('Private backup exceeds the 2 MiB import limit. Nothing was downloaded or changed. Your data remains in this browser; a smaller scoped export is required, which this build does not provide.');
       // Offer only a file accepted by this same importer, including every scope.
       await parsePersonalBackup(payload,data.subjects);
-      if(epoch!==(store.config()?.epoch??null))throw new Error('Private tracking changed while preparing the backup. Nothing was downloaded; review and export again.');
+      if(epoch!==(store.affirmationConfig()?.epoch??null))throw new Error('Saved local data changed while preparing the backup. Nothing was downloaded; review and export again.');
       const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
     }));
     node('p',`Up to ${affirmations.MAX_CUSTOM} custom lines with existing category IDs. The complete backup file must be at most 2 MiB to import; long text and other private records also use that space.`,manage);
@@ -614,7 +638,7 @@
       if(modal.open&&!pendingEpoch&&enabled)pendingEpoch=store.config().epoch;
       const text=[message,store.warning].filter(Boolean).join(' ');
       notice.textContent=text;notice.hidden=!text;
-      settingsNotice.textContent=[text,enabled?(store.storage?'Private tracking enabled in this browser.':'Enabled for this page only; not persisted.'):'Tracking is off. Enable explicitly before saving.'].filter(Boolean).join(' ');
+      settingsNotice.textContent=[text,enabled?(store.storage?'Private tracking enabled in this browser.':'Enabled for this page only; not persisted.'):store.affirmationConfig()?'Affirmations and routine cues are saved only when you choose. Function learning controls remain off.':'Tracking is off. Enable explicitly before saving.'].filter(Boolean).join(' ');
       if(modal.open)modalNotice.textContent=text||(!enabled?'Tracking is off. Enable and review before saving.':'Nothing changes until you save.');
       counts.textContent=`${new Set(records.filter(r=>r.subject.startsWith('OCF-')).map(r=>r.subject)).size} learned functions · ${flags.filter(f=>f.kind==='favorite').length} favorites · ${flags.filter(f=>f.kind==='todo').length} to do · ${store.readAffirmations().custom.length} custom affirmations · ${store.readAffirmations().favorites.length} My Morning favorites`;
       const focused=document.activeElement;

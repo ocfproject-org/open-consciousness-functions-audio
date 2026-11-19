@@ -28,3 +28,9 @@
 .affirmation-filters label:first-child { flex-basis: 100%; }
 .affirmation-filters label:nth-child(2) { flex: 1 1 12rem; }
 .affirmation-filters > button { align-self: end; }
+
+.affirmation-category-filter { border: 0; background: transparent; color: inherit; padding: .2rem 0; font: inherit; text-decoration: underline; text-align: left; max-width: 100%; cursor: pointer; }
+
+.morning-affirmation-list { max-width: 42rem; margin-inline: auto; }
+.morning-affirmation { margin-block: 1.5rem 2rem; overflow-wrap: anywhere; }
+.morning-affirmation .affirmation-text { white-space: pre-wrap; }

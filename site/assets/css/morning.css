@@ -6,7 +6,7 @@
 .routine-editor {margin-block:1rem}
 .routine-editor summary {min-height:44px;cursor:pointer;padding-block:.6rem}
 .routine-editor label {display:block;margin-block:.7rem}
-.routine-editor select,.routine-editor textarea {width:100%;max-width:100%;min-height:44px;font:inherit}
+.routine-editor select,.routine-editor textarea,.routine-editor input[type="search"] {width:100%;max-width:100%;min-height:44px;font:inherit}
 .routine-editor select {white-space:normal;overflow-wrap:anywhere}
 .routine-editor textarea {min-height:5rem}
 .routine-editor button {min-width:44px;min-height:44px;margin-block:.3rem}
@@ -16,3 +16,5 @@
 
 .routine-provenance summary {font-size:.85rem;min-height:44px;padding-block:.5rem;cursor:pointer}
 .routine-provenance {overflow-wrap:anywhere}
+
+.routine-cue { white-space: pre-wrap; }

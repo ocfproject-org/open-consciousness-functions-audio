@@ -104,3 +104,23 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  scaled.validate({custom:[],favorites:fixture.lines.map(x=>x.id)});
  console.log('Public catalog: 743 current +36 archived IDs, strict validation, duplicate prevention and expanded favorite bounds passed.');
 }
+
+(async()=>{
+ const storage=new Storage(),store=new Store(storage,{}),id=model.data.lines[0].id;
+ assert.equal(store.config(),null);store.readAffirmations();store.readRoutine();await store.read();assert.equal(storage.writes,0);
+ store.chooseAffirmationFavorite(id,true);const epoch=store.manualConfig().epoch;
+ assert.equal(store.config(),null);assert.deepEqual(await store.read(),[]);assert.deepEqual(store.readFlags(),[]);
+ assert.deepEqual(new Store(storage,{}).readAffirmations().favorites,[id]);
+ store.chooseAffirmationFavorite(id,false);store.chooseAffirmationFavorite(id,true);
+ const multiline={id:'custom:'+crypto.randomUUID(),text:'Synthetic first line\nSecond line — 東京',category:'calm'};
+ store.saveCustom(multiline,null,epoch);assert.deepEqual(store.readAffirmations().custom,[multiline]);
+ await store.saveRoutineIntent([{id:crypto.randomUUID(),kind:'custom',text:'  Preserve exact spaces  '}],store.readRoutine(),epoch);
+ const before=store.readRoutine();store.enable();assert.equal(store.config().epoch,epoch);assert.deepEqual(store.readRoutine(),before);assert.deepEqual(store.readAffirmations().custom,[multiline]);
+ const backup=await parsePersonalBackup(JSON.stringify({schema:4,records:[],flags:[],affirmations:store.readAffirmations(),routine:before.rows}),{});
+ const fresh=new Store(new Storage(),{});fresh.enable();await fresh.mergePersonal(backup,fresh.config().epoch);assert.deepEqual(fresh.readRoutine().rows,before.rows);assert.deepEqual(fresh.readAffirmations(),store.readAffirmations());
+ store.reset();await assert.rejects(store.saveRoutineIntent(before.rows,{revision:null,rows:[]},epoch),/changed/);
+ const emptyStorage=new Storage(),empty=new Store(emptyStorage,{});assert.equal(await empty.saveRoutineIntent([],empty.readRoutine(),null),false);assert.equal(emptyStorage.writes,0);
+ const corrupt=new Storage();corrupt.setItem(KEY,'{');const bad=new Store(corrupt,{});assert.throws(()=>bad.chooseAffirmationFavorite(id,true),/unreadable/);assert.equal(corrupt.getItem(KEY),'{');
+ const quota=new Storage(),memory=new Store(quota,{});quota.setItem=()=>{throw Error('quota');};memory.chooseAffirmationFavorite(id,true);assert.equal(memory.storage,null);assert.match(memory.warning,/only in memory/);assert.deepEqual(memory.readAffirmations().favorites,[id]);assert.equal(memory.config(),null);
+ console.log('Manual scope: no passive writes, heart/reload/promotion, exact routine text, multiline backup, stale reset and blocked storage passed.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

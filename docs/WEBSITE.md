@@ -257,16 +257,23 @@ instructions. `/my-morning/` is a bookmarkable reading view of only the current
 browser's favorites. Neither route includes personal text or state in its URL.
 No reminders, notifications, account, upload or analytics are added.
 
-Saving a heart or a custom line requires explicit private-tracking opt-in. Custom
-lines have stable random IDs, an existing category and at most 500 characters;
-there may be up to 200 custom lines. Edit and remove are deliberate actions.
+A deliberate heart tap saves directly in this browser, including on a fresh device.
+Custom Save and routine Save also need no tracking toggle. Browsing, opening an
+editor and canceling create no personal records. These actions initialize a
+manual-only epoch; they do not enable function Learned/Favorite/To Do controls.
+Existing enabled epochs are preserved. Explicitly enabling those other tools in
+Preferences adopts the same epoch without losing manual saves. The optional
+local config field is not understood by older already-open builds: reload those
+tabs before using the new saves. Legacy configs and backup schemas remain accepted.
+Custom lines have stable random IDs, an existing category and at most 500 characters
+(including preserved line breaks); there may be up to 1,500. Edit and remove are deliberate actions.
 Imported text is displayed as text, never inserted as HTML or activated as a URL.
 Browser storage is not encrypted; other people using that browser can read it.
 Clearing site data removes it. Storage failure switches to clearly warned,
 page-only memory, which can still be exported before leaving.
 
-The main Preferences panel's **private backup** now exports schema 3:
-`{schema, records, flags, affirmations: {custom, favorites}}`. Custom entries contain
+The main Preferences panel's **private backup** exports schema 4:
+`{schema, records, flags, affirmations: {custom, favorites}, routine}`. Custom entries contain
 only `{id, text, category}`; favorite entries are stable starter or custom IDs.
 These files may contain personal text. The independent site-settings backup
 continues to contain only theme, edition and format; it never includes affirmations
@@ -285,7 +292,16 @@ Tests: `node scripts/test_affirmations.js` exercises the private data model;
 `browser-tests/affirmations.spec.js` uses only synthetic personal data for CRUD,
 imports, compatibility, storage failures, cross-tab behavior, keyboard, reflow,
 accessibility and screenshots. Production user progress must not be read or used
-for tests. Public builds contain only starter prompts and empty page shells.
+for tests. Public builds contain the approved public library and empty personal page shells.
+
+Category labels are buttons applying only that category; they preserve search and
+collection selection, announce the count and focus it after replacing results.
+My Morning defaults to a single-column text-only affirmation reading list with
+preserved order and line breaks. Manage favorites reveals existing controls; it
+does not change the saved set. Private backup export works in manual-only mode.
+Import still requires the existing explicit Preferences enable action because a
+backup can also restore learned records and function flags; import preview,
+confirmation and reset safeguards are unchanged.
 
 Import selection is bound to its tracking epoch and generation before any file or
 cryptographic awaits. Only a still-current selection can render a preview; its
@@ -301,7 +317,7 @@ and retains readable existing marks for export. No unrelated records are deleted
 
 ### Private My Morning activation routine
 
-My Morning has a voluntary, ordered, browser-local routine (up to 50 cues and 1 MiB of routine snapshots). The collapsed editor offers explicit Favorite/current-guide and Learned/saved-guide choices, plus custom text (500 characters), reorder, remove, Save and Cancel. Only active activation and alternate-mode command identities are eligible; retrieval, release, historical and unknown commands are not offered. Existing snapshots without a supported command never receive a replacement. Saved cues keep their guide commit, locale, fingerprint, command ID and snapshot; recording metadata is deliberately not evidence of cue equivalence. Imported snapshot text remains an unverified personal claim. Unavailable commands retain their saved entry but do not display an inactive cue. Global audio choices do not rewrite the routine.
+My Morning has a voluntary, ordered, browser-local routine (up to 50 cues and 1 MiB of routine snapshots). The collapsed editor searches all eligible current-guide cues by function name or cue text, without requiring Favorite or Learned marks. Favorite/current-guide and Learned/saved-guide groups appear first when available. Custom text (500 characters), visible Move up/Move down, remove, Save and Cancel remain available. Reordering never rewrites cue text; the saved reading order and exact snapshots round-trip in backups. Selection alone does not save, mark a function or start audio. Only active activation and alternate-mode command identities are eligible; retrieval, release, historical and unknown commands are not offered. Existing snapshots without a supported command never receive a replacement. Saved cues keep their guide commit, locale, fingerprint, command ID and snapshot; recording metadata is deliberately not evidence of cue equivalence. Imported snapshot text remains an unverified personal claim. Unavailable commands retain their saved entry but do not display an inactive cue. Global audio choices do not rewrite the routine.
 
 Private backup schema 4 adds `routine` alongside existing learned, flags and affirmation scopes. Schemas 1–3 remain accepted and leave routines unchanged. A preview precedes explicit import; existing order is retained and incoming new rows append in backup order. Stable conflicting IDs become deterministic copies. Validation/preflight occurs before unrelated writes; interruptions after another scope was added report counts rather than claiming an all-or-nothing import. The routine itself writes rows/order atomically as one epoch-scoped value. Web Locks serialize supported-browser routine writes, with revision checks for stale editors; older browsers retain revision checking but cannot provide cross-tab compare-and-swap guarantees. Corrupt data is not overwritten. Quota/blocked storage falls back to explicit page-only memory; reset invalidates epochs. Settings-only exports, URLs, generated assets, analytics and network writes never contain routine state. No completion tracking, alarms, autoplay or automatic activation are added.
 
