@@ -2104,7 +2104,7 @@ def _chains_redirect_page(source_commit):
                         '<script src="../assets/js/chains-redirect.js" defer></script></head>')
 
 
-def _function_chains_page(markdown, functions):
+def _chain_spoken_cues(markdown, functions):
     """Show current spoken cues from the same pinned source as function pages."""
     by_id = {function["function_id"]: function for function in functions}
     selected_commands = {"OCF-BOD-010": "OCF-CMD-BOD-010-FOOD-LESS"}
@@ -2126,6 +2126,64 @@ def _function_chains_page(markdown, functions):
 
     return re.sub(r'<a href="\.\./functions/(OCF-[A-Z]{3}-[0-9]{3})/">[^<]+</a>',
                   with_cue, render_markdown(markdown))
+
+
+def _function_chains_page(markdown, functions):
+    rendered = _chain_spoken_cues(markdown, functions)
+    # Presentation groups reuse the page's own introductory themes. Original
+    # sections remain intact and in order; filtering only narrows the directory.
+    goals = {
+        "Learning": {"Learning", "Daily learning"},
+        "Daily life": {"Performance", "Communication", "Morning", "Work", "Habits",
+                       "Action", "Physical maintenance", "Weight management"},
+        "Rest": {"Recovery", "Sleep preparation", "Dreams"},
+        "Reflection": {"Emotional reset", "Decision", "Problem-solving", "Evening problem-solving"},
+    }
+    cards = {goal: [] for goal in goals}
+    seen = []
+
+    def present(match):
+        anchor, title, body = match.group(1), match.group(2), match.group(3)
+        goal = next((goal for goal, titles in goals.items() if title in titles), None)
+        if goal is None:
+            return match.group(0)
+        seen.append(title)
+        sequence = re.search(r"<p>(.*?)</p>", body, re.S)
+        _require(sequence is not None, f"chain needs its existing sequence: {title}")
+        sequence = sequence.group(1)
+        cards[goal].append(
+            f'<article class="chain-card" data-chain-card data-chain-goal="{_html(goal)}" '
+            f'data-chain-search="{_html(title + " " + re.sub(r"<[^>]+>", "", sequence))}">'
+            f'<h4><a href="#{anchor}">{title}</a></h4><p>{sequence}</p>'
+            f'<a href="#{anchor}" aria-label="View steps: {title}">View steps</a></article>')
+        ordered = re.search(r"<ol>(.*?)</ol>", body, re.S)
+        _require(ordered is not None, f"chain needs its existing ordered steps: {title}")
+        actions = []
+        for fid, name in re.findall(r'<a href="\.\./functions/(OCF-[A-Z]{3}-[0-9]{3})/">([^<]+)</a>', ordered.group(1)):
+            actions.append(f'<div class="chain-step-links"><span>{name}</span> '
+                           f'<a href="../functions/{fid}/#listening" aria-label="Learn audio: {name}">Learn audio</a> '
+                           f'<a href="../functions/{fid}/#cues" aria-label="Use guide: {name}">Use guide</a></div>')
+        return (f'<section class="chain-section"><div class="chain-original">{match.group(0)}</div>'
+                f'<details class="chain-learning-links"><summary>Learn or use each step in {title}</summary>'
+                + ''.join(actions) + '</details></section>')
+
+    sections = re.sub(r'<h2 id="([^"]+)">([^<]+)</h2>(.*?)(?=<h2|$)', present, rendered, flags=re.S)
+    _require(len(seen) == 17 and set(seen) == set().union(*goals.values()),
+             "chain discovery must preserve exactly the seventeen documented chains")
+    groups = ''.join(f'<section class="chain-directory-group" data-chain-group><h3>{goal}</h3>'
+                     f'<div class="chain-card-grid">{"".join(items)}</div></section>'
+                     for goal, items in cards.items())
+    controls = ('<div class="chain-directory-tools" hidden><label for="chain-goal">Goal group</label>'
+                '<select id="chain-goal"><option value="">All groups</option>'
+                + ''.join(f'<option>{goal}</option>' for goal in goals) + '</select>'
+                '<label for="chain-search">Find a chain or function</label><input id="chain-search" type="search">'
+                '<button id="chain-clear" type="button">Clear chain filters</button>'
+                '<p id="chain-count" role="status" aria-live="polite"></p></div>')
+    directory = ('<section class="chain-directory" aria-labelledby="chain-directory-title">'
+                 '<h2 id="chain-directory-title">Find a chain</h2>'
+                 '<p>These are optional examples, not required activation sequences. Choose a chain to view its complete steps.</p>'
+                 + controls + groups + '</section>')
+    return sections.replace('<section class="chain-section">', directory + '<section class="chain-section">', 1) + '<script src="../assets/js/chains.js" defer></script>'
 
 
 def _relationships_page(functions):

@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import io
+import re
 import sys
 import tempfile
 import unittest
@@ -33,6 +34,7 @@ from build_public_site import (
     _quick_reference,
     _relationships_page,
     _function_chains_page,
+    _chain_spoken_cues,
     _chains_redirect_page,
     _recommended_settings,
     _shell,
@@ -189,13 +191,33 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn("function-chains/", (Path(__file__).resolve().parents[1] / "docs/website/start-here.md").read_text())
 
 
+    def test_chain_directory_keeps_all_original_sections_verbatim(self):
+        source = (Path(__file__).parents[1] / "docs/website/function-chains.md").read_text()
+        ids = set(re.findall(r"OCF-[A-Z]{3}-[0-9]{3}", source))
+        functions = [{"function_id": fid, "commands": [{"command_status": "active",
+                      "designation": "primary", "spoken_cue": "Fixture cue",
+                      "command_id": "OCF-CMD-BOD-010-FOOD-LESS" if fid == "OCF-BOD-010" else fid}]}
+                     for fid in ids]
+        enhanced = _function_chains_page(source, functions)
+        originals = re.findall(r'<div class="chain-original">(.*?)</div>', enhanced, re.S)
+        expected = [match.group(0) for match in re.finditer(
+            r'<h2 id="[^"]+">[^<]+</h2>(.*?)(?=<h2|$)', render_markdown(source), re.S)
+                    if '<ol>' in match.group(1)]
+        self.assertEqual(len(originals), 17)
+        self.assertEqual([re.sub(r' <span class="chain-spoken-cue">.*?</span>', '', block)
+                          for block in originals], expected)
+        self.assertEqual(enhanced.count('data-chain-card '), 17)
+        self.assertIn('aria-label="Use guide: Sleep"', enhanced)
+        self.assertIn('href="../functions/OCF-SLP-002/#cues"', enhanced)
+        self.assertIn('href="../functions/OCF-SLP-002/#listening"', enhanced)
+
     def test_chain_cues_use_active_pinned_spoken_text_and_explicit_food_less(self):
         functions = [{"function_id": "OCF-BOD-010", "commands": [
             {"command_id": "OCF-CMD-BOD-010-PRIMARY", "designation": "primary", "command_status": "active", "spoken_cue": "Plus Food More"},
             {"command_id": "OCF-CMD-BOD-010-FOOD-LESS", "designation": "secondary", "command_status": "active", "spoken_cue": "Plus Food Less"},
         ]}]
         source = "1. [Nutricia](../functions/OCF-BOD-010/) — A selected mode."
-        html = _function_chains_page(source, functions)
+        html = _chain_spoken_cues(source, functions)
         self.assertEqual(html.count("Plus Food Less"), 1)
         self.assertNotIn("Plus Food More", html)
         self.assertNotIn("button", html)
@@ -203,19 +225,19 @@ class PublicSiteBuildTests(unittest.TestCase):
             {"designation": "primary", "command_status": "active", "spoken_cue": "Plus Relax"},
         ]}]
         link = "[Relax](../functions/OCF-FND-004/)"
-        self.assertIn("(Plus Relax)", _function_chains_page(link, primary))
+        self.assertIn("(Plus Relax)", _chain_spoken_cues(link, primary))
         primary[0]["commands"][0]["spoken_cue"] = ""
         with self.assertRaises(ValueError):
-            _function_chains_page(link, primary)
+            _chain_spoken_cues(link, primary)
         primary[0]["commands"][0]["spoken_cue"] = "Plus Relax"
         primary[0]["commands"].append(dict(primary[0]["commands"][0]))
         with self.assertRaises(ValueError):
-            _function_chains_page(link, primary)
+            _chain_spoken_cues(link, primary)
         functions[0]["commands"][1]["command_status"] = "inactive"
         with self.assertRaises(ValueError):
-            _function_chains_page(source, functions)
+            _chain_spoken_cues(source, functions)
         with self.assertRaises(ValueError):
-            _function_chains_page("[Unknown](../functions/OCF-XXX-001/)", functions)
+            _chain_spoken_cues("[Unknown](../functions/OCF-XXX-001/)", functions)
 
     def test_function_title_actions_link_to_edition_player_and_direct_formats(self):
         rows = []
