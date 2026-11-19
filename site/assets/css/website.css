@@ -476,3 +476,19 @@ body:has(#preferences[open]) { overflow: hidden; }
 @media print { .chain-directory, .chain-learning-links { display: none; } }
 /* Complete fragment navigation before reload/Back can interrupt smooth scrolling. */
 html:has(:target) { scroll-behavior: auto; }
+
+/* Downloads search controls stay ahead of optional introductory copy. */
+.download-search-row { display: flex; gap: .5rem; align-items: center; }
+.download-search-row #download-search { flex: 1; min-width: 0; }
+#download-clear { flex: none; min-height: 44px; }
+.download-cues { margin: .25rem 0 0; font-size: .9rem; }
+
+/* Search leaves navigation, choices, private filters and query controls visible. */
+.browse-search-active .page-intro > :not(h1):not(.audio-preferences-context),
+.browse-search-active .browse-library > .section-heading,
+.browse-search-active .browse-library > p:not(#results-count):not(#catalog-no-results):not(#empty-state),
+.browse-search-active .browse-banner,
+.browse-search-active .selection-tools:not([data-has-selection]),
+.browse-search-active #release-extras { display: none !important; }
+.browse-search-active .page-intro { margin-bottom: .5rem; }
+.session-cues { margin: .25rem 0; font-size: .9rem; }

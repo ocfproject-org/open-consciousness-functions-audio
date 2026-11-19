@@ -83,6 +83,22 @@
       newerEdition: Boolean(record.recording && current.recordings.some(r => r.locale === record.recording.locale && r.voice === record.recording.voice && newer(r.edition, record.recording.edition))),
     };
   }
+  function validateFlag(flag, subjects) {
+    object(flag, ['subject', 'kind']);
+    if (!Object.hasOwn(subjects, flag.subject) || flag.subject === 'preparation:human-plus' || !['favorite', 'todo'].includes(flag.kind)) fail();
+    return flag;
+  }
+  async function parsePersonalBackup(text, subjects) {
+    if (typeof text !== 'string' || new TextEncoder().encode(text).length > LIMIT) fail();
+    let value; try { value = JSON.parse(text); } catch (_) { fail(); }
+    if (value?.schema === 1) return {records: await parseBackup(text, subjects), flags: []};
+    object(value, ['schema', 'records', 'flags']);
+    if (value.schema !== 2 || !Array.isArray(value.flags) || value.flags.length > 120) fail();
+    const seen = new Set();
+    value.flags.forEach(flag => { validateFlag(flag, subjects); const key = `${flag.subject}:${flag.kind}`; if (seen.has(key)) fail(); seen.add(key); });
+    const records = await parseBackup(JSON.stringify({schema: 1, records: value.records}), subjects);
+    return {records, flags: value.flags};
+  }
   class Store {
     constructor(storage, subjects) { this.storage = storage; this.subjects = subjects; this.memory = new Map(); this.warning = ''; this.blocked = false; }
     fallback() { this.storage = null; this.warning = 'Changes are only in memory and will be lost when you leave this page. Browser storage is unavailable; saved data in other tabs may differ.'; }
@@ -107,7 +123,7 @@
       let entries;
       try {
         entries = this.storage ? Array.from({length: this.storage.length}, (_, i) => this.storage.key(i)).filter(k => k?.startsWith(prefix)).map(k => [k, this.storage.getItem(k)]) : [...this.memory].filter(([k]) => k.startsWith(prefix));
-        if (this.storage) { this.memory.clear(); this.memory.set(KEY, JSON.stringify(config)); for (const [k, v] of entries) this.memory.set(k, v); }
+        if (this.storage) { for (const key of this.memory.keys()) if (key.startsWith(`${KEY}:record:`)) this.memory.delete(key); this.memory.set(KEY, JSON.stringify(config)); for (const [k, v] of entries) this.memory.set(k, v); }
       } catch (_) { this.fallback(); entries = [...this.memory].filter(([k]) => k.startsWith(prefix)); }
       const records = [];
       for (const [key, value] of entries.slice(0, MAX_RECORDS)) {
@@ -144,122 +160,228 @@
       try { this.storage?.removeItem(key); } catch (_) { this.fallback(); this.warning += ' The saved browser copy could not be removed.'; }
       this.memory.delete(key);
     }
+    readFlags() {
+      const config = this.config(); if (!config) return [];
+      const prefix = `${KEY}:flag:${config.epoch}:`;
+      let entries;
+      try {
+        entries = this.storage ? Array.from({length: this.storage.length}, (_, i) => this.storage.key(i)).filter(k => k?.startsWith(prefix)).map(k => [k, this.storage.getItem(k)]) : [...this.memory].filter(([k]) => k.startsWith(prefix));
+        if (this.storage) { for (const key of this.memory.keys()) if (key.startsWith(`${KEY}:flag:`)) this.memory.delete(key); for (const [k,v] of entries) this.memory.set(k,v); }
+      } catch (_) { this.fallback(); entries = [...this.memory].filter(([k]) => k.startsWith(prefix)); }
+      const flags = [];
+      for (const [key, raw] of entries.slice(0, 120)) {
+        try { if (raw.length > 300) fail(); const flag = validateFlag(JSON.parse(raw), this.subjects); if (key !== prefix + flag.subject + ':' + flag.kind) fail(); flags.push(flag); }
+        catch (_) { this.warning = 'Some personal flags are corrupt or unsupported and were not loaded or deleted.'; }
+      }
+      return flags;
+    }
+    setFlag(subject, kind, on) {
+      validateFlag({subject, kind}, this.subjects);
+      const config = this.config(); if (!config || this.blocked) throw new Error('Enable private tracking before saving.');
+      const key = `${KEY}:flag:${config.epoch}:${subject}:${kind}`;
+      if (on) this.put(key, JSON.stringify({subject, kind}));
+      else { try { this.storage?.removeItem(key); } catch (_) { this.fallback(); this.warning += ' The saved browser copy could not be removed.'; } this.memory.delete(key); }
+    }
+    async mergePersonal(value) {
+      const config = this.config(); if (!config) throw new Error('Enable private tracking before importing.');
+      const validated = await parsePersonalBackup(JSON.stringify({schema: 2, ...value}), this.subjects);
+      if (this.config()?.epoch !== config.epoch) throw new Error('Tracking changed in another tab. Review before importing.');
+      const added = await this.merge(validated.records);
+      if (this.config()?.epoch !== config.epoch) throw new Error('Tracking changed in another tab. Review before importing.');
+      validated.flags.forEach(flag => this.setFlag(flag.subject, flag.kind, true));
+      return added;
+    }
     reset() {
       // Disable first; an interrupted cleanup cannot reactivate old epochs.
       try {
         if (this.storage) {
           this.storage.removeItem(KEY);
           const keys = Array.from({length: this.storage.length}, (_, i) => this.storage.key(i));
-          keys.filter(k => k?.startsWith(`${KEY}:record:`)).forEach(k => this.storage.removeItem(k));
+          keys.filter(k => (k?.startsWith(`${KEY}:record:`) || k?.startsWith(`${KEY}:flag:`))).forEach(k => this.storage.removeItem(k));
         }
         this.memory.clear(); this.blocked = false;
         this.warning = this.storage ? '' : 'Memory records cleared. Storage is unavailable; browser copies, if any, could not be checked or cleared.';
       } catch (_) { this.fallback(); this.memory.clear(); this.blocked = false; this.warning += ' Browser copies could not be fully cleared. Use browser site-data settings to remove them.'; }
     }
   }
-  const API = {canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT};
+  const API = {validateFlag, parsePersonalBackup, canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT};
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   const panel = document.querySelector('[data-learned-src]'); if (!panel) return;
-  let records = [], onlyLearned = false;
-  window.ocfLearned = {matches: id => !onlyLearned || records.some(r => r.subject === id)};
+  let records = [], flags = [], filterValue = 'all', sortValue = 'default', decorate = () => {};
+  const has = (id, kind) => kind === 'learned'
+    ? records.some(r => r.subject === id || (id === 'preparation:ocf' && r.subject === 'preparation:human-plus'))
+    : flags.some(f => f.subject === id && f.kind === kind);
+  const normalized = id => id === 'preparation-learning' ? 'preparation:ocf' : id;
+  const originalOrder = new WeakMap(); let ordinal = 0;
+  const order = (elements, idFor, priority = () => 0) => {
+    const groups = new Map();
+    elements.forEach(element => { if (!originalOrder.has(element)) originalOrder.set(element, ordinal++); const parent = element.parentElement; if (!groups.has(parent)) groups.set(parent, []); groups.get(parent).push(element); });
+    for (const [parent, items] of groups) {
+      const ordered = [...items].sort((a,b) => priority(a) - priority(b) || (sortValue === 'default' ? 0 : Number(has(normalized(idFor(b)), sortValue)) - Number(has(normalized(idFor(a)), sortValue))) || originalOrder.get(a) - originalOrder.get(b));
+      if (ordered.some((item,i) => [...parent.children].filter(child => items.includes(child))[i] !== item)) {
+        if (!parent.moveBefore && items.some(item => item.contains(document.activeElement) || [...item.querySelectorAll('audio')].some(audio => !audio.paused && !audio.ended))) continue;
+        ordered.forEach(item => parent.moveBefore ? parent.moveBefore(item, null) : parent.append(item));
+      }
+    }
+  };
+  window.ocfLearned = {
+    matches: id => filterValue === 'all' || (filterValue === 'unlearned' ? !has(normalized(id), 'learned') : has(normalized(id), filterValue)),
+    order, decorate: () => decorate(),
+  };
   const changed = () => document.dispatchEvent(new CustomEvent('ocf-learned-filter-change'));
   const node = (tag, text, parent) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; parent?.append(n); return n; };
   const button = (text, parent, action) => { const b = node('button', text, parent); b.type = 'button'; b.addEventListener('click', action); return b; };
   const sourceLink = (parent, label, commit) => { const a = node('a', label, parent); a.href = `https://github.com/ocfproject-org/open-consciousness-functions/tree/${commit}`; };
   const audioLabel = r => r ? `${r.tag}, ${r.locale}, voice ${r.voice}` : 'Guide only — no recording claim';
   async function start() {
-    const initialHash = window.location.hash;
-    let interacted = false;
+    const initialHash = location.hash; let interacted = false;
     const interaction = () => { interacted = true; };
-    const interactionEvents = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    const interactionEvents = ['pointerdown','keydown','wheel','touchstart'];
     interactionEvents.forEach(event => document.addEventListener(event, interaction, {passive: true, once: true}));
     const response = await fetch(panel.dataset.learnedSrc, {credentials: 'omit'});
     if (!response.ok) throw new Error('Public learning information could not be loaded.');
     const data = await response.json();
-    let storage; try { storage = window.localStorage; } catch (_) { storage = null; }
+    const preferences = document.getElementById('preferences');
+    if (!preferences?.showModal) throw new Error('This browser needs native dialog support for private tracking.');
+    let storage; try { storage = localStorage; } catch (_) { storage = null; }
     const store = new Store(storage, data.subjects); if (!storage) store.fallback();
-    panel.hidden = false;
-    node('h2', 'My learned functions', panel).id = 'learned-heading';
-    const controls = node('details', undefined, panel);
-    node('summary', 'Mark learned and manage private records', controls);
-    node('p', 'Optional personal self-report, not proof of completion. Records stay in this browser; there is no account, analytics, or upload. They may reveal private interests to anyone using this browser. Clearing site data removes them. Backups also contain this private information.', controls);
-    const notice = node('p', '', panel); notice.setAttribute('role', 'status'); notice.tabIndex = -1;
-    panel.insertBefore(notice, controls);
-    const enable = button('Enable private learned tracking', controls, () => act(async () => store.enable()));
-    const subject = panel.dataset.learnedSubject;
-    let selection, externalEdition, externalDate;
-    const markArea = node('div', undefined, controls);
-    if (subject) {
-      const label = node('label', 'What did you learn? ', markArea);
-      selection = node('select', undefined, label); selection.id = 'learned-version';
-      node('option', 'Choose explicitly…', selection).value = '';
-      if (subject.startsWith('OCF-')) node('option', 'Current guide only — no recording claim', selection).value = 'guide';
-      data.subjects[subject].recordings.forEach((r, i) => { node('option', audioLabel(r), selection).value = String(i); });
-      if (subject === 'preparation:ocf') {
-        node('option', 'Already learned official Human Plus preparation', selection).value = 'external';
-        const external = node('div', undefined, markArea); external.hidden = true;
-        const editionLabel = node('label', 'External edition (optional; otherwise unknown) ', external);
-        externalEdition = node('input', undefined, editionLabel); externalEdition.maxLength = 120;
-        const dateLabel = node('label', 'External learning date (optional; otherwise unknown) ', external);
-        externalDate = node('input', undefined, dateLabel); externalDate.type = 'date';
-        selection.addEventListener('change', () => { external.hidden = selection.value !== 'external'; });
-        node('p', 'This records your own preparation history; it does not assign an OCF edition or verify equivalence.', external);
+    const pageSubject = panel.dataset.learnedSubject;
+    const view = panel.dataset.learnedView;
+    if (view !== 'settings') panel.hidden = false;
+    const notice = node('p', '', panel); notice.className = 'personal-notice'; notice.setAttribute('role','status'); notice.tabIndex = -1;
+    const settings = node('section', undefined, preferences); settings.className = 'personal-settings';
+    node('h2', 'Private library', settings);
+    node('p', 'Optional browser-local favorites, to-do items and learned self-reports. No account, analytics or upload. Shared-device users can see these interests. Clearing site data removes them; backups also contain private information.', settings);
+    const settingsNotice = node('p', '', settings); settingsNotice.setAttribute('role','status');
+    const enable = button('Enable private tracking', settings, () => act(async () => { store.enable(); return 'Private tracking enabled. Choose an action explicitly to save it.'; }));
+    const counts = node('p', '', settings);
+    const recordsDisclosure = node('details', undefined, settings); node('summary', 'Review saved learned versions', recordsDisclosure);
+    const settingsRecords = node('div', undefined, recordsDisclosure);
+    const modal = node('dialog', undefined, document.body); modal.className = 'personal-dialog'; modal.id = 'mark-learned-dialog'; modal.setAttribute('aria-labelledby','mark-learned-heading');
+    const heading = node('h2', 'Mark learned', modal); heading.id = 'mark-learned-heading';
+    const modalNotice = node('p','',modal); modalNotice.setAttribute('role','status');
+    const target = node('div','',modal); target.className = 'personal-target';
+    const choiceLabel = node('label','Learning target ',modal);
+    const selection = node('select',undefined,choiceLabel); selection.id = 'learned-version'; selection.setAttribute('aria-label','Learning target');
+    const external = node('details',undefined,modal); node('summary','Optional external preparation details',external);
+    const editionLabel = node('label','External edition (otherwise unknown) ',external);
+    const externalEdition = node('input',undefined,editionLabel); externalEdition.maxLength = 120;
+    const dateLabel = node('label','External learning date (otherwise unknown) ',external);
+    const externalDate = node('input',undefined,dateLabel); externalDate.type='date';
+    node('p','Self-report only. Guide and recording sources are separate; teaching changes are not verified. Your global audio edition stays unchanged.',modal);
+    const modalEnable = button('Enable private tracking',modal,()=>act(async()=>{store.enable();return 'Tracking enabled. Save explicitly to mark this version learned.';}));
+    const actions = node('div',undefined,modal); actions.className='personal-dialog-actions';
+    let activeSubject = '', opener = null, pendingEpoch = null, explicitChoice = false;
+    const close = () => { if (modal.open) modal.close(); if (opener?.isConnected && !opener.closest('[hidden]')) opener.focus(); };
+    button('Cancel',actions,close);
+    const save = button('Save learned version',actions,()=>act(async()=>{
+      if (!store.config() || store.config().epoch !== pendingEpoch) throw new Error('Tracking changed. Review this choice and enable tracking before saving.');
+      const current = data.subjects[activeSubject]; const isExternal = selection.value === 'external';
+      const record = {id:crypto.randomUUID(),subject:isExternal?'preparation:human-plus':activeSubject,markedAt:new Date().toISOString(),guide:isExternal?null:current.guide,recording:isExternal||selection.value==='guide'?null:current.recordings[Number(selection.value)],external:isExternal?{edition:externalEdition.value.trim()||null,date:externalDate.value||null}:null};
+      const added=await store.merge([record]); close(); return added?'Learned version saved; previous versions retained.':'That learned version is already saved.';
+    }));
+    const versions = node('details',undefined,modal); node('summary','Saved versions and changes',versions);
+    const saved = node('div',undefined,versions);
+    modal.addEventListener('cancel',event=>{event.preventDefault();close();});
+    window.addEventListener('popstate',close);
+    window.addEventListener('pagehide',()=>{if(modal.open)modal.close();});
+    function updateTarget() {
+      const current=data.subjects[activeSubject]; if(!current)return;
+      external.hidden=selection.value!=='external';
+      const recording=selection.value==='guide'||selection.value==='external'?null:current.recordings[Number(selection.value)];
+      target.replaceChildren();
+      if(selection.value==='external') node('span','Official Human Plus preparation; external edition/date unknown unless supplied. No OCF recording claim.',target);
+      else {
+        node('span',audioLabel(recording)+'. ',target);
+        if(current.guide) sourceLink(target,`Website guide ${current.guide.commit.slice(0,7)} (${current.guide.locale})`,current.guide.commit);
+        if(recording?.source_commit) {node('span',' · ',target);sourceLink(target,`Recording source ${recording.source_commit.slice(0,7)}`,recording.source_commit);}
+        if(recording?.render_source?.snapshot_sha256) {const identity=node('details',undefined,target);node('summary','Recording identity',identity);node('small',`Frozen recording snapshot ${recording.render_source.snapshot_sha256}`,identity);}
       }
-      node('p', 'Choose the recording you learned explicitly. The current website guide and recording may have different source commits; this does not establish teaching differences. Changing the site edition does not change this record.', markArea);
-      button('Mark learned / save another version', markArea, () => act(async () => {
-        if (!selection.value) throw new Error('Choose what you learned before saving.');
-        const external = selection.value === 'external';
-        const record = {id: crypto.randomUUID(), subject: external ? 'preparation:human-plus' : subject, markedAt: new Date().toISOString(),
-          guide: external ? null : data.subjects[subject].guide,
-          recording: external || selection.value === 'guide' ? null : data.subjects[subject].recordings[Number(selection.value)],
-          external: external ? {edition: externalEdition.value.trim() || null, date: externalDate.value || null} : null};
-        const count = await store.merge([record]); return count ? 'Learned version saved. Earlier versions were retained.' : 'That learned version is already saved.';
-      }));
-    } else {
-      const label = node('label', undefined, panel);
-      const filter = node('input', undefined, label); filter.type = 'checkbox';
-      label.append(document.createTextNode(' My learned functions only'));
-      filter.addEventListener('change', () => { onlyLearned = filter.checked; changed(); });
-      node('p', 'Includes any saved function version. Preparation is separate and is not counted as a function. The filter is temporary and is not included in links.', panel);
     }
-    const totals = node('p', '', panel);
-    const saved = node('div', undefined, controls);
-    const manage = node('details', undefined, controls); node('summary', 'Back up, import or reset learned records', manage);
-    button('Export learned backup', manage, () => act(async () => {
-      const blob = new Blob([JSON.stringify({schema: 1, records}, null, 2)], {type: 'application/json'});
-      const url = URL.createObjectURL(blob); const a = node('a'); a.href = url; a.download = 'ocf-learned-private-backup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      return 'Private backup downloaded. Keep it somewhere private.';
+    selection.addEventListener('change',()=>{explicitChoice=true;updateTarget();});
+    function defaultChoice(edition) {
+      const current=data.subjects[activeSubject];
+      const preferred=edition||window.ocfEditions?.current();
+      const index=current.recordings.findIndex(r=>r.edition===preferred);
+      selection.value=index>=0?String(index):current.recordings.length?'0':'guide';
+    }
+    function openLearned(id, trigger, edition='') {
+      if(!Object.hasOwn(data.subjects,id))return;
+      activeSubject=id;opener=trigger;explicitChoice=Boolean(edition);pendingEpoch=store.config()?.epoch||null;
+      selection.replaceChildren(); const current=data.subjects[id];
+      current.recordings.forEach((r,i)=>{node('option',audioLabel(r),selection).value=String(i);});
+      if(id.startsWith('OCF-'))node('option','Website guide only — no recording claim',selection).value='guide';
+      if(id==='preparation:ocf')node('option','Already learned official Human Plus preparation',selection).value='external';
+      defaultChoice(edition);externalEdition.value='';externalDate.value='';external.open=false;versions.open=false;
+      heading.textContent=`Mark learned: ${current.title}`;updateTarget();renderRecords(saved,records.filter(r=>r.subject===id||(id==='preparation:ocf'&&r.subject==='preparation:human-plus')));
+      modalNotice.textContent=store.config()?'Nothing changes until you save.':'Enable private tracking, then explicitly save this version.';
+      save.disabled=!store.config();modalEnable.hidden=Boolean(store.config());
+      if(!modal.open)modal.showModal();selection.focus();
+    }
+    document.addEventListener('ocf-edition-change',()=>{if(modal.open&&!explicitChoice){defaultChoice();updateTarget();}});
+    function openSettings(trigger) {
+      opener=trigger;
+      // Delegate to the shared controller so Escape/Back and focus restoration stay consistent.
+      window.ocfPreferences?.open(trigger); enable.focus();
+    }
+    const icons={favorite:'♡',learned:'✓',todo:'☐'};
+    const labels={favorite:'Favorite',learned:'Learned',todo:'To Do'};
+    function addButtons(parent,id,edition='') {
+      if(parent.querySelector(':scope > .personal-actions')||!Object.hasOwn(data.subjects,id))return;
+      const bar=node('div',undefined,parent);bar.className='personal-actions';bar.setAttribute('role','group');bar.setAttribute('aria-label',`Private library: ${data.subjects[id].title}`);
+      for(const kind of ['favorite','learned','todo']) {
+        const control=button('',bar,()=>{
+          if(kind==='learned'){openLearned(id,control,edition);return;}
+          if(!store.config()){openSettings(control);return;}
+          act(async()=>{store.readFlags();const on=!store.readFlags().some(f=>f.subject===id&&f.kind===kind);store.setFlag(id,kind,on);return `${labels[kind]} ${on?'added':'removed'} for ${data.subjects[id].title}.`;});
+        });
+        control.dataset.personalSubject=id;control.dataset.personalKind=kind;
+        control.setAttribute('aria-label',`${labels[kind]}: ${data.subjects[id].title}`);control.dataset.help=labels[kind];control.title=kind==='learned'?'Choose a learned version or review/remove saved versions':`${labels[kind]} — private, independent of learned status`;
+        node('span',icons[kind],control).setAttribute('aria-hidden','true');node('span',labels[kind],control).className='personal-action-label';
+        if(kind==='learned'){control.setAttribute('aria-haspopup','dialog');control.setAttribute('aria-controls',modal.id);}
+      }
+    }
+    decorate=()=>{
+      if(pageSubject)addButtons(panel,pageSubject);
+      document.querySelectorAll('.session-card[data-function-id]').forEach(card=>addButtons(card,normalized(card.dataset.functionId),card.dataset.edition||''));
+      document.querySelectorAll('[data-reference-row]').forEach(row=>addButtons(row.querySelector('th'),row.dataset.learnedId));
+      document.querySelectorAll('[data-function-card]').forEach(card=>addButtons(card,card.dataset.learnedId));
+      document.querySelectorAll('[data-personal-kind]').forEach(control=>{
+        const on=has(control.dataset.personalSubject,control.dataset.personalKind);
+        control.setAttribute('aria-pressed',String(on));control.dataset.selected=String(on);
+        control.querySelector('[aria-hidden]').textContent=control.dataset.personalKind==='favorite'?(on?'♥':'♡'):control.dataset.personalKind==='todo'?(on?'☑':'☐'):(on?'✓':'○');
+      });
+    };
+    if(['browse','reference'].includes(view)) {
+      const filters=node('div',undefined,panel);filters.className='personal-filters';
+      const label=node('label','My library ',filters);const filter=node('select',undefined,label);filter.setAttribute('aria-label','My library');
+      [['all','All items'],['favorite','Favorites'],['learned','Learned'],['todo','To Do'],['unlearned','Not learned']].forEach(([v,text])=>{node('option',text,filter).value=v;});
+      filter.addEventListener('change',()=>{filterValue=filter.value;changed();});
+      const sortLabel=node('label','Sort personal states ',filters);const sort=node('select',undefined,sortLabel);sort.setAttribute('aria-label','Sort personal states');
+      [['default','Original order'],['favorite','Favorites first'],['learned','Learned first'],['todo','To Do first']].forEach(([v,text])=>{node('option',text,sort).value=v;});
+      sort.addEventListener('change',()=>{sortValue=sort.value;changed();});
+    }
+    const manage=node('details',undefined,settings);node('summary','Backup and reset',manage);
+    button('Export private backup',manage,()=>act(async()=>{
+      const blob=new Blob([JSON.stringify({schema:2,records,flags},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
     }));
-    const importLabel = node('label', 'Choose a learned JSON backup (up to 2 MiB) ', manage);
-    const file = node('input', undefined, importLabel); file.type = 'file'; file.accept = '.json,application/json';
-    const preview = node('div', undefined, manage); let pending = null; let importGeneration = 0;
-    file.addEventListener('change', () => act(async () => {
-      const turn = ++importGeneration; pending = null; preview.replaceChildren();
-      const input = file.files[0]; if (!input) return;
-      if (input.size > LIMIT) throw new Error('Backup exceeds the 2 MiB limit.');
-      const candidate = await parseBackup(await input.text(), data.subjects);
-      if (turn !== importGeneration) return;
-      const known = new Set(records.map(identity)); const additions = candidate.filter(r => !known.has(identity(r)));
-      node('p', `${additions.length} new records; ${candidate.length - additions.length} already saved. Existing versions will be retained. Imported records are personal claims, not verified official teaching history.`, preview);
-      const list = node('ul', undefined, preview);
-      additions.forEach(r => node('li', `${data.subjects[r.subject].title}: ${audioLabel(r.recording)}`, list));
-      pending = candidate;
-      button('Confirm import and merge', preview, () => act(async () => {
-        if (!pending) return;
-        const count = await store.merge(pending); pending = null; preview.replaceChildren(); file.value = '';
-        return `${count} records merged. Existing versions retained.`;
-      }));
-      return 'Backup validated. Review the preview and confirm to import.';
+    const importLabel=node('label','Import backup (schema 1 or 2, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
+    const preview=node('div',undefined,manage);let pending=null,importGeneration=0;
+    file.addEventListener('change',()=>act(async()=>{
+      const turn=++importGeneration;pending=null;preview.replaceChildren();const input=file.files[0];if(!input)return;if(input.size>LIMIT)throw new Error('Backup exceeds 2 MiB.');
+      const candidate=await parsePersonalBackup(await input.text(),data.subjects);if(turn!==importGeneration)return;
+      const known=new Set(records.map(identity));const additions=candidate.records.filter(r=>!known.has(identity(r)));
+      node('p',`${additions.length} new learned versions; ${candidate.records.length-additions.length} already saved; ${candidate.flags.length} Favorite/To Do marks to merge. Existing states and versions are retained. Imported snapshots are unverified personal claims.`,preview);
+      pending=candidate;
+      button('Confirm import and merge',preview,()=>act(async()=>{if(!pending)return;const count=await store.mergePersonal(pending);pending=null;preview.replaceChildren();file.value='';return `${count} learned versions imported; personal marks merged.`;}));
+      return 'Backup validated. Review and confirm before import.';
     }));
-    button('Reset all learned records', manage, () => act(async () => {
-      if (!window.confirm('Remove all learned records from this browser and turn tracking off? Export a backup first if you want to keep them.')) return;
-      store.reset(); importGeneration += 1; pending = null; preview.replaceChildren(); return 'Learned tracking reset.';
+    button('Reset all private tracking',manage,()=>act(async()=>{
+      if(!window.confirm('Remove all learned versions, favorites and to-do marks from this browser and turn tracking off? Export a backup first to keep them.'))return;
+      store.reset();importGeneration++;pending=null;preview.replaceChildren();if(modal.open)close();return 'Private tracking reset.';
     }));
-    function renderRecords() {
-      saved.replaceChildren();
-      const shown = subject ? records.filter(r => r.subject === subject || (subject === 'preparation:ocf' && r.subject === 'preparation:human-plus')) : records;
-      totals.textContent = `${new Set(records.filter(r => r.subject.startsWith('OCF-')).map(r => r.subject)).size} learned functions; ${records.filter(r => r.subject.startsWith('preparation:')).length} separate preparation records.`;
-      if (!shown.length) node('p', 'No learned versions saved here.', saved);
+    function renderRecords(saved,shown) {
+      saved.replaceChildren();if(!shown.length)node('p','No learned versions saved here.',saved);
       for (const record of shown) {
         const detail = node('details', undefined, saved);
         node('summary', `${data.subjects[record.subject].title} — ${record.external ? 'Official Human Plus preparation; edition ' + (record.external.edition || 'unknown') : audioLabel(record.recording)}`, detail);
@@ -302,26 +424,32 @@
           if (window.confirm('Remove this saved learned version? Other versions will be retained.')) { store.remove(record.id); return 'Learned version removed.'; }
         }));
       }
+    }    let generation=0;
+    async function refresh(message='') {
+      const turn=++generation;const loaded=await store.read();if(turn!==generation)return;
+      records=loaded;flags=store.readFlags();const enabled=Boolean(store.config());
+      enable.hidden=enabled;modalEnable.hidden=enabled;save.disabled=!enabled;
+      if(modal.open&&!pendingEpoch&&enabled)pendingEpoch=store.config().epoch;
+      const text=[message,store.warning].filter(Boolean).join(' ');
+      notice.textContent=text;notice.hidden=!text;
+      settingsNotice.textContent=[text,enabled?(store.storage?'Private tracking enabled in this browser.':'Enabled for this page only; not persisted.'):'Tracking is off. Enable explicitly before saving.'].filter(Boolean).join(' ');
+      if(modal.open)modalNotice.textContent=text||(!enabled?'Tracking is off. Enable and review before saving.':'Nothing changes until you save.');
+      counts.textContent=`${new Set(records.filter(r=>r.subject.startsWith('OCF-')).map(r=>r.subject)).size} learned functions · ${flags.filter(f=>f.kind==='favorite').length} favorites · ${flags.filter(f=>f.kind==='todo').length} to do`;
+      const focused=document.activeElement;
+      renderRecords(settingsRecords,records);
+      renderRecords(saved,records.filter(r=>r.subject===activeSubject||(activeSubject==='preparation:ocf'&&r.subject==='preparation:human-plus')));
+      decorate();changed();
+      if(focused&&!focused.isConnected)(modal.open?modalNotice:settingsNotice).focus({preventScroll:true});
     }
-    let generation = 0;
-    async function refresh(message = '') {
-      const turn = ++generation; const loaded = await store.read(); if (turn !== generation) return;
-      records = loaded; enable.hidden = Boolean(store.config()); markArea.hidden = !store.config();
-      notice.textContent = [message, store.warning, !store.config() ? 'Tracking is off. Enable it explicitly to save or import.' : store.storage ? 'Tracking is enabled in this browser.' : 'Tracking is enabled for this page only.'].filter(Boolean).join(' ');
-      const focused = document.activeElement;
-      renderRecords(); changed();
-      if (focused && !focused.isConnected) notice.focus({preventScroll: true});
-    }
-    async function act(action) { try { const message = await action(); await refresh(message); } catch (error) { notice.textContent = `${error.message} ${store.warning}`; } }
-    window.addEventListener('storage', event => { if (store.storage && (event.key === null || event.key.startsWith(KEY))) refresh('Learned records changed in another tab.'); });
-    window.addEventListener('pageshow', () => refresh());
+    async function act(action){try{const message=await action();await refresh(message);}catch(error){notice.hidden=false;notice.textContent=error.message+' '+store.warning;settingsNotice.textContent=notice.textContent;modalNotice.textContent=notice.textContent;}}
+    [modalNotice,settingsNotice].forEach(n=>n.tabIndex=-1);
+    window.addEventListener('storage',event=>{if(store.storage&&(event.key===null||event.key.startsWith(KEY))) {if(modal.open&&store.config()?.epoch!==pendingEpoch){pendingEpoch=null;close();}refresh('Private records changed in another tab.');}});
+    window.addEventListener('pageshow',()=>{if(modal.open)close();refresh();});
     await refresh();
-    interactionEvents.forEach(event => document.removeEventListener(event, interaction));
-    // Async optional UI above a deep link must not push its target out of view.
-    // Never override user interaction or a Back/Forward scroll restoration.
-    if (initialHash && initialHash === window.location.hash && !interacted && performance.getEntriesByType('navigation')[0]?.type !== 'back_forward') {
-      try { document.getElementById(decodeURIComponent(initialHash.slice(1)))?.scrollIntoView(); } catch (_) { /* Ignore malformed fragments. */ }
+    interactionEvents.forEach(event=>document.removeEventListener(event,interaction));
+    if(initialHash&&initialHash===location.hash&&!interacted&&performance.getEntriesByType('navigation')[0]?.type!=='back_forward'){
+      try{document.getElementById(decodeURIComponent(initialHash.slice(1)))?.scrollIntoView();}catch(_){}
     }
   }
-  start().catch(error => { panel.hidden = false; node('p', `Learned tracking is unavailable: ${error.message}`, panel); });
+  start().catch(error=>{panel.hidden=false;node('p',`Private tracking unavailable: ${error.message}`,panel);});
 })();

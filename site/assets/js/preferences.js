@@ -12,6 +12,7 @@
     if (opener?.isConnected && !opener.hidden) opener.focus();
   };
   const close = dismiss;
+  window.ocfPreferences = {open: trigger => { opener = trigger || triggers[0]; document.querySelector('.mobile-nav')?.removeAttribute('open'); show(); }};
   triggers.forEach(button => {
     button.hidden = false;
     button.setAttribute('aria-haspopup', 'dialog');

@@ -1,13 +1,35 @@
-.learned-panel { border: 1px solid var(--border, #888); border-radius: .6rem; padding: 1rem; margin: 1.5rem 0; overflow-wrap: anywhere; }
-.learned-panel [hidden] { display: none !important; }
-.learned-panel label { display: block; margin: .8rem 0; }
-.learned-panel button, .learned-panel select, .learned-panel input:not([type=checkbox]) { min-height: 44px; max-width: 100%; font: inherit; }
-.learned-panel select { display: block; width: 100%; }
-.learned-panel button { margin: .4rem .5rem .4rem 0; white-space: normal; }
-.learned-panel input[type=checkbox] { width: 1.3rem; height: 1.3rem; vertical-align: middle; }
-.learned-panel details { margin: .7rem 0; padding: .5rem; border: 1px solid var(--border, #888); }
-.learned-panel summary { min-height: 44px; cursor: pointer; }
-.learned-panel :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
-.learned-panel [role=status] { font-weight: 600; }
-.learned-panel > details { border: 0; padding: 0; }
-.learned-panel a { margin-inline-end: .7rem; }
+.learned-panel { margin: .5rem 0 1rem; }
+.learned-panel [hidden], .personal-dialog [hidden], .personal-settings [hidden] { display: none !important; }
+.personal-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+.personal-actions button { position: relative; min-width: 44px; min-height: 44px; padding: .35rem; font-size: 1.45rem; line-height: 1; border: 1px solid var(--muted); border-radius: .5rem; background: var(--paper); color: var(--ink); }
+.personal-actions button[aria-pressed=true] { border: 3px solid currentColor; font-weight: 800; }
+.personal-actions button:hover::after, .personal-actions button:focus-visible::after { content: attr(data-help); position: absolute; z-index: 20; bottom: calc(100% + .3rem); left: 0; font: .8rem/1.3 system-ui,sans-serif; background: var(--ink); color: var(--paper); padding: .35rem .5rem; border-radius: .3rem; white-space: nowrap; pointer-events: none; }
+.personal-action-label { display: block; margin-top: .25rem; font: .75rem/1.2 system-ui,sans-serif; }
+.personal-notice:empty { display: none; }
+.personal-notice { font-size: .9rem; overflow-wrap: anywhere; }
+.personal-filters, .personal-dialog-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+.personal-filters label { display: grid; gap: .3rem; }
+.personal-filters select { min-height: 44px; max-width: 100%; font: inherit; }
+.personal-dialog { width: min(36rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: 1rem; border: 1px solid var(--muted); border-radius: .75rem; background: var(--paper); color: var(--ink); box-sizing: border-box; }
+.personal-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.personal-dialog label, .personal-settings label { display: block; margin: .7rem 0; }
+.personal-dialog select, .personal-dialog input, .personal-settings input { display: block; max-width: 100%; min-height: 44px; font: inherit; box-sizing: border-box; }
+.personal-dialog select { width: 100%; }
+.personal-dialog button, .personal-settings button { min-height: 44px; font: inherit; white-space: normal; margin: .3rem .4rem .3rem 0; }
+.personal-dialog details, .personal-settings details { margin: .75rem 0; padding: .5rem; border: 1px solid var(--muted); }
+.personal-dialog summary, .personal-settings summary { min-height: 44px; cursor: pointer; }
+.personal-dialog p, .personal-settings p, .personal-target { overflow-wrap: anywhere; }
+.personal-target { font-size: .9rem; }
+.personal-target small { display: block; margin-top: .3rem; }
+.personal-settings { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--muted); }
+.personal-dialog :focus-visible, .personal-actions :focus-visible, .personal-settings :focus-visible, .personal-filters :focus-visible { outline: 3px solid var(--focus-ring, currentColor); outline-offset: 3px; }
+@media print { .learned-panel, .personal-actions, .personal-dialog, .personal-settings { display: none !important; } }
+
+.preferences-backup { margin: 1rem 0; padding: .75rem; border: 1px solid var(--muted); }
+.preferences-backup [hidden] { display: none !important; }
+.preferences-backup summary, .preferences-backup button, .preferences-backup input { min-height: 44px; font: inherit; }
+.preferences-backup label { display: block; margin: .75rem 0; }
+.preferences-backup input { display: block; max-width: 100%; box-sizing: border-box; }
+.preferences-backup button { margin: .3rem .4rem .3rem 0; white-space: normal; }
+.preferences-backup p { overflow-wrap: anywhere; }
+.preferences-backup :focus-visible { outline: 3px solid var(--focus-ring, currentColor); outline-offset: 3px; }

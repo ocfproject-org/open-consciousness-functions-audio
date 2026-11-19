@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const {webcrypto} = require('node:crypto');
 globalThis.crypto ??= webcrypto;
-const {Store, canonical, digest, parseBackup, validateRecord, identity, status, KEY, LIMIT} = require('../site/assets/js/learned.js');
+const {Store, parsePersonalBackup, validateFlag, canonical, digest, parseBackup, validateRecord, identity, status, KEY, LIMIT} = require('../site/assets/js/learned.js');
 class MemoryStorage {
   constructor() { this.values = new Map(); }
   get length() { return this.values.size; }
@@ -65,6 +65,26 @@ class MemoryStorage {
   await validateRecord(external, subjects); await assert.rejects(validateRecord({...external, recording: audio}, subjects));
   await validateRecord({...record, subject: 'preparation:ocf', guide: null}, subjects);
   await assert.rejects(validateRecord({...record, subject: 'preparation:ocf', guide: null, recording: null}, subjects));
+  const flagStorage = new MemoryStorage(), flagStore = new Store(flagStorage, subjects), flagTab = new Store(flagStorage, subjects);
+  assert.throws(() => flagStore.setFlag(record.subject, 'favorite', true), /Enable/);
+  flagStore.enable(); flagStore.setFlag(record.subject, 'favorite', true); flagTab.setFlag(record.subject, 'todo', true);
+  assert.equal(flagStore.readFlags().length, 2); assert.equal((await flagStore.read()).length, 0);
+  await flagStore.merge([record]); assert.equal(flagStore.readFlags().length, 2);
+  flagTab.setFlag(record.subject, 'favorite', false); assert.deepEqual(flagStore.readFlags(), [{subject:record.subject,kind:'todo'}]);
+  const legacy = await parsePersonalBackup(JSON.stringify({schema:1,records:[older]}), subjects);
+  assert.deepEqual(legacy.flags, []); await flagStore.mergePersonal(legacy);
+  assert.equal((await flagStore.read()).length, 2); assert.equal(flagStore.readFlags().length, 1);
+  const personal = {schema:2,records:[record],flags:[{subject:record.subject,kind:'favorite'}]};
+  await flagStore.mergePersonal(await parsePersonalBackup(JSON.stringify(personal), subjects));
+  assert.equal((await flagStore.read()).length, 2); assert.equal(flagStore.readFlags().length, 2);
+  for (const invalid of [ {...personal,schema:3}, {...personal,flags:[{subject:record.subject,kind:'learned'}]}, {...personal,flags:[{subject:'unknown',kind:'todo'}]}, {...personal,flags:[...personal.flags,...personal.flags]}, {...personal,flags:[{...personal.flags[0],url:'https://invalid.example/'}]}, {...personal,records:[{...record,guide:{...guide,fingerprint:'0'.repeat(64)}}]} ]) {
+    await assert.rejects(parsePersonalBackup(JSON.stringify(invalid),subjects)); assert.equal(flagStore.readFlags().length,2); assert.equal((await flagStore.read()).length,2);
+  }
+  const interruptedPersonal=flagStore.mergePersonal({records:[record],flags:personal.flags}); flagTab.reset();
+  await assert.rejects(interruptedPersonal,/another tab/); assert.deepEqual(flagStore.readFlags(),[]); assert.deepEqual(await flagStore.read(),[]);
+  flagStore.enable(); await flagStore.merge([record]); flagStore.setFlag(record.subject,'favorite',true); await flagStore.read();
+  flagStorage.setItem=()=>{throw Error('quota');}; flagStore.setFlag(record.subject,'todo',true);
+  assert.equal(flagStore.readFlags().length,2); assert.equal((await flagStore.read()).length,1); assert.match(flagStore.warning,/only in memory/);
   // Real generated projection validates every supported public record, including provenance.
   if (process.env.SITE_DIR) {
     const data = require(require('node:path').resolve(process.env.SITE_DIR, 'assets/data/learning.json'));

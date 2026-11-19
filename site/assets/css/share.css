@@ -1,0 +1,9 @@
+.page-share { max-width: 34rem; margin-block: 0 1rem; }
+.page-share[hidden], .page-share [hidden] { display: none !important; }
+.page-share summary { cursor: pointer; width: fit-content; padding: .7rem .4rem; }
+.page-share-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem; }
+.page-share button { font: inherit; min-height: 44px; padding: .5rem .9rem; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: .4rem; cursor: pointer; }
+.page-share button:disabled { cursor: wait; }
+.page-share input { display: block; box-sizing: border-box; width: 100%; min-height: 44px; font: inherit; }
+.page-share :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.page-share [role="status"]:empty { display: none; }
