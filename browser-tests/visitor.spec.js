@@ -24,8 +24,8 @@ test('visitor paths, contribution targets and feedback work at mobile and deskto
 
 test('visitor no-JS keeps feedback and text paths usable without dead controls',async({browser})=>{
  const c=await browser.newContext({javaScriptEnabled:false,viewport:{width:320,height:900}});const p=await c.newPage();
- await p.goto('http://127.0.0.1:4173/get-involved/');await expect(p.locator('.feedback-address')).toBeVisible();await expect(p.locator('[data-feedback-reveal]')).toBeHidden();
- await p.goto('http://127.0.0.1:4173/listening/');await expect(p.locator('.stereo-controls')).toBeHidden();await expect(p.getByText('This interactive test needs JavaScript.',{exact:false})).toBeVisible();await c.close();
+ await p.goto('/get-involved/');await expect(p.locator('.feedback-address')).toBeVisible();await expect(p.locator('[data-feedback-reveal]')).toBeHidden();
+ await p.goto('/listening/');await expect(p.locator('.stereo-controls')).toBeHidden();await expect(p.getByText('This interactive test needs JavaScript.',{exact:false})).toBeVisible();await c.close();
 });
 
 async function mockAudio(page){

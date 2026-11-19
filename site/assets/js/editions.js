@@ -124,6 +124,9 @@
   const apply = () => {
     applyFormats();
     if (control) control.value = selection;
+    document.querySelectorAll('[data-audio-preference-summary]').forEach(node => {
+      node.textContent = `${selection === 'latest' ? 'Latest' : 'Edition'} ${resolve()} · ${format.toUpperCase()}`;
+    });
     document.querySelectorAll('[data-edition-content]').forEach(node => {
       const matches = node.dataset.editionContent === resolve();
       const players = [...node.querySelectorAll('audio')];
@@ -134,7 +137,7 @@
         notice = document.createElement('p'); notice.dataset.retainedEdition = '';
         notice.append(document.createTextNode('This player belongs to your previous edition. '));
         const close = document.createElement('button'); close.type = 'button'; close.textContent = 'Close previous edition player';
-        close.addEventListener('click', () => { players.forEach(audio => audio.pause()); retained.delete(node); control?.focus(); apply(); });
+        close.addEventListener('click', () => { players.forEach(audio => audio.pause()); retained.delete(node); (control?.closest('dialog')?.open ? control : document.querySelector('[data-preferences-open]'))?.focus(); apply(); });
         notice.append(close); node.prepend(notice);
       }
       if (notice) notice.hidden = matches || !retained.has(node);

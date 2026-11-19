@@ -417,3 +417,42 @@
 .artwork-fallback { display: flex; align-items: center; justify-content: center; height: 100%; padding: .3rem; text-align: center; font-size: .75rem; color: var(--muted); }
 [data-format-player-notice] { font-size: .9rem; }
 @media (max-width: 480px) { .browse-artwork { flex-basis: 4.5rem; width: 4.5rem; height: 4.5rem; } .session-card-heading { gap: .75rem; } }
+
+/* First-session P1: compact header, one-action settings, and progressive downloads. */
+.brand-short { display: none; }
+.preferences-open, [data-preferences-close], .audio-preferences-context button { min-height: 44px; }
+#preferences { width: min(30rem, calc(100% - 2rem)); max-height: 85dvh; overflow: auto; color: var(--ink); background: var(--paper); border: 2px solid var(--line); border-radius: .5rem; padding: 1.25rem; }
+#preferences::backdrop { background: rgb(0 0 0 / .55); }
+#preferences .edition-preference { display: grid; gap: .5rem; margin: 1rem 0; padding: 0 0 1rem; }
+#preferences select { width: 100%; min-height: 44px; }
+#preferences h2 { margin-top: 0; }
+body:has(#preferences[open]) { overflow: hidden; }
+.audio-preferences-context { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .85rem; color: var(--muted); margin: .5rem 0 1rem; }
+.start-journey h1 { margin-bottom: .5rem; }
+.start-journey > p { margin: .6rem 0; }
+.start-steps { padding-left: 1.5rem; margin: .8rem 0; }
+.start-steps li { padding: .25rem 0; }
+.docs-content a.primary-action { display: inline-block; background: var(--ink); color: var(--paper); padding: .8rem 1rem; border-radius: .35rem; font-weight: 700; text-decoration: none; }
+.docs-content a.primary-action:hover { text-decoration: underline; }
+.start-play-note { font-size: .85rem; color: var(--muted); }
+.preparation-exception, .start-more { margin: 1rem 0; }
+.preparation-exception summary, .start-more summary { cursor: pointer; min-height: 44px; padding: .5rem 0; }
+.download-tools { margin: 1rem 0; }
+.download-tools label { display: block; font-weight: 650; }
+#download-search { width: 100%; min-height: 44px; font: inherit; padding: .6rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
+.download-card { padding: .9rem; }
+.download-card h2 { margin: 0 0 .5rem; }
+.download-card .download-file-details { margin-top: .5rem; }
+.download-release-notes { margin-top: 2rem; }
+.release-changelog > summary { min-height: 44px; padding: .5rem 0; cursor: pointer; font-weight: 650; }
+@media (max-width: 1080px) {
+  .site-header { position: relative; grid-template-columns: minmax(0, 1fr) 108px; gap: 0 .5rem; min-height: 66px; padding: .7rem 1rem; }
+  .brand-short { display: inline; font-weight: 700; }
+  .site-header .brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .site-header .preferences-open { grid-column: 2; grid-row: 1; width: 108px; font-size: .85rem; padding-inline: .4rem; }
+  .site-header .mobile-nav { grid-column: 1 / -1; grid-row: 2; }
+  .site-header .mobile-nav > summary { position: absolute; top: .7rem; right: 132px; width: 70px; justify-content: center; padding-inline: .4rem; }
+  .mobile-nav nav { max-height: 70dvh; overflow-y: auto; margin-top: .6rem; }
+  .docs-main { padding-top: 1.25rem; }
+}
+@media print { #preferences, [data-preferences-open], .audio-preferences-context, .download-tools, #downloads-more { display: none !important; } }
