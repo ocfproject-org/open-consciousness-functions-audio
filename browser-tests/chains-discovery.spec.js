@@ -31,10 +31,23 @@ test('goal groups, function search, empty state and clearing affect only discove
 });
 test('directory and immediate learning links work with keyboard, historical preferences and deep links',async({page})=>{
  await page.goto('/function-chains/');await selectPreference(page,'Audio edition','0.1.0');await selectPreference(page,'Audio format','flac');
- await page.getByRole('link',{name:'View steps: Sleep preparation',exact:true}).focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(/#sleep-preparation$/);await expect(page.locator('#sleep-preparation')).toBeInViewport();
+ const jump=page.getByRole('link',{name:'View steps: Sleep preparation',exact:true});
+ // Avoid racing an offscreen focus-driven smooth scroll against fragment navigation.
+ await jump.scrollIntoViewIfNeeded();await expect(jump).toBeInViewport();
+ await jump.focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(/#sleep-preparation$/);await expect(page.locator('#sleep-preparation')).toBeInViewport();
  const section=page.locator('.chain-section').filter({has:page.locator('#sleep-preparation')});await section.locator('summary').click();await section.getByRole('link',{name:'Use guide: Sleep',exact:true}).click();await expect(page).toHaveURL(/OCF-SLP-002\/#cues$/);await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('0.1.0');await expect(page.getByLabel('Audio format',{exact:true})).toHaveValue('flac');
  await page.goBack();await expect(page).toHaveURL(/#sleep-preparation$/);if(!await section.locator('details').getAttribute('open').then(v=>v!==null))await section.locator('summary').click();await section.getByRole('link',{name:'Learn audio: Sleep',exact:true}).click();await expect(page).toHaveURL(/OCF-SLP-002\/#listening$/);
  await page.goto('/practice-chains/?from=directory#weight-management');await expect(page).toHaveURL(/function-chains\/\?from=directory#weight-management$/);await expect(page.locator('#weight-management')).toBeInViewport();
+});
+test('Tab navigation reaches and activates a chain without programmatic link focus',async({page})=>{
+ await page.goto('/function-chains/');await selectPreference(page,'Audio edition','0.1.0');await selectPreference(page,'Audio format','flac');
+ const jump=page.getByRole('link',{name:'View steps: Sleep preparation',exact:true});
+ for(let steps=0;steps<100;steps++){
+  await page.keyboard.press('Tab');
+  if(await jump.evaluate(link=>link===document.activeElement))break;
+ }
+ await expect(jump).toBeFocused();await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(/#sleep-preparation$/);await expect(page.locator('#sleep-preparation')).toBeInViewport();
 });
 test('mobile and desktop directory is accessible in light and dark with no overflow',async({page})=>{
  for(const width of [375,1440])for(const theme of ['light','dark']){

@@ -458,6 +458,8 @@ body:has(#preferences[open]) { overflow: hidden; }
 @media print { #preferences, [data-preferences-open], .audio-preferences-context, .download-tools, #downloads-more { display: none !important; } }
 
 /* Function Chains directory; original sequences stay fully available below it. */
+/* Settle keyboard focus scrolling before a following native fragment jump. */
+html:has(.chain-directory) { scroll-behavior: auto; }
 .chain-directory { margin: 2rem 0; }
 .chain-directory-tools { display: grid; gap: .5rem; max-width: 38rem; }
 .chain-directory-tools input { min-height: 44px; padding: .6rem; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
