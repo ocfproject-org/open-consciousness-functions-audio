@@ -697,6 +697,22 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertLess(history_page.index('bad&lt;'), history_page.index('Ancestor revision'))
         self.assertNotIn('No source revision records are available', history_page)
 
+        self.assertIn("Documented practice intent:", html)
+        self.assertIn("not a guaranteed result or medical treatment", html)
+        self.assertIn("not evidence of lasting biological change", html)
+        self.assertIn("Persistence described by the practice: temporary", html)
+        permanent = copy.deepcopy(function)
+        permanent["lifecycle"]["persistence"] = "permanent"
+        permanent["lifecycle"]["scopes"] = [{"label": "Reinforcement", "persistence": "permanent", "description": "Documented intent"}]
+        permanent["commands"][0]["effect_scope"] = "permanent"
+        permanent["safety_notes"] = ["Existing function-specific precaution."]
+        snapshot = copy.deepcopy(permanent)
+        permanent_page = _function_page(permanent, [], {}, "a" * 40)
+        self.assertIn("Documented command scope: permanent", permanent_page)
+        self.assertIn("Persistence described by the practice: permanent", permanent_page)
+        self.assertIn("Existing function-specific precaution.", permanent_page)
+        self.assertLess(permanent_page.index("not evidence of lasting biological change"), permanent_page.index("<strong>Reinforcement</strong>"))
+        self.assertEqual(permanent, snapshot)
         self.assertEqual(function, original)
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
         secondary = copy.deepcopy(function["commands"][0])
@@ -958,6 +974,8 @@ class PublicSiteBuildTests(unittest.TestCase):
                 )
                 self.assertIn("or skip the audio", content)
                 self.assertNotIn("stereo baseline is optional", content)
+                self.assertNotIn("You may listen to the spoken guidance through speakers", content)
+                self.assertNotIn("You may still listen to the spoken guidance", content)
 
     def test_audio_asset_specs_include_format_rate_channels_size_and_duration(self):
         specification = _asset_specification(

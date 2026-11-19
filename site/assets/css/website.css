@@ -456,3 +456,5 @@ body:has(#preferences[open]) { overflow: hidden; }
   .docs-main { padding-top: 1.25rem; }
 }
 @media print { #preferences, [data-preferences-open], .audio-preferences-context, .download-tools, #downloads-more { display: none !important; } }
+/* Complete fragment navigation before reload/Back can interrupt smooth scrolling. */
+html:has(:target) { scroll-behavior: auto; }
