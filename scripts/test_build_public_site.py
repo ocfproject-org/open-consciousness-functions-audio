@@ -948,24 +948,34 @@ class PublicSiteBuildTests(unittest.TestCase):
         page = _quick_reference([function], {})
         assert 'data-category="experimental foundation"' in page
 
-    def test_recommended_settings_distinguish_stereo_delivery_from_access_to_guidance(self):
+    def test_recommended_settings_link_to_required_stereo_and_keep_optional_controls_distinct(self):
         content = _recommended_settings("a" * 40)
         self.assertIn("automatic loudness normalization", content)
         self.assertIn("normal playback speed (1.0x)", content)
         self.assertIn('href="#headphones-and-stereo"', content)
         self.assertNotIn("Speakers, mono mixing, or a single earpiece", content)
-        self.assertIn("Optional processing choices do not prevent you from listening to the spoken guidance.", content)
+        self.assertIn("Optional processing choices are separate from the required stereo delivery.", content)
         self.assertNotIn("when the selected edition is designed", content)
 
-    def test_platform_guides_allow_spoken_guidance_without_promising_stereo_equivalence(self):
+    def test_platform_guides_all_state_required_stereo_delivery_and_accessible_alternatives(self):
+        required = (
+            "Stereo headphones or stereo earbuds with separate left/right playback are\n"
+            "  required for the intended binaural/channel-separated audio."
+        )
         for platform in ("android", "ios", "linux", "macos", "windows"):
             with self.subTest(platform=platform):
-                content = " ".join(Path(f"docs/website/listening/{platform}.md").read_text().split())
-                self.assertIn("You may listen to the spoken guidance through speakers, mono audio or one earpiece.", content)
-                self.assertIn("For the recording's intended separate left/right delivery, use stereo headphones or earbuds.", content)
-                self.assertIn("equivalent binaural effects are not promised", content)
-                self.assertIn("Keep accessibility settings you need", content)
-                self.assertNotIn("or skip the audio", content)
+                content = Path(f"docs/website/listening/{platform}.md").read_text(
+                    encoding="utf-8"
+                )
+                self.assertIn(required, content)
+                self.assertIn(
+                    "Speakers, mono\n  mixing, or a single earpiece are not equivalent delivery of that audio.",
+                    content,
+                )
+                self.assertIn("or skip the audio", content)
+                self.assertNotIn("stereo baseline is optional", content)
+                self.assertNotIn("You may listen to the spoken guidance through speakers", content)
+                self.assertNotIn("You may still listen to the spoken guidance", content)
 
     def test_audio_asset_specs_include_format_rate_channels_size_and_duration(self):
         specification = _asset_specification(

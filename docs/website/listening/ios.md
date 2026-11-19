@@ -6,11 +6,11 @@ device processing for you.
 
 ## Baseline
 
-- You may listen to the spoken guidance through speakers, mono audio or one
-  earpiece. For the recording's intended separate left/right delivery, use stereo
-  headphones or earbuds. Speakers and mono playback do not preserve that delivery;
-  equivalent binaural effects are not promised. Keep accessibility settings you
-  need. The written guide and edition-matched transcripts are additional options.
+- Stereo headphones or stereo earbuds with separate left/right playback are
+  required for the intended binaural/channel-separated audio. Speakers, mono
+  mixing, or a single earpiece are not equivalent delivery of that audio. If you
+  cannot use this setup, use the written guide or an edition-matched transcript
+  if available, or skip the audio; no equivalent effects are promised.
 - Wired headphones are one option; compatible Bluetooth stereo headphones can
   also provide separate left/right playback.
 - Keep left/right balance centered unless you use an accessibility adjustment.
@@ -35,8 +35,8 @@ Open **Settings → Accessibility → Audio & Visual** to review Mono Audio and 
 left/right balance. Mono mixes the left/right channels and is not equivalent
 delivery of the intended binaural/channel-separated audio. Headphone
 Accommodations are optional accessibility settings. Do not disable an
-accessibility setting you rely on; you may still listen to the spoken guidance. The written guide and
-edition-matched transcripts are additional options. See [Apple's iPhone audio
+accessibility setting you rely on; use the written guide or an edition-matched
+transcript if available, or skip the audio. See [Apple's iPhone audio
 accessibility guide](https://support.apple.com/guide/iphone/iphb80ab7516/ios).
 
 ## Troubleshooting

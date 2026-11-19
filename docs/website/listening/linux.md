@@ -7,11 +7,11 @@ path for every system.
 
 ## Baseline
 
-- You may listen to the spoken guidance through speakers, mono audio or one
-  earpiece. For the recording's intended separate left/right delivery, use stereo
-  headphones or earbuds. Speakers and mono playback do not preserve that delivery;
-  equivalent binaural effects are not promised. Keep accessibility settings you
-  need. The written guide and edition-matched transcripts are additional options.
+- Stereo headphones or stereo earbuds with separate left/right playback are
+  required for the intended binaural/channel-separated audio. Speakers, mono
+  mixing, or a single earpiece are not equivalent delivery of that audio. If you
+  cannot use this setup, use the written guide or an edition-matched transcript
+  if available, or skip the audio; no equivalent effects are promised.
 - Select the intended stereo output profile and keep left/right balance centered
   unless you use an accessibility adjustment.
 - Start at a comfortable, clearly audible level and use normal playback speed
@@ -24,9 +24,9 @@ path for every system.
 In your desktop's sound settings, select the stereo headphone output profile and
 inspect its channel balance and mono accessibility option. Mono mixes the
 left/right channels and is not equivalent delivery of the intended
-binaural/channel-separated audio. Keep accessibility settings you rely on; you may still
-listen to the spoken guidance. The written guide and edition-matched transcripts
-are additional options. GNOME's menu labels can vary by release; see [Red Hat's GNOME sound
+binaural/channel-separated audio. Keep accessibility settings you rely on; use
+the written guide or an edition-matched transcript if available, or skip the
+audio. GNOME's menu labels can vary by release; see [Red Hat's GNOME sound
 configuration guide](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/customizing_the_gnome_desktop_environment/configuring-sound-in-gnome_configuring-sound-in-gnome).
 
 On systems using PipeWire or PulseAudio, tools such as `pavucontrol` may expose

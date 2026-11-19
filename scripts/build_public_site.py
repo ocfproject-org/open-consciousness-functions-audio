@@ -548,31 +548,12 @@ def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_f
     _require(repeated_stereo in accessibility, "accessibility stereo alternatives changed")
     accessibility = accessibility.replace(
         repeated_stereo,
-        "You may use speakers or mono to hear the spoken guidance. For stereo delivery and text alternatives, see "
+        "For the required stereo setup and available text alternatives, see "
         "[Headphones and stereo](#headphones-and-stereo). The text alternatives provide access to wording; "
         "they are not equivalent delivery of the binaural audio or a promise of equivalent effects.",
         1,
     )
     markdown = _replace_markdown_section(markdown, "Accessibility", accessibility)
-
-    stereo_source = _markdown_section_body(markdown, "Headphones and stereo")
-    _require(
-        " ".join(stereo_source.split()) ==
-        "Stereo headphones or stereo earbuds with separate left/right playback are "
-        "required for the intended binaural/channel-separated audio. Speakers, mono "
-        "mixing, or a single earpiece are not equivalent delivery of that audio. If you "
-        "cannot use this setup, use the written guide or an edition-matched transcript if "
-        "available, or skip the audio; no equivalent effects are promised.",
-        "spoken guidance and stereo source changed",
-    )
-    markdown = _replace_markdown_section(
-        markdown, "Headphones and stereo",
-        "You may listen to the spoken guidance through speakers, mono audio or one earpiece. "
-        "For the recording's intended separate left/right delivery, use stereo headphones or earbuds. "
-        "Speakers and mono playback do not preserve that delivery; equivalent binaural effects are not promised. "
-        "Keep accessibility settings you need and use a comfortable volume. "
-        "The written guide and edition-matched transcripts are additional ways to access the wording.",
-    )
 
     availability_answer = _function_audio_availability(functions, catalog, sessions_by_function)
     markdown = _replace_markdown_wrapped_once(
@@ -588,7 +569,7 @@ def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_f
         "binaural/channel-separated audio. Speakers, mono mixing, or a single earpiece are not equivalent delivery "
         "of that audio. If you cannot use this setup, use the written guide or an edition-matched transcript if "
         "available, or skip the audio; no equivalent effects are promised. Keep any accessibility settings you rely on.",
-        "See [Headphones and stereo](#headphones-and-stereo) for spoken-guidance options, stereo delivery and its limitations.",
+        "See [Headphones and stereo](#headphones-and-stereo) for the required setup, limitations, and available text alternatives.",
         "stereo FAQ cross-link",
     )
     markdown = _replace_markdown_wrapped_once(
@@ -2252,7 +2233,7 @@ def _about_page(guide_export, catalog, source_docs_url, transcript_counts):
 
 
 def _recommended_settings(source_commit):
-    return """<section class="guide-section" id="recommended-audio-settings"><h2>Optional audio processing</h2><p>For spoken-guidance options and stereo delivery, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3>Processing preferences</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices do not prevent you from listening to the spoken guidance. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
+    return """<section class="guide-section" id="recommended-audio-settings"><h2>Optional audio processing</h2><p>For the required stereo setup and its alternatives, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3>Processing preferences</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices are separate from the required stereo delivery. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
 
 
 def _device_links():

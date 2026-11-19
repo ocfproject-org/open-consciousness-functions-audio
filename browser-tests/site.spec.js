@@ -1346,7 +1346,7 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
   await expect(page.locator('main')).not.toContainText('Michael');
   await expect(page.locator('main')).not.toContainText('not a verified official OCF policy');
   const guideText = await page.locator('main').innerText();
-  expect(guideText.match(/You may listen to the spoken guidance through speakers, mono audio or one earpiece\./g)).toHaveLength(1);
+  expect(guideText.match(/Stereo headphones or stereo earbuds with separate left\/right playback are required/g)).toHaveLength(1);
   expect(guideText.match(/Do not listen while driving, operating equipment, or doing anything requiring vigilance\./g)).toHaveLength(1);
   expect(guideText).not.toContain('What OCF is');
   expect(guideText).not.toContain('mono mixing does not provide equivalent delivery. Separately');
@@ -1369,16 +1369,18 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
   await noAxeViolations(page);
 });
 
-test('generated listening and platform guides allow spoken guidance and distinguish stereo delivery without changing assets', async ({ page }) => {
-  const required = 'You may listen to the spoken guidance through speakers, mono audio or one earpiece.';
+test('generated listening and all platform guides require stereo for binaural delivery without changing assets', async ({ page }) => {
+  const required = 'Stereo headphones or stereo earbuds with separate left/right playback are required for the intended binaural/channel-separated audio.';
   await page.goto('/listening/');
   const guide = await page.locator('main').innerText();
   expect(guide).toContain(required);
-  expect(guide).toContain("For the recording's intended separate left/right delivery, use stereo headphones or earbuds.");
-  expect(guide).not.toContain('or skip the audio');
-  expect(guide).toContain('equivalent binaural effects are not promised');
+  expect(guide).toContain('Speakers, mono mixing, or a single earpiece are not equivalent delivery of that audio.');
+  expect(guide).toContain('use the written guide or an edition-matched transcript if available, or skip the audio');
+  expect(guide).toContain('no equivalent effects are promised');
   expect(guide).not.toContain('Can I listen without stereo headphones?');
   expect(guide).not.toContain('Yes. Speakers, mono playback');
+  expect(guide).not.toContain('You may listen to the spoken guidance through speakers');
+  expect(guide).not.toContain('You may use speakers or mono');
 
   const settings = page.locator('#recommended-audio-settings');
   await expect(settings).toContainText('Headphones and stereo');
@@ -1388,9 +1390,11 @@ test('generated listening and platform guides allow spoken guidance and distingu
     await page.goto(`/listening/${platform}/`);
     const text = await page.locator('main').innerText();
     expect(text, platform).toContain(required);
-    expect(text, platform).toContain('equivalent binaural effects are not promised');
-    expect(text, platform).not.toContain('or skip the audio');
+    expect(text, platform).toContain('not equivalent delivery of that audio');
+    expect(text, platform).toContain('or skip the audio');
     expect(text, platform).not.toContain('stereo baseline is optional');
+    expect(text, platform).not.toContain('You may listen to the spoken guidance through speakers');
+    expect(text, platform).not.toContain('You may still listen to the spoken guidance');
   }
 
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
