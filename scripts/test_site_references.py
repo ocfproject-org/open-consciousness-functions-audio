@@ -26,13 +26,19 @@ class ReferenceTests(unittest.TestCase):
         self.assertNotIn('Bullard', result)
 
     def test_chain_context_is_outside_original_and_detects_content_changes(self):
-        source = (Path(__file__).resolve().parents[1] / 'docs/website/function-chains.md').read_text()
+        source = (Path(__file__).resolve().parents[1] / 'docs/website/function-chains.md').read_text(encoding='utf-8')
         result = chain_references('Weight management', source)
         self.assertIn('Habit Freedom and optional Detox are OCF additions', result)
         self.assertIn('not evidence of effectiveness or safety', result)
         self.assertNotIn(' open', result)
         self.assertEqual('', chain_references('Weight management', source + '\n'))
         self.assertEqual('', chain_references('Dreams', source))
+
+    def test_public_reference_labels_preserve_unicode(self):
+        self.assertEqual('Barbara Bullard, Hemi-Sync Odyssey—Part II (Fall 1993)',
+                         REFERENCES['sources']['A-ODYS2']['title'])
+        self.assertEqual('High Performance-Ten (HP-10), © 1987',
+                         REFERENCES['sources']['A-HP10']['title'])
 
     def test_curated_subset_has_no_unverified_or_private_links(self):
         self.assertEqual(20, len(REFERENCES['uses']))
