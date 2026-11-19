@@ -201,7 +201,8 @@ test('delayed public data preserves repeated reload fragments without overriding
   gate = new Promise(resolve => { release = resolve; });
   await page.reload({waitUntil: 'domcontentloaded'});
   await expect(page.locator('#cues')).toBeInViewport();
-  await page.mouse.wheel(0, 1200);
+  await page.waitForLoadState('load');
+  await page.keyboard.press('Control+End');
   await expect(page.locator('#cues')).not.toBeInViewport();
   release(); await expect(panel(page).getByRole('status')).toContainText('Tracking is off');
   await expect(page.locator('#cues')).not.toBeInViewport();
