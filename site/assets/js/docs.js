@@ -302,6 +302,47 @@
     }
   }
 
+  // Static downloads remain complete without JS. Enhancement narrows only visibility.
+  const downloadSearch = document.getElementById('download-search');
+  if (downloadSearch) {
+    const cards = [...document.querySelectorAll('[data-download-card]')];
+    const more = document.getElementById('downloads-more');
+    const count = document.getElementById('download-count');
+    const storageKey = 'ocf-downloads-view:v1';
+    let limit = 12;
+    let identity = '';
+    const restore = () => {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}');
+        if (typeof saved.query === 'string') downloadSearch.value = saved.query;
+        if (Number.isInteger(saved.limit) && saved.limit >= 12) limit = Math.min(saved.limit, cards.length || 12);
+        if (typeof saved.identity === 'string') identity = saved.identity;
+      } catch (_) { /* Search remains usable without storage. */ }
+    };
+    const render = () => {
+      const edition = window.ocfEditions?.current() || '';
+      const format = window.ocfFormats?.current() || 'mp3';
+      const nextIdentity = edition + ':' + format;
+      if (identity && identity !== nextIdentity) limit = 12;
+      identity = nextIdentity;
+      const query = normalize(downloadSearch.value);
+      const matches = cards.filter(card => card.dataset.edition === edition && JSON.parse(card.dataset.formatSession).includes(format) && normalize(card.dataset.downloadSearch).includes(query));
+      const visible = new Set(matches.slice(0, limit));
+      cards.forEach(card => { card.hidden = !visible.has(card); });
+      more.hidden = matches.length <= limit;
+      count.textContent = `${visible.size} of ${matches.length} sessions · ${format.toUpperCase()} · Edition ${edition}${matches.length ? '' : ' — No matching downloads.'}`;
+      try { sessionStorage.setItem(storageKey, JSON.stringify({query: downloadSearch.value, limit, identity})); } catch (_) { /* No storage required to search. */ }
+      return matches;
+    };
+    restore();
+    document.querySelector('.download-tools').hidden = false;
+    downloadSearch.addEventListener('input', () => { limit = 12; render(); });
+    more.addEventListener('click', () => { const firstNew = limit; limit += 12; const matches = render(); matches[firstNew]?.querySelector('h2 a')?.focus(); });
+    document.addEventListener('ocf-edition-change', render);
+    window.addEventListener('pageshow', () => { restore(); render(); });
+    render();
+  }
+
   const filterState = (scope, controls) => {
     const key = `ocf-filters:${location.pathname}:${scope}`;
     try {

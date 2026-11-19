@@ -13,6 +13,7 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_public_site import (
     _asset_specification,
+    _preparation_minutes,
     _apply_edition_presentation,
     _source_histories,
     _catalog_sessions,
@@ -56,6 +57,14 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn('<script src="../assets/js/chains-redirect.js" defer>', page)
         self.assertNotIn('http-equiv="refresh"', page)
 
+    def test_preparation_time_uses_latest_verified_recording_duration(self):
+        catalog = {"releases": []}
+        for version, seconds in [("0.1.0", 1200), ("0.2.0", 1657.55771)]:
+            catalog["releases"].append({"version": version, "preparations": [
+                {"sessions": [{"assets": [{"duration_seconds": seconds}]}]}]})
+        self.assertEqual(_preparation_minutes(catalog), 28)
+        self.assertIsNone(_preparation_minutes({"releases": []}))
+
     def test_shared_editions_static_default_preserves_historical_files_and_history(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -68,7 +77,7 @@ class PublicSiteBuildTests(unittest.TestCase):
                         '<article data-edition-content="0.2.0"><a href="https://example.com/new.mp3">new</a></article>'
                         '<a data-format-content="mp3" href="https://example.com/audio.mp3">MP3</a>'
                         '<a data-format-content="flac" href="https://example.com/audio.flac">FLAC</a>'
-                        '<details id="function-history">pinned history</details></main>')
+                        '<details id="function-history">pinned history</details></main></body>')
             page.write_text(original)
             catalog = {"releases": [{"version": version, "functions": [{"sessions": [{}, {}]}]}
                                     for version in ("0.1.0", "0.2.0", "0.1.5-rc1")]}
@@ -139,7 +148,8 @@ class PublicSiteBuildTests(unittest.TestCase):
         html = _shell("Example", "<h1>Example</h1>", "start", "a" * 40)
         self.assertIn('href="../assets/branding/ocf-app-icon-32.png" type="image/png"', html)
         self.assertIn('src="../assets/branding/ocf-app-icon-128.png"', html)
-        self.assertNotIn('aria-hidden="true">OCF</span>', html)
+        self.assertIn('<span class="brand-short" aria-hidden="true">OCF</span>', html)
+        self.assertIn('<span class="brand-name">Open Consciousness Functions', html)
 
 
     def test_optional_chains_are_exactly_the_seventeen_owner_approved_orders(self):

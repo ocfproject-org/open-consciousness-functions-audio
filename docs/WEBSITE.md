@@ -191,3 +191,27 @@ opens the canonical page; preserving arbitrary incoming query/fragment values
 requires JavaScript on this static host. The alias is noindex, points its
 canonical metadata to the new route, and is excluded from the sitemap.
 The seventeen chains and their stable section anchors are unchanged.
+
+### First-session and download presentation
+
+Start Here presents Prepare → Choose → Learn → Use and a link to the Preparation
+Learning player. Its approximate duration is calculated from the verified catalog
+(current latest: 27m37s, displayed as about 28 minutes). Following the link does
+not start or fetch audio. The narrow official Human Plus preparation exception
+and the five optional starter practices remain available in disclosures. The
+Preparation introduction summarizes existing preparation/return-to-waking guidance;
+it adds no teaching sequence or canonical function instructions.
+
+Preferences is a native modal reached from the header or contextual audio controls.
+It contains the existing theme, edition and format controls and their storage
+fallbacks. Close/Escape restores the invoking button. It never adds navigation
+history entries; navigating away, Back/Forward restoration and reload dismiss stale
+modal state. The mobile menu has one level; desktop retains its existing More menu.
+
+Downloads enhances the complete static file inventory with title, approved spoken
+cue and category search, initially showing 12 matching sessions and adding 12 per
+Show more. Search and expanded count survive navigation/reload when session storage
+is available; changing edition or format resets the visible subset. Without JavaScript,
+all latest-edition files remain available, with historical release access unchanged.
+Release notes and file metadata/checksums use native disclosures. Search and
+preferences never fetch audio or change the immutable file targets.

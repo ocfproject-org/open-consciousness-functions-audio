@@ -1,3 +1,4 @@
+const {openPreferences,closePreferences,selectPreference} = require('./preferences');
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -183,14 +184,16 @@ test('Insulate hold guidance uses the spoken Cancel cue without cue copy control
 test('Start Here renders the approved suggestion as an ordered list and presents Preparation Learning first', async ({ page }) => {
   await page.goto('/start/');
   const headings = await page.locator('#main h2').allTextContents();
-  expect(headings.indexOf('Preparation Learning')).toBeLessThan(headings.indexOf('Choose one practice'));
+  await expect(page.locator('.start-steps strong').first()).toHaveText('Prepare');
+  await expect(page.locator('.primary-action')).toHaveAttribute('href', '../preparation-learning/#listen');
+  await page.locator('.start-more > summary').click();
   expect(headings.indexOf('Choose one practice')).toBeLessThan(headings.indexOf('A suggested way to explore'));
   const text = await page.locator('#main').innerText();
   expect(text).toContain('Complete Preparation Learning before using any OCF function.');
   expect(text).toContain('Only people who have already learned the official Human Plus preparation track may skip it.');
   expect(text).not.toContain('Michael');
   expect(text).not.toContain('not a verified official OCF policy');
-  const sequence = page.locator('#main .docs-content > ol');
+  const sequence = page.locator('#main .start-more > ol');
   await expect(sequence).toHaveCount(1);
   const items = await sequence.locator('li').allTextContents();
   expect(items).toHaveLength(5);
@@ -200,7 +203,7 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   expect(items[3]).toContain('Recall — OCF-COG-006');
   expect(items[4]).toContain('Think Fast — OCF-COG-007');
   expect(text).not.toContain('distinguishes displayed cues from spoken cues');
-  expect(text).toContain('separate introductory session, not one of the 58 function records');
+  await expect(page.locator('.start-steps li').first()).toContainText('Complete Preparation Learning');
   expect(text).toContain('After Preparation Learning, these five functions can be approachable starting points:');
   expect(text).not.toContain('three functions');
   expect(text).toContain('You can explore these functions in any order;');
@@ -429,7 +432,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await expect(menu.locator('a[href="preparation-learning/"]')).toHaveCount(0);
   expect(await menu.locator('a').count()).toBe(12);
   const primaryLinks = menu.locator('nav[aria-label="Main navigation"] > a');
-  await expect(primaryLinks).toHaveCount(4);
+  await expect(primaryLinks).toHaveCount(12);
   const linkRects = await primaryLinks.evaluateAll(links => links.map(link => {
     const { x, right, height } = link.getBoundingClientRect();
     return { x, right, height };
@@ -441,11 +444,7 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   }
   expect((await summary.boundingBox()).height).toBeGreaterThanOrEqual(44);
   for (const link of await primaryLinks.all()) await expect(link).toBeVisible();
-  const more = menu.locator('.more-menu');
-  await more.locator('summary').click();
-  await expect(more.locator('.more-links a')).toHaveCount(8);
-  for (const link of await more.locator('.more-links a').all()) await expect(link).toBeVisible();
-  await more.locator('summary').click();
+  await expect(menu.locator('.more-menu')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
   await fs.mkdir('browser-artifacts', { recursive: true });
   await page.screenshot({ path: path.join('browser-artifacts', 'mobile-menu-light-375.png'), fullPage: false });
@@ -458,7 +457,9 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await page.locator('.site-footer p').click();
   await expect(menu).not.toHaveAttribute('open', '');
 
+  await openPreferences(page);
   await page.locator('.theme-toggle').click();
+  await closePreferences(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await summary.click();
   await page.screenshot({ path: path.join('browser-artifacts', 'mobile-menu-dark-375.png'), fullPage: false });
@@ -477,9 +478,10 @@ test('Downloads cards keep the selected individual format action visible and nam
   for (const [functionId, title] of [['OCF-FND-004', 'Relax'], ['OCF-BOD-001', 'Brain Flow']]) {
     const session = release.functions.find(row => row.function_id === functionId).sessions[0];
     const card = page.locator(`.download-card[data-function-id="${functionId}"][data-edition="${session.edition}"]`);
+    await page.locator('#download-search').fill(title);
     await expect(card.locator('h2')).toContainText(title);
     for (const format of ['mp3', 'flac']) {
-      await page.getByLabel('Audio format', {exact:true}).selectOption(format);
+      await selectPreference(page,'Audio format',format);
       const asset = session.assets.find(item => item.format === format);
       const link = card.getByRole('link', { name: new RegExp(`^Download ${format.toUpperCase()} for ${title},`) });
       await expect(link).toHaveAttribute('href', asset.download_url);
@@ -488,6 +490,7 @@ test('Downloads cards keep the selected individual format action visible and nam
     }
   }
 
+  await page.locator('#download-search').fill('');
   for (const width of [320, 375, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const layout = await page.evaluate(() => ({
@@ -503,7 +506,7 @@ test('Downloads cards keep the selected individual format action visible and nam
       }),
     }));
     expect(layout.pageWidth, `document overflow at ${width}px`).toBeLessThanOrEqual(width);
-    expect(layout.cards).toHaveLength(59);
+    expect(layout.cards).toHaveLength(12);
     for (const card of layout.cards) {
       expect(card.width).toBeGreaterThan(0);
       expect(card.scrollWidth, `card overflow at ${width}px`).toBeLessThanOrEqual(card.clientWidth + 1);
@@ -544,7 +547,9 @@ test('manual and system theme combinations keep banner, hover and focus contrast
       await page.reload();
       const expected = preference === 'system' ? 'System' : preference[0].toUpperCase() + preference.slice(1);
       const themeButton = page.getByRole('button', { name: `Color theme: ${expected}. Activate to change.` });
+      await openPreferences(page);
       await expect(themeButton).toBeVisible();
+      await closePreferences(page);
       const resolved = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
       expect(resolved).toBe(preference === 'system' ? null : preference);
       const banner = page.locator('.release-banner');
@@ -564,9 +569,11 @@ test('manual and system theme combinations keep banner, hover and focus contrast
         background: getComputedStyle(link.closest('.release-banner')).backgroundColor,
       }));
       expect(contrast(hoverColors.foreground, hoverColors.background), `${preference}/${osTheme} hovered link`).toBeGreaterThanOrEqual(4.5);
+      await openPreferences(page);
       await themeButton.focus();
       const focusColors = await themeButton.evaluate(button => ({ ring: getComputedStyle(button).outlineColor, background: getComputedStyle(button).backgroundColor }));
       expect(contrast(focusColors.ring, focusColors.background), `${preference}/${osTheme} focus ring`).toBeGreaterThanOrEqual(3);
+      await closePreferences(page);
       await page.goto('/functions/OCF-BOD-001/');
       await page.locator('.source-details summary').click();
       const documentationLink = page.locator('.docs-content .source-details a').first();
@@ -606,6 +613,7 @@ test('manual and system theme combinations keep banner, hover and focus contrast
     }
   }
   await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+  await openPreferences(page);
   await page.keyboard.press('Tab');
   await page.getByRole('button', { name: /Color theme/ }).focus();
   const modes = await page.evaluate(() => ({
@@ -621,6 +629,7 @@ test('manual and system theme combinations keep banner, hover and focus contrast
   expect(modes.outlineStyle).not.toBe('none');
   expect(parseFloat(modes.outlineWidth)).toBeGreaterThan(0);
   expect(modes.scrollBehavior).toBe('auto');
+  await closePreferences(page);
   await noAxeViolations(page, '.site-header');
 });
 
@@ -975,7 +984,7 @@ test('catalog selection and download controls identify session and format', asyn
       expect(summary).toMatch(/^(?:MP3|FLAC) file details$/);
     }
     for (const format of ['MP3', 'FLAC']) {
-      await page.getByLabel('Audio format', {exact:true}).selectOption(format.toLowerCase());
+      await selectPreference(page,'Audio format',format.toLowerCase());
       const checkboxName = `Select ${format} for ${title}, en-US, Mike — Original Voice, edition ${latestEdition}`;
       await expect(card.getByRole('checkbox', { name: checkboxName, exact: true })).toBeAttached();
       await expect(card.getByRole('link', { name: new RegExp(`^Download ${format} for ${title},`) })).toBeAttached();
@@ -1053,7 +1062,7 @@ test('selected files hidden by filters remain reviewable and removable', async (
   const relaxMp3 = page.locator(`[data-selected-asset-id="${relaxMp3Asset.asset_id}"]`);
   const brainFlac = brain.getByRole('checkbox', { name: /^Select FLAC for Brain Flow,/ });
   await relaxMp3.check();
-  await page.getByLabel('Audio format', {exact:true}).selectOption('flac');
+  await selectPreference(page,'Audio format','flac');
   await brainFlac.check();
   await expect(page.locator('#selection-count')).toHaveText('2 files selected (1 hidden by filters)');
   const review = page.locator('#selected-files-review');
@@ -1082,9 +1091,9 @@ test('selected files hidden by filters remain reviewable and removable', async (
   await expect(page.locator('#selection-count')).toBeFocused();
   expect(await brainFlac.evaluate(checkbox => checkbox.checked)).toBe(false);
 
-  await page.getByLabel('Audio format', {exact:true}).selectOption('mp3');
+  await selectPreference(page,'Audio format','mp3');
   await brain.getByRole('checkbox', { name: /^Select MP3 for Brain Flow,/ }).check();
-  await page.getByLabel('Audio format', {exact:true}).selectOption('flac');
+  await selectPreference(page,'Audio format','flac');
   await brainFlac.check();
   await page.locator('#clear-selection').click();
   await expect(page.locator('#selection-count')).toHaveText('0 files selected');
@@ -1103,7 +1112,7 @@ test('function titles expose direct Listen/MP3/FLAC actions for each published e
   await expect(actions).toBeVisible();
   await expect(actions.getByRole('link', { name: `Listen to ${label}` })).toHaveAttribute('href', `#session-${anchorAsset.asset_id}`);
   for (const format of ['mp3', 'flac']) {
-    await page.getByLabel('Audio format', {exact:true}).selectOption(format);
+    await selectPreference(page,'Audio format',format);
     const asset = session.assets.find(row => row.format === format);
     await expect(actions.getByRole('link', { name: `Download ${format.toUpperCase()} for ${label}` })).toHaveAttribute('href', asset.download_url);
   }
@@ -1313,7 +1322,7 @@ test('Android-like touch users can open and follow the primary mobile navigation
   const context = await browser.newContext({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   try {
     const mobilePage = await context.newPage();
-    await mobilePage.goto('http://127.0.0.1:4173/');
+    await mobilePage.goto('/');
     await mobilePage.locator('.mobile-nav > summary').tap();
     await expect(mobilePage.locator('.mobile-nav')).toHaveAttribute('open', '');
     await mobilePage.locator('.mobile-nav a[href="start/"]').tap();
@@ -1552,10 +1561,12 @@ test('Quick Reference filters, keyboard controls, narrow widths, print, themes, 
   await expect(page).toHaveURL(/#behavior$/);
 
   await page.goto('/');
+  await openPreferences(page);
   const initialTheme = await page.locator('[data-theme-toggle]').getAttribute('data-theme-preference');
   await page.locator('[data-theme-toggle]').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-theme-toggle]')).not.toHaveAttribute('data-theme-preference', initialTheme);
+  await closePreferences(page);
 
   await page.goto('/functions/OCF-FND-004/');
   const transcript = page.locator('[data-transcript]').first();
@@ -1766,6 +1777,7 @@ test('approved function chains are discoverable, optional, accessible and retain
   for (const width of [320, 1280]) {
     await page.setViewportSize({width, height: 900});
     await page.goto('/start/');
+    await page.locator('.start-more > summary').click();
     await page.locator('main a[href$="function-chains/"]').click();
     await expect(page).toHaveURL(/function-chains\/$/);
     await expect(page.locator('h1')).toHaveText('Function Chains');
@@ -1830,11 +1842,13 @@ test('branding and four theme choices preserve device defaults and persistent ov
   const dark = await background();
   await page.emulateMedia({colorScheme: 'light'});
   await expect.poll(background).not.toBe(dark);
+  await openPreferences(page);
   const control = page.locator('[data-theme-toggle]');
   for (const name of ['Light', 'Dark', 'Black']) {
     await control.click();
     await expect(control).toHaveText('Theme: ' + name);
   }
+  await closePreferences(page);
   await expect.poll(background).toBe('rgb(0, 0, 0)');
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000');
   await noAxeViolations(page);
@@ -1845,7 +1859,9 @@ test('branding and four theme choices preserve device defaults and persistent ov
   await page.setViewportSize({width:320,height:900});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await noAxeViolations(page);
+  await openPreferences(page);
   await control.click();
+  await closePreferences(page);
   await expect(control).toHaveText('Theme: System');
   await expect(page.locator('html')).not.toHaveAttribute('data-theme');
   await page.emulateMedia({colorScheme:'light'});
@@ -1858,8 +1874,9 @@ test('branding and four theme choices preserve device defaults and persistent ov
 test('dedicated Start Here and homepage both show all five optional starter links on mobile', async ({page}) => {
   await page.setViewportSize({width:320,height:900});
   const expected = ['OCF-FND-004','OCF-FND-002','OCF-COG-004','OCF-COG-006','OCF-COG-007'];
-  for (const [route, selector] of [['/start/', 'main .docs-content > ol a'], ['/', '.starting-practices a']]) {
+  for (const [route, selector] of [['/start/', '.start-more > ol a'], ['/', '.starting-practices a']]) {
     await page.goto(route);
+    if(route==='/start/') await page.locator('.start-more > summary').click();
     const ids = await page.locator(selector).evaluateAll(links => links.map(a => a.getAttribute('href').match(/OCF-[A-Z]{3}-[0-9]{3}/)[0]));
     expect(ids).toEqual(expected);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -1937,7 +1954,7 @@ test('both published editions retain exact provenance, downloads and accessible 
   await expect(selector).toHaveValue('latest');
   await expect(page.locator('.session-card:visible')).toHaveCount(59);
   for (const [, version] of contracts) {
-    await selector.selectOption(version);
+    await selectPreference(page,'Audio edition',version);
     await expect(page.locator('.session-card:visible')).toHaveCount(59);
     expect(await page.locator('.session-card:visible').evaluateAll(cards => [...new Set(cards.map(card => card.dataset.edition))])).toEqual([version]);
     const release = publishedCatalog.releases.find(row => row.version === version);
@@ -1948,7 +1965,7 @@ test('both published editions retain exact provenance, downloads and accessible 
   }
   await page.reload();
   await expect(selector).toHaveValue('0.1.0');
-  await selector.selectOption('latest');
+  await selectPreference(page,'Audio edition','latest');
   await expect(selector).toHaveValue('latest');
   await expect(page.locator('.session-card:visible')).toHaveCount(59);
   await page.goto('/downloads/');
@@ -1970,14 +1987,14 @@ test('edition changes retain selected-file provenance and an active historical p
   const checkbox = latest.getByRole('checkbox', {name: /^Select MP3/});
   await checkbox.check();
   const expectedURL = await latest.getByRole('link', {name: /^Download MP3/}).getAttribute('href');
-  await page.getByLabel('Audio edition', {exact: true}).selectOption('0.1.0');
+  await selectPreference(page,'Audio edition','0.1.0');
   await expect(page.locator('#selection-count')).toHaveText('1 file selected (1 hidden by filters)');
   await page.locator('#selected-files-summary').click();
   await expect(page.locator('#selected-files-review').getByRole('link')).toHaveAttribute('href', expectedURL);
   await historical.getByRole('button', {name: /^Show player/}).click();
   const player = historical.locator('audio');
   await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
-  await page.getByLabel('Audio edition', {exact: true}).selectOption('0.2.0');
+  await selectPreference(page,'Audio edition','0.2.0');
   await expect(historical).toBeVisible();
   await expect(historical).toHaveAttribute('data-filtered-out', 'true');
   await expect(player).toHaveAttribute('data-edition-identity', 'historical');
@@ -2025,7 +2042,7 @@ test('function source history works without JavaScript', async ({ browser }) => 
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
   try {
-    await page.goto('http://127.0.0.1:4173/functions/OCF-BOD-003/');
+    await page.goto('/functions/OCF-BOD-003/');
     const history = page.locator('#function-history');
     await history.locator('summary').click();
     await expect(history.locator('a').first()).toBeVisible();

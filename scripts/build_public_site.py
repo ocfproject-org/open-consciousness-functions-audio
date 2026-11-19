@@ -824,7 +824,7 @@ def build_public_site(
             staging / "start" / "index.html",
             _shell(
                 "Start Here — OCF",
-                render_markdown(_read_markdown(content_dir, "start-here.md").replace("{{function_count}}", str(len(functions)))) + _visitor_flow(),
+                _start_page(_read_markdown(content_dir, "start-here.md"), functions, catalog),
                 "start",
                 source_commit,
             ),
@@ -953,7 +953,7 @@ def build_public_site(
             staging / "downloads" / "index.html",
             _shell(
                 "Downloads — OCF Audio Library",
-                _downloads_page(catalog, preparation_sessions),
+                _downloads_page(catalog, preparation_sessions, functions),
                 "downloads",
                 source_commit,
             ),
@@ -1123,11 +1123,14 @@ def _apply_edition_presentation(staging, catalog):
                  for group in release["functions"] + release.get("preparations", []))}
                 for version in versions]
     latest = versions[0] if versions else ""
-    controls = ('<section class="edition-preference" data-edition-controls hidden>'
+    controls = ('<dialog id="preferences" aria-labelledby="preferences-title"><h2 id="preferences-title">Preferences</h2>'
+                '<button type="button" data-preferences-close autofocus>Close preferences</button>'
+                '<section class="edition-preference" data-edition-controls hidden>'
                 '<label for="edition-filter">Audio edition</label> '
                 '<select id="edition-filter" aria-describedby="edition-help"></select>'
                 '<label for="format-filter">Audio format</label> <select id="format-filter"><option value="mp3">MP3</option><option value="flac">FLAC</option></select>'
                 '<p id="edition-help">Your edition and format choices apply throughout the site. Choose Latest to follow new releases.</p></section>'
+                '<button class="theme-toggle" type="button" data-theme-toggle aria-label="Color theme: System">Theme: System</button></dialog>'
                 '<noscript><p>Showing the latest audio edition in MP3. Earlier editions remain available in '
                 '<a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">published releases</a>.</p></noscript>')
     for page in staging.rglob("*.html"):
@@ -1137,7 +1140,9 @@ def _apply_edition_presentation(staging, catalog):
                       lambda match: match[1] + "?v=" + hashlib.sha256(
                           (staging / "assets" / match[2]).read_bytes()).hexdigest()[:16] + '"', text)
         text = text.replace("</head>", '<script type="application/json" id="audio-editions">' + json.dumps(metadata) + '</script></head>')
-        text = text.replace('<main id="main" class="docs-main">', '<main id="main" class="docs-main">' + controls)
+        text = text.replace('</body>', controls + '</body>')
+        if page.relative_to(staging).parts[0] in {'functions', 'preparation-learning', 'downloads'}:
+            text = text.replace('</h1>', '</h1><p class="audio-preferences-context"><span data-audio-preference-summary>Latest · MP3</span> <button type="button" data-preferences-open hidden>Audio preferences</button></p>', 1)
         def default_visibility(match):
             return match.group(0) if match.group(1) == latest else match.group(0)[:-1] + ' hidden>'
         text = re.sub(r'<[^>]+data-edition-content="([^"]+)"[^>]*>', default_visibility, text)
@@ -1280,7 +1285,7 @@ def _shell(
         if include_catalog
         else ""
     )
-    docs_script = f'<script src="{base}assets/js/docs.js" defer></script>'
+    docs_script = f'<script src="{base}assets/js/docs.js" defer></script><script src="{base}assets/js/preferences.js" defer></script>'
     content_class = "docs-content home-content" if root else "docs-content"
     return f'''<!doctype html>
 <html lang="en-US"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1289,9 +1294,9 @@ def _shell(
 <title>{_html(title)}</title><link rel="icon" href="{base}assets/branding/ocf-app-icon-32.png" type="image/png" sizes="32x32"><link rel="stylesheet" href="{base}assets/css/main.css"><link rel="stylesheet" href="{base}assets/css/website.css">
 <script src="{base}assets/js/editions.js" defer></script>{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
-<nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_menu}</nav></details>
-<button class="theme-toggle" type="button" data-theme-toggle aria-label="Color theme: System">Theme: System</button></header>
+<header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-short" aria-hidden="true">OCF</span><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
+<nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_links}</nav></details>
+<button class="preferences-open" type="button" data-preferences-open hidden>Preferences</button></header>
 <main id="main" class="docs-main">{toc_mobile}<div class="docs-layout{" with-toc" if toc_nav else ""}">{toc_desktop}<article class="{content_class}">{body}</article></div></main>
 <footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
 </body></html>'''
@@ -1333,6 +1338,35 @@ def _render_toc(items):
         + rows
         + "</ul></nav>"
     )
+
+
+def _preparation_minutes(catalog):
+    releases = sorted(catalog["releases"], key=lambda row: tuple(
+        (0, int(part)) if part.isdigit() else (1, part.casefold())
+        for part in re.split(r"(\d+)", row["version"])), reverse=True)
+    durations = [asset.get("duration_seconds", 0) for release in releases
+                 for group in release.get("preparations", []) for session in group["sessions"]
+                 for asset in session["assets"] if asset.get("duration_seconds")]
+    return (int(durations[0]) + 59) // 60 if durations else None
+
+
+def _start_page(markdown, functions, catalog):
+    minutes = _preparation_minutes(catalog)
+    timing = f" (about {minutes} minutes)" if minutes else ""
+    additional = markdown.split("## Choose one practice", 1)[1]
+    return ('<header class="start-journey"><h1>Start here</h1>'
+            '<p>OCF uses guided audio to teach focused practices and the cues you can use with their instructions in daily life.</p>'
+            '<ol class="start-steps"><li><strong>Prepare</strong> — Complete Preparation Learning before using any OCF function.</li>'
+            '<li><strong>Choose</strong> — pick a function and read its guide.</li>'
+            '<li><strong>Learn</strong> — follow its guided session.</li>'
+            '<li><strong>Use</strong> — follow the taught steps in daily life.</li></ol>'
+            f'<p><a class="primary-action" href="../preparation-learning/#listen">Play Preparation Learning{timing}</a></p>'
+            '<p class="start-play-note">Opens the recording; press Play when you are ready.</p>'
+            '<details class="preparation-exception"><summary>Already learned the official Human Plus preparation?</summary>'
+            '<p>Only people who have already learned the official Human Plus preparation track may skip Preparation Learning.</p>'
+            '<p><a href="../functions/">Choose a function</a></p></details></header>'
+            '<details class="start-more"><summary>More guidance and starting practices</summary>'
+            + render_markdown("## Choose one practice" + additional) + '</details>' + _visitor_flow())
 
 
 def _visitor_flow():
@@ -2107,7 +2141,8 @@ def _relationships_page(functions):
     return f'<header class="page-intro"><p class="eyebrow">Source-approved relationships</p><h1>Explore related practices</h1><p>These {relation_count} links are optional and one-way. They are not prerequisites, sequences, or claims of combined effects.</p></header>{groups}'
 
 
-def _downloads_page(catalog, preparation_sessions):
+def _downloads_page(catalog, preparation_sessions, functions=()):
+    by_id = {row["function_id"]: row for row in functions}
     cards = []
     release_notes = []
     for release in catalog["releases"]:
@@ -2115,7 +2150,7 @@ def _downloads_page(catalog, preparation_sessions):
         if changes:
             items = "".join(f"<li>{_inline(entry)}</li>" for entry in changes)
             release_notes.append(
-                f'<section class="guide-section release-changelog" data-release-tag="{_html(release["tag"])}" data-edition-content="{_html(release["version"])}"><h2>What changed in edition {_html(release["version"])}</h2><ul>{items}</ul><p><a href="{_html(release["release_url"])}">Read the published release notes</a></p></section>'
+                f'<details class="guide-section release-changelog" data-release-tag="{_html(release["tag"])}" data-edition-content="{_html(release["version"])}"><summary>What changed in edition {_html(release["version"])}</summary><ul>{items}</ul><p><a href="{_html(release["release_url"])}">Read the published release notes</a></p></details>'
             )
         groups = [(False, group) for group in release["functions"]]
         groups += [(True, group) for group in release.get("preparations", [])]
@@ -2123,6 +2158,10 @@ def _downloads_page(catalog, preparation_sessions):
             for session in group["sessions"]:
                 title = session.get("title") or group.get("title") or "Session"
                 function_id = group.get("function_id") or "preparation-learning"
+                documented = by_id.get(function_id, {})
+                search = " ".join([title, function_id] +
+                                  [command["spoken_cue"] for command in documented.get("commands", []) if command.get("spoken_cue")] +
+                                  [str(category.get(key, "")) for category in documented.get("categories", []) for key in ("id", "label")])
                 locale = session.get("locale") or "Language not specified"
                 voice = session.get("voice_name") or session.get("voice_id") or "Voice not specified"
                 edition = session.get("edition") or release.get("version") or "Edition not specified"
@@ -2155,18 +2194,20 @@ def _downloads_page(catalog, preparation_sessions):
                         f'<li data-format-content="{_html(asset["format"])}"><strong>{_html(fmt)}</strong> · <code>{_html(asset.get("filename", "Filename not supplied"))}</code><br>SHA-256 <code>{_html(asset.get("sha256", "Not supplied"))}</code></li>'
                     )
                 cards.append(
-                    f'<article class="download-card" data-format-session="{_html(json.dumps([a["format"] for a in session.get("assets", [])]))}" aria-labelledby="{heading_id}" data-download-card data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl></header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div><details class="download-file-details"><summary>Release and file details</summary><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
+                    f'<article class="download-card" data-format-session="{_html(json.dumps([a["format"] for a in session.get("assets", [])]))}" aria-labelledby="{heading_id}" data-download-card data-download-search="{_html(search)}" data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2></header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div><details class="download-file-details"><summary>Release and file details</summary><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
                 )
-    return f'<header class="page-intro"><p class="eyebrow">Individual published files</p><h1>Downloads</h1><p>Choose an individual MP3 or FLAC for each session. Links use the verified release catalog URLs; files are not repackaged or transcoded. Release versions and file checksums remain available in each card’s details.</p></header>{"".join(release_notes)}<section class="download-directory" aria-label="Individual session downloads">{"".join(cards)}</section>'
+    return f'<header class="page-intro downloads-intro"><h1>Downloads</h1><p>MP3 files are smaller; FLAC is lossless and larger. Choose your format in Audio preferences; all links open the original published files.</p><p><a href="../preparation-learning/#listen">Start with Preparation Learning</a></p></header><div class="download-tools" hidden><label for="download-search">Search by title, cue or category</label><input id="download-search" type="search"><p id="download-count" role="status" aria-live="polite"></p></div><section class="download-directory" aria-label="Individual session downloads">{"".join(cards)}</section><button type="button" id="downloads-more" hidden>Show more</button><section class="download-release-notes" aria-label="Release notes">{"".join(release_notes)}</section>'
 
 
 def _preparation_page(rows, transcript_paths, function_count):
+    minutes = _preparation_minutes({"releases": [row["release"] for row in rows]})
+    timing = f"about {minutes} minutes" if minutes else "time for the recording"
     sessions = "".join(
         _session_card(row, transcript_paths, site_root_prefix="../") for row in rows
     )
     if not sessions:
         sessions = '<p class="no-audio">Preparation Learning documentation is separate from function guides. No published edition is present in the verified catalog.</p>'
-    return f'<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../">Home</a> / Preparation Learning</nav><header class="page-intro"><p class="eyebrow">Separate introductory session</p><h1>Preparation Learning</h1><p>{_html(PREPARATION_FIRST_GUIDANCE)}</p><p>This published session is separate from the {function_count} canonical function records. Its transcript, when available, is tied to the exact selected audio edition. Follow only the instructions in that published session.</p></header><section class="guide-section"><h2>Listen to an available edition</h2>{sessions}</section><p><a href="../functions/">Browse the {function_count} function guides</a></p>'
+    return f'<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../">Home</a> / Preparation Learning</nav><header class="page-intro"><p class="eyebrow">Separate introductory session</p><h1>Preparation Learning</h1><p>This introductory session teaches the preparation used before OCF functions, including settling into the session and returning to normal waking awareness. Set aside {timing} somewhere you can give it your attention; do not listen while driving or operating machinery. After learning the preparation, <a href="../functions/">choose a function and read its guide</a>.</p><details class="preparation-exception"><summary>Already learned the official Human Plus preparation?</summary><p>{_html(PREPARATION_FIRST_GUIDANCE)}</p></details></header><section class="guide-section" id="listen"><h2>Listen to Preparation Learning</h2>{sessions}</section><p><a href="../functions/">Browse the {function_count} function guides</a></p>'
 
 
 def _preparation_first_link():

@@ -1,3 +1,4 @@
+const {openPreferences,closePreferences,selectPreference} = require('./preferences');
 const {test,expect}=require('@playwright/test');
 async function canonical(page){
  await expect(page).toHaveTitle('Function Chains — OCF');await expect(page.locator('h1')).toHaveText('Function Chains');
@@ -17,7 +18,7 @@ test('canonical Function Chains route, metadata, navigation and sitemap use the 
  const map=await page.request.get('/sitemap.xml').then(r=>r.text());expect(map).toContain('https://ocfproject.org/function-chains/');expect(map).not.toContain('practice-chains');
 });
 test('old route preserves exact query and fragment, uses replacement, and keeps stored preferences',async({page})=>{
- await page.goto('/downloads/');await page.getByLabel('Audio edition',{exact:true}).selectOption('0.1.0');await page.getByLabel('Audio format',{exact:true}).selectOption('flac');
+ await page.goto('/downloads/');await selectPreference(page,'Audio edition','0.1.0');await selectPreference(page,'Audio format','flac');
  const suffix='?from=old%2Flink&repeat=1&repeat=2&function=OCF-FND-004&category=foundation#daily-learning';
  await page.goto('/practice-chains/'+suffix);await expect(page).toHaveURL(new RegExp('/function-chains/\\?from=old%2Flink&repeat=1&repeat=2&function=OCF-FND-004&category=foundation#daily-learning$'));await canonical(page);
  await expect(page.locator('#daily-learning')).toBeInViewport();await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('0.1.0');await expect(page.getByLabel('Audio format',{exact:true})).toHaveValue('flac');
