@@ -6,7 +6,7 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
 (async()=>{
  const storage=new Storage(),a=new Store(storage,{}),b=new Store(storage,{});
  const line={id:`custom:${crypto.randomUUID()}`,text:'<img src=x onerror=alert(1)> javascript:alert(1)',category:'calm'};
- assert.equal(model.data.lines.length,36);assert.equal(new Set(model.data.lines.map(l=>l.id)).size,36);
+ assert.equal(model.data.lines.length,779);assert.equal(new Set(model.data.lines.map(l=>l.id)).size,779);
  assert.deepEqual(a.readAffirmations(),model.empty());assert.equal(storage.length,0);assert.throws(()=>a.saveCustom(line,null,null),/changed/);
  a.enable();const epoch=a.config().epoch;a.saveCustom(line,null,epoch);a.favoriteAffirmation(line.id,true,epoch);b.favoriteAffirmation(model.data.lines[0].id,true,epoch);
  assert.equal(a.readAffirmations().favorites.length,2);assert.deepEqual(b.readAffirmations().custom,[line]);
@@ -77,14 +77,30 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  }
  const backup={schema:3,records:[],flags:[],affirmations:{custom:rows,favorites:[...rows.map(x=>x.id),...model.starterIds]}};
  await store.mergePersonal(await parsePersonalBackup(JSON.stringify(backup),{}),epoch);
- assert.equal(store.readAffirmations().custom.length,1500);assert.equal(store.readAffirmations().favorites.length,1536);assert.equal(storage.length,3037);
- storage.map=new Map([...storage.map].reverse());const current=store.readAffirmations();assert.equal(current.custom.length,1500);assert.equal(current.favorites.length,1536);assert.equal(store.affirmationsBlocked,false);
+ assert.equal(store.readAffirmations().custom.length,1500);assert.equal(store.readAffirmations().favorites.length,2279);assert.equal(storage.length,3780);
+ storage.map=new Map([...storage.map].reverse());const current=store.readAffirmations();assert.equal(current.custom.length,1500);assert.equal(current.favorites.length,2279);assert.equal(store.affirmationsBlocked,false);
  const restored=new Store(new Storage(),{});restored.enable();await restored.mergePersonal(await parsePersonalBackup(JSON.stringify({...backup,affirmations:current}),{}),restored.config().epoch);assert.deepEqual(restored.readAffirmations(),current);
- const oldLine=store.readAffirmations().custom[0];store.saveCustom({...oldLine,text:'Edited synthetic row'},oldLine,epoch);const edited=new Store(storage,{}).readAffirmations();assert.equal(edited.custom.length,1500);assert.equal(edited.favorites.length,1536);assert.equal(edited.custom.find(x=>x.id===oldLine.id).text,'Edited synthetic row');
+ const oldLine=store.readAffirmations().custom[0];store.saveCustom({...oldLine,text:'Edited synthetic row'},oldLine,epoch);const edited=new Store(storage,{}).readAffirmations();assert.equal(edited.custom.length,1500);assert.equal(edited.favorites.length,2279);assert.equal(edited.custom.find(x=>x.id===oldLine.id).text,'Edited synthetic row');
  const extra={...rows[0],id:'custom:20000000-0000-0000-0000-000000000000'};const writes=storage.writes;
  await assert.rejects(store.mergePersonal(await parsePersonalBackup(JSON.stringify({...backup,affirmations:{custom:[extra],favorites:[]}}),{}),epoch),/capacity/);assert.equal(storage.writes,writes);assert.equal(store.readAffirmations().custom.length,1500);
  await assert.rejects(parsePersonalBackup(' '.repeat(2*1024*1024+1),{}));
  const quotaStorage=new Storage(),quotaStore=new Store(quotaStorage,{});quotaStore.enable();quotaStore.saveCustom(rows[1499],null,quotaStore.config().epoch);const nativeSet=quotaStorage.setItem.bind(quotaStorage);quotaStorage.setItem=(k,v)=>{if(quotaStorage.writes>800)throw Error('quota');nativeSet(k,v);};
  const subset=await parsePersonalBackup(JSON.stringify({...backup,affirmations:{custom:rows.slice(0,751),favorites:rows.slice(0,751).map(x=>x.id)}}),{});await quotaStore.mergePersonal(subset,quotaStore.config().epoch);assert.equal(quotaStore.readAffirmations().custom.length,752);assert.equal(quotaStore.readAffirmations().favorites.length,751);assert.equal(quotaStore.lastImportResult.memoryOnly,true);assert.match(quotaStore.warning,/only in memory/);assert(new Store(quotaStorage,{}).readAffirmations().custom.some(x=>x.id===rows[1499].id));
- console.log('Large collections: 743/751 populated retries, 1500 customs + 1536 favorites, reordered storage, Unicode CRLF, round-trip and capacity preflight passed.');
+ console.log('Large collections: 743/751 populated retries, 1500 customs + 2279 favorites, reordered storage, Unicode CRLF, round-trip and capacity preflight passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Public structure stays content-free: use a synthetic catalog, preserving all old IDs.
+{
+ const fixture=require('../browser-tests/fixtures/public-affirmations.js')(model.data);
+ assert.equal(model.validatePublic(fixture),fixture);
+ assert.equal(fixture.lines.length,779);assert.equal(fixture.lines.filter(x=>!x.archived).length,743);
+ assert.deepEqual(fixture.lines.filter(x=>x.archived).map(({archived,...x})=>x),model.data.lines.filter(x=>x.archived).map(({archived,...x})=>x));
+ for(const row of [{...fixture.lines[0],category:['calm']},{...fixture.lines[0],archived:'yes'},{...fixture.lines[0],subtopic:[]},{...fixture.lines[0],url:'https://example.invalid'},{...fixture.lines[0],id:'custom:invalid'}])assert.throws(()=>model.validatePublic({...fixture,lines:[row]}));
+ assert.throws(()=>model.validatePublic({...fixture,lines:[fixture.lines[0],fixture.lines[0]]}));
+ assert.throws(()=>model.validatePublic({...fixture,lines:[fixture.lines[0],{...fixture.lines[0],id:'public:duplicate'}]}));
+ assert.throws(()=>model.validatePublic({...fixture,lines:Array(2001).fill(fixture.lines[0])}));
+ const vm=require('node:vm'),fs=require('node:fs');const context={ocfAffirmationsData:fixture};vm.runInNewContext(fs.readFileSync(require.resolve('../site/assets/js/affirmations-state.js'),'utf8'),context);const scaled=context.ocfAffirmationsState;
+ assert.equal(scaled.MAX_STORED,3779);assert.equal(scaled.starterIds.size,779);
+ scaled.validate({custom:[],favorites:fixture.lines.map(x=>x.id)});
+ console.log('Public catalog: 743 current +36 archived IDs, strict validation, duplicate prevention and expanded favorite bounds passed.');
+}
