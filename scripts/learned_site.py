@@ -101,7 +101,8 @@ def install(staging, export, catalog):
         prefix = "../" * (len(relative.parts) - 1)
         text = page.read_text(encoding="utf-8")
         assets = (f'<link rel="stylesheet" href="{prefix}assets/css/learned.css">'
-                  f'<script src="{prefix}assets/js/learned.js" defer></script>')
+                  f'<script src="{prefix}assets/js/learned.js" defer></script>'
+                  f'<script src="{prefix}assets/js/preferences-backup.js" defer></script>')
         text = text.replace("</head>", assets + "</head>")
         panel = (f'<section class="learned-panel" data-learned-subject="{subject}" '
                  f'data-learned-view="{view}" data-learned-src="{prefix}assets/data/learning.json?v={data_version}" aria-label="Private library actions" hidden></section>')

@@ -11,7 +11,7 @@ private interests.
 ## Compact controls
 
 Favorite (heart), Learned (circle/check), and To Do (box/check) are independent
-44-pixel icon buttons with accessible names, focus outlines and pressed states.
+44-pixel buttons with short visible labels, accessible names, focus outlines and pressed states.
 Favorite and To Do toggle only after explicit opt-in. Learned opens a native dialog;
 it never silently toggles off an existing version. Save is explicit; Cancel, Escape
 and history navigation discard the pending choice. Remove individual saved versions
@@ -137,3 +137,15 @@ SITE_DIR=verified-site GUIDE_EXPORT=public-guide-export.json npm run test:browse
 The feature composes with the shared Preferences dialog and presentation guidance.
 Review the combined build and required CI before merging; this feature does not
 change or republish audio releases.
+
+## Site settings backup
+
+The main Preferences panel also contains a separate Site settings backup disclosure.
+Its versioned schema is `{schema:1,kind:"ocf-site-preferences",theme,edition,format}`.
+Theme is system/light/dark/black, edition is Latest or a currently published edition,
+and format is MP3/FLAC. Imports reject extra keys, unsupported versions/values and
+files over 16 KiB before applying any settings. A preview and explicit confirmation
+replace only these three values through their existing controllers. Cancel or closing
+Preferences discards the preview. Tracking opt-in and progress remain in the separate
+private-library scope, unchanged by settings import. No search, playback, URL, stored
+progress, or other browser data is exported. Downloads/reads are local files, not uploads.
