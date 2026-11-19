@@ -21,3 +21,15 @@ class ShareTests(unittest.TestCase):
             self.assertNotIn('data-page-share', (root/'redirect.html').read_text())
             install(root)
             self.assertEqual(first, target.read_text())
+
+    def test_function_share_is_near_heading_not_duplicated_in_footer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / 'index.html'
+            target.write_text('<head><link rel="canonical" href="https://ocfproject.org/functions/X/"></head><header class="page-intro function-intro"><h1>X</h1><p class="audio-preferences-context">Audio preferences</p><p id="overview">Purpose</p></header><footer class="site-footer"></footer>')
+            install(root)
+            text = target.read_text()
+            self.assertEqual(text.count('data-page-share hidden'), 1)
+            self.assertLess(text.index('data-page-share'), text.index('id="overview"'))
+            self.assertGreater(text.index('data-page-share'), text.index('Audio preferences'))
+            self.assertIn('<footer class="site-footer"></footer>', text)

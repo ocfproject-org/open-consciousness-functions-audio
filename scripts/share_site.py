@@ -10,7 +10,18 @@ def install(root):
             continue
         depth = len(page.relative_to(root).parts) - 1
         base = "../" * depth
-        controls = '<details class="page-share" data-page-share hidden><summary>Share this page</summary><div class="page-share-actions"><button type="button" data-share-native hidden>Share…</button><button type="button" data-share-copy>Copy link</button></div><p data-share-status role="status" aria-live="polite"></p><div data-share-manual hidden><label>Page link<input type="url" readonly data-share-url></label><p>Select and copy this link.</p></div></details>'
+        controls = '<details class="page-share" data-page-share hidden><summary>Share this page</summary><div class="page-share-actions"><button type="button" data-share-native hidden>Share…</button><button type="button" data-share-copy>Copy link</button></div><div data-share-status role="status" aria-live="polite"></div><div data-share-manual hidden><label>Page link<input type="url" readonly data-share-url></label><div>Select and copy this link.</div></div></details>'
         text = text.replace('</head>', f'<link rel="stylesheet" href="{base}assets/css/share.css"><script src="{base}assets/js/share.js" defer></script></head>')
-        text = text.replace('<footer class="site-footer">', '<footer class="site-footer">' + controls)
+        # Keep long guides discoverable without duplicating controls in the footer.
+        intro = re.search(r'<header class="page-intro function-intro"[^>]*>.*?</header>', text, re.S)
+        if intro:
+            header = intro.group()
+            anchor = re.search(r'<p class="audio-preferences-context">.*?</p>', header, re.S)
+            if not anchor:
+                anchor = re.search(r'<h1[^>]*>.*?</h1>', header, re.S)
+            if anchor:
+                header = header[:anchor.end()] + controls + header[anchor.end():]
+                text = text[:intro.start()] + header + text[intro.end():]
+        else:
+            text = text.replace('<footer class="site-footer">', '<footer class="site-footer">' + controls)
         page.write_text(text, encoding="utf-8")

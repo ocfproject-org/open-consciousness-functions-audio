@@ -8,7 +8,7 @@ test('canonical URL strips all private query and fragment data', () => {
 });
 test('explicit copy only; no load-time clipboard or native call; canonical payload', async ({page}) => {
   await page.addInitScript(() => { window.calls=[]; Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async x=>window.calls.push(x)}}); Object.defineProperty(navigator,'share',{value:async x=>window.calls.push(x)}); });
-  await open(page); expect(await page.evaluate(()=>window.calls)).toEqual([]);
+  await open(page); await expect(page.locator('.function-intro [data-page-share]')).toHaveCount(1); await expect(page.locator('footer [data-page-share]')).toHaveCount(0); expect(await page.evaluate(()=>window.calls)).toEqual([]);
   await page.getByRole('button',{name:'Copy link',exact:true}).click();
   await expect(page.locator('[data-share-status]')).toHaveText('Link copied.');
   expect(await page.evaluate(()=>window.calls)).toEqual(['https://ocfproject.org'+route]);
