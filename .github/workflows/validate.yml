@@ -50,7 +50,9 @@ jobs:
       - name: Test surprise selection and local history
         run: node scripts/test_surprise.js
       - name: Test private learned tracking and backup validation
-        run: node scripts/test_learned.js
+        run: |
+          node scripts/test_learned.js
+          node scripts/test_preferences_backup.js
       - name: Test documentation search and transcript URL safety
         run: node scripts/test_docs.js
       - name: Build the complete pinned website and verify published sidecars
