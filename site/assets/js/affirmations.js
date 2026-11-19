@@ -47,12 +47,13 @@
     });
     function render(){
       const current=store.readAffirmations(), enabled=Boolean(store.config());enable.hidden=enabled;
+      if(enabled&&status.textContent==='Enable private tracking to save favorites or custom lines.')say('');
       const focused=document.activeElement, focusId=focused?.dataset.affirmationId, focusAction=focused?.dataset.action;
       list.replaceChildren();
       const query=(search?.value||'').trim().toLocaleLowerCase();
       const items=[...data.lines,...current.custom].filter(item=>(!morning||current.favorites.includes(item.id))&&(!category?.value||item.category===category.value)&&(!query||`${item.text} ${data.categories[item.category]}`.toLocaleLowerCase().includes(query)));
       count.textContent=morning?`${items.length} ${items.length===1?'favorite':'favorites'} on this device`:`${items.length} matching lines`;
-      if(!items.length)node('li',morning?'Your morning space is empty. Choose hearts in the library or add a line of your own.':'No lines match. Try another word or clear the filters.',list);
+      if(!items.length)node('li',morning?'Your morning affirmation list is empty. Choose hearts in the library or add a line of your own.':'No lines match. Try another word or clear the filters.',list);
       items.forEach(item=>{
         const card=node('li',undefined,list);card.className='affirmation-card';card.dataset.affirmationId=item.id;
         node('p',item.text,card).className='affirmation-text';

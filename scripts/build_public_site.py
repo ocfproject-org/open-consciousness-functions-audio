@@ -22,6 +22,7 @@ from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
 from site_references import chain_references, use_references
 from affirmations_site import page as affirmations_page
+from morning_routine_site import install as install_morning_routine
 
 SOURCE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions"
 SITE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions-audio"
@@ -1059,6 +1060,7 @@ def build_public_site(
         not_found = re.sub(r'<link rel="canonical"[^>]+>|<meta property="og:url"[^>]+>', '', not_found)
         _write(staging / "404.html", not_found)
         install_learned_tracking(staging, guide_export, catalog)
+        install_morning_routine(staging)
         install_page_sharing(staging)
         _apply_edition_presentation(staging, catalog)
         _write_site_receipt(

@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const affirmations = typeof module !== 'undefined' && module.exports ? require('./affirmations-state.js') : globalThis.ocfAffirmationsState;
+  const routine = typeof module !== 'undefined' && module.exports ? require('./morning-state.js') : globalThis.ocfMorningState;
   const KEY = 'ocf-learned:v1';
   const LIMIT = 2 * 1024 * 1024;
   const MAX_RECORDS = 500;
@@ -92,13 +93,13 @@
   async function parsePersonalBackup(text, subjects) {
     if (typeof text !== 'string' || new TextEncoder().encode(text).length > LIMIT) fail();
     let value; try { value = JSON.parse(text); } catch (_) { fail(); }
-    if (value?.schema === 1) return {records: await parseBackup(text, subjects), flags: [], affirmations: null};
-    object(value, value?.schema === 3 ? ['schema', 'records', 'flags', 'affirmations'] : ['schema', 'records', 'flags']);
-    if (![2,3].includes(value.schema) || !Array.isArray(value.flags) || value.flags.length > 120) fail();
+    if (value?.schema === 1) return {records: await parseBackup(text, subjects), flags: [], affirmations: null, routine: null};
+    object(value, value?.schema === 4 ? ['schema', 'records', 'flags', 'affirmations', 'routine'] : value?.schema === 3 ? ['schema', 'records', 'flags', 'affirmations'] : ['schema', 'records', 'flags']);
+    if (![2,3,4].includes(value.schema) || !Array.isArray(value.flags) || value.flags.length > 120) fail();
     const seen = new Set();
     value.flags.forEach(flag => { validateFlag(flag, subjects); const key = `${flag.subject}:${flag.kind}`; if (seen.has(key)) fail(); seen.add(key); });
     const records = await parseBackup(JSON.stringify({schema: 1, records: value.records}), subjects);
-    return {records, flags: value.flags, affirmations: value.schema === 3 ? affirmations.validate(value.affirmations) : null};
+    return {records, flags: value.flags, affirmations: value.schema >= 3 ? affirmations.validate(value.affirmations) : null, routine: value.schema === 4 ? await routine.verify(value.routine,subjects,validateRecord) : null};
   }
   class Store {
     constructor(storage, subjects) { this.storage = storage; this.subjects = subjects; this.memory = new Map(); this.warning = ''; this.blocked = false; }
@@ -189,10 +190,18 @@
       const config = this.config(); if (!config) throw new Error('Enable private tracking before importing.');
       if (expectedEpoch !== undefined && config.epoch !== expectedEpoch) throw new Error('Private tracking changed. Preview the backup again before importing.');
       const includesAffirmations=value.affirmations !== null && value.affirmations !== undefined;
-      const envelope=includesAffirmations ? {schema:3,records:value.records,flags:value.flags,affirmations:value.affirmations} : {schema:2,records:value.records,flags:value.flags};
+      const includesRoutine=value.routine !== null && value.routine !== undefined;
+      const envelope=includesRoutine ? {schema:4,records:value.records,flags:value.flags,affirmations:value.affirmations,routine:value.routine} : includesAffirmations ? {schema:3,records:value.records,flags:value.flags,affirmations:value.affirmations} : {schema:2,records:value.records,flags:value.flags};
       const validated = await parsePersonalBackup(JSON.stringify(envelope), this.subjects);
       const assertEpoch=()=>{if(this.config()?.epoch!==config.epoch)throw new Error('Tracking changed in another tab. Review before importing.');};
       assertEpoch();
+      let initialRoutine=null, mergedRoutine=null;
+      if(includesRoutine){
+        initialRoutine=this.readRoutine();this.routineContext(config.epoch);
+        mergedRoutine=await routine.merge(initialRoutine.rows,validated.routine,this.subjects,digest,canonical);
+        assertEpoch();this.routineContext(config.epoch);
+        if(canonical(this.readRoutine())!==canonical(initialRoutine))throw Error('Morning routine changed. Preview the backup again.');
+      }
       let initialAffirmations=null, mergedAffirmations=null;
       // Legacy scopes must not inspect, hash, block on or write affirmation data.
       if(includesAffirmations) {
@@ -202,7 +211,7 @@
         if(canonical(this.readAffirmations())!==canonical(initialAffirmations))throw new Error('Affirmations changed in another tab. Preview this backup again.');
         this.affirmationContext(config.epoch);
       }
-      const result={learned:0,flags:0,custom:0,favorites:0,memoryOnly:!this.storage};
+      const result={learned:0,flags:0,custom:0,favorites:0,routine:0,memoryOnly:!this.storage};
       this.lastImportResult=null;
       this.readFlags(); // Cache readable existing marks before a possible storage-quota fallback.
       try {
@@ -219,15 +228,46 @@
           this.affirmationContext(config.epoch);
           this.saveAffirmationsMerge(mergedAffirmations,config.epoch,initialAffirmations,result);
         }
+        if(includesRoutine){
+          await this.saveRoutine(mergedRoutine,initialRoutine,config.epoch);
+          result.routine=mergedRoutine.length-initialRoutine.rows.length;
+        }
         result.memoryOnly=!this.storage;this.lastImportResult=result;return result.learned;
       } catch(error) {
         result.memoryOnly=!this.storage;this.lastImportResult=result;
-        if(result.learned||result.flags||result.custom||result.favorites) {
-          const interruption=new Error(`Import interrupted after adding ${result.learned} learned versions, ${result.flags} personal marks, ${result.custom} custom lines and ${result.favorites} My Morning favorites. These are additions already made, not a complete import. ${result.memoryOnly?'Some changes are only in memory; export before leaving. ':''}Existing unrelated records were not deleted. Review current data before retrying. ${error.message}`);
+        if(result.learned||result.flags||result.custom||result.favorites||result.routine) {
+          const interruption=new Error(`Import interrupted after adding ${result.learned} learned versions, ${result.flags} personal marks, ${result.custom} custom lines and ${result.favorites} My Morning favorites and ${result.routine} routine cues. These are additions already made, not a complete import. ${result.memoryOnly?'Some changes are only in memory; export before leaving. ':''}Existing unrelated records were not deleted. Review current data before retrying. ${error.message}`);
           interruption.importResult={...result};throw interruption;
         }
         throw error;
       }
+    }
+    readRoutine() {
+      this.routineBlocked=false;
+      const config=this.config();if(!config)return {revision:null,rows:[]};
+      const key=`${KEY}:routine:${config.epoch}`;let raw;
+      try{raw=this.storage?this.storage.getItem(key):this.memory.get(key);if(this.storage){this.memory.set(KEY,JSON.stringify(config));if(raw)this.memory.set(key,raw);else this.memory.delete(key);}}
+      catch(_){this.fallback();raw=this.memory.get(key);}
+      if(!raw)return {revision:null,rows:[]};
+      try{if(raw.length>LIMIT)throw Error();const value=JSON.parse(raw);object(value,['revision','rows']);uuid(value.revision);routine.validate(value.rows,this.subjects);return value;}
+      catch(_){this.routineBlocked=true;this.warning='Saved morning routine is corrupt or unsupported. It has not been overwritten. Export other readable data before deliberately resetting.';return {revision:null,rows:[]};}
+    }
+    routineContext(epoch){
+      if(this.routineBlocked)throw Error('Saved morning routine is unreadable; it has not been overwritten.');
+      if(!epoch||this.config()?.epoch!==epoch)throw Error('Private tracking changed. Reopen the routine or preview the backup again.');
+      return `${KEY}:routine:${epoch}`;
+    }
+    async saveRoutine(rows,previous,epoch){
+      await routine.verify(rows,this.subjects,validateRecord);
+      const write=()=>{
+      const current=this.readRoutine(),key=this.routineContext(epoch);
+      if(canonical(current)!==canonical(previous))throw Error('Morning routine changed in another tab. Reopen it before saving.');
+      // One atomic storage value: order and rows cannot be partially written.
+      const value=JSON.stringify({revision:crypto.randomUUID(),rows});if(new TextEncoder().encode(value).length>LIMIT)throw Error('Morning routine exceeds 2 MiB.');
+      this.put(key,value);
+      };
+      if(globalThis.navigator?.locks)return navigator.locks.request('ocf-private-routine',write);
+      return write();
     }
     readAffirmations() {
       this.affirmationsBlocked=false;
@@ -295,7 +335,7 @@
         if (this.storage) {
           this.storage.removeItem(KEY);
           const keys = Array.from({length: this.storage.length}, (_, i) => this.storage.key(i));
-          keys.filter(k => (k?.startsWith(`${KEY}:record:`) || k?.startsWith(`${KEY}:flag:`) || k?.startsWith(`${KEY}:affirmation:`))).forEach(k => this.storage.removeItem(k));
+          keys.filter(k => (k?.startsWith(`${KEY}:record:`) || k?.startsWith(`${KEY}:flag:`) || k?.startsWith(`${KEY}:affirmation:`) || k?.startsWith(`${KEY}:routine:`))).forEach(k => this.storage.removeItem(k));
         }
         this.memory.clear(); this.blocked = false;
         this.warning = this.storage ? '' : 'Memory records cleared. Storage is unavailable; browser copies, if any, could not be checked or cleared.';
@@ -349,7 +389,7 @@
     const notice = node('p', '', panel); notice.className = 'personal-notice'; notice.setAttribute('role','status'); notice.tabIndex = -1;
     const settings = node('section', undefined, preferences); settings.className = 'personal-settings';
     node('h2', 'Private library', settings);
-    node('p', 'Optional browser-local favorites, to-do items and learned self-reports. No account, analytics or upload. Shared-device users can see these interests. Clearing site data removes them; private backups include custom affirmations and may contain personal text. Site settings backups do not include this library.', settings);
+    node('p', 'Optional browser-local favorites, to-do items and learned self-reports. No account, analytics or upload. Shared-device users can see these interests. Clearing site data removes them; private backups include custom affirmations, favorite lines and ordered routine cues, and may contain personal text. Site settings backups do not include this library.', settings);
     const settingsNotice = node('p', '', settings); settingsNotice.setAttribute('role','status');
     const enable = button('Enable private tracking', settings, () => act(async () => { store.enable(); return 'Private tracking enabled. Choose an action explicitly to save it.'; }));
     const counts = node('p', '', settings);
@@ -461,9 +501,9 @@
     }
     const manage=node('details',undefined,settings);node('summary','Backup and reset',manage);
     button('Export private backup',manage,()=>act(async()=>{
-      const blob=new Blob([JSON.stringify({schema:3,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations()},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
+      const blob=new Blob([JSON.stringify({schema:4,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
     }));
-    const importLabel=node('label','Import backup (schema 1, 2 or 3, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
+    const importLabel=node('label','Import backup (schema 1–4, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
     const preview=node('div',undefined,manage);let importGeneration=0,importSelection=null;
     function invalidateImport(clearFile=true) {
       importGeneration++;importSelection=null;preview.replaceChildren();
@@ -482,12 +522,15 @@
         const candidate=await parsePersonalBackup(await input.text(),data.subjects);if(!current())return;
         const incomingAffirmations=candidate.affirmations || affirmations.empty();
         if(candidate.affirmations!==null) {const local=store.readAffirmations();store.affirmationContext(selection.epoch);await affirmations.merge(local,candidate.affirmations,digest);}
+        if(candidate.routine!==null){const local=store.readRoutine();store.routineContext(selection.epoch);await routine.merge(local.rows,candidate.routine,data.subjects,digest,canonical);}
         // Web Crypto can yield after validation: do not show even a partial stale preview.
         if(!current())return;
         const known=new Set(records.map(identity));const additions=candidate.records.filter(r=>!known.has(identity(r)));
         node('p',`${additions.length} new learned versions; ${candidate.records.length-additions.length} already saved; ${candidate.flags.length} Favorite/To Do marks to merge. Existing states and versions are retained. Imported snapshots are unverified personal claims.`,preview);
         node('p',`${incomingAffirmations.custom.length} custom affirmations and ${incomingAffirmations.favorites.length} My Morning favorites to merge. Conflicting custom lines are kept as separate copies; no existing lines are replaced. Older backups leave affirmations unchanged.`,preview);
         const lines=node('details',undefined,preview);node('summary','Preview personal affirmation text',lines);incomingAffirmations.custom.forEach(item=>node('p',item.text,lines));
+        node('p',`${candidate.routine?.length||0} routine cues to merge. Existing order is kept; new cues are appended in backup order. Older backups leave the routine unchanged. Imported guide text is not independently verified.`,preview);
+        const cues=node('details',undefined,preview);node('summary','Preview personal routine text',cues);(candidate.routine||[]).forEach(row=>node('p',routine.eligible(row,data.subjects)?routine.cue(row):'Unavailable command (retained without displaying its cue)',cues));
         const cancel=button('Cancel import',preview,()=>{if(current())invalidateImport();});
         const confirm=button('Confirm import and merge',preview,()=>act(async()=>{
           if(!current())throw new Error('Private tracking or file selection changed. Preview the backup again before importing.');
@@ -496,14 +539,14 @@
             // Use this closure's immutable candidate/epoch, never a later selection.
             const count=await store.mergePersonal(candidate,selection.epoch);
             if(current())invalidateImport();
-            return `${count} learned versions imported; personal marks merged. ${store.lastImportResult.custom} custom lines and ${store.lastImportResult.favorites} My Morning favorites added.${store.lastImportResult.memoryOnly?' Changes are only in memory; export before leaving.':''}`;
+            return `${count} learned versions imported; personal marks merged. ${store.lastImportResult.custom} custom lines and ${store.lastImportResult.favorites} My Morning favorites and ${store.lastImportResult.routine} routine cues added.${store.lastImportResult.memoryOnly?' Changes are only in memory; export before leaving.':''}`;
           } finally {file.disabled=false;confirm.disabled=false;cancel.disabled=false;}
         }));
         await refresh('Backup validated. Review and confirm before import.');
       } catch(error) {if(current())showError(error);}
     });
     button('Reset all private tracking',manage,()=>act(async()=>{
-      if(!window.confirm('Remove all learned versions, favorites, to-do marks, custom affirmations and My Morning favorites from this browser and turn tracking off? Export a backup first to keep them.'))return;
+      if(!window.confirm('Remove all learned versions, favorites, to-do marks, custom affirmations, My Morning favorites and routine cues from this browser and turn tracking off? Export a backup first to keep them.'))return;
       store.reset();invalidateImport();if(modal.open)close();return 'Private tracking reset.';
     }));
     function renderRecords(saved,shown) {
