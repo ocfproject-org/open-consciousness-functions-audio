@@ -1,0 +1,48 @@
+const {test,expect}=require('@playwright/test');
+const fs=require('node:fs/promises');
+const {openPreferences,closePreferences,enablePrivateTools}=require('./preferences');
+async function ready(page,route='/affirmations/'){await page.goto(route);await expect(page.locator('[data-affirmation-controls]')).toBeVisible();}
+async function snapshot(page){return page.evaluate(async()=>{const s=window.ocfPrivateLibrary.store;return {config:s.config(),affirmations:s.readAffirmations(),records:await s.read(),flags:s.readFlags(),routine:s.readRoutine().rows};});}
+async function exportBackup(page){await openPreferences(page);await page.getByText('Backup and reset',{exact:true}).click();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export private backup',exact:true}).click();const value=JSON.parse(await fs.readFile(await(await download).path(),'utf8'));await closePreferences(page);return value;}
+test('fresh and prior-off hearts save explicitly without unlocking function tools; category links compose and reset',async({page})=>{
+ await page.setViewportSize({width:375,height:812});const requests=[];page.on('request',r=>requests.push(r.method()));
+ await ready(page);expect(await page.evaluate(()=>localStorage.getItem('ocf-learned:v1'))).toBeNull();
+ await expect(page.locator('[data-affirmation-enable]')).toHaveCount(0);
+ const heart=page.locator('.affirmation-heart').first();await heart.focus();await page.keyboard.press('Space');await expect(heart).toHaveAttribute('aria-pressed','true');
+ let state=await snapshot(page);expect(state.config).toBeNull();expect(state.flags).toEqual([]);expect(state.records).toEqual([]);expect(state.affirmations.favorites).toHaveLength(1);
+ await page.reload();await expect(heart).toHaveAttribute('aria-pressed','true');await heart.click();await expect(heart).toHaveAttribute('aria-pressed','false');await heart.click();
+ await page.getByLabel('Collection',{exact:true}).selectOption('archive');await page.getByLabel('Search affirmations').fill('small');
+ const label=page.locator('.affirmation-category-filter').first(),name=await label.textContent();await label.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('[data-affirmation-count]')).toBeFocused();await expect(page.getByLabel('Search affirmations')).toHaveValue('small');await expect(page.getByLabel('Collection',{exact:true})).toHaveValue('archive');
+ expect(await page.getByLabel('Filter by category',{exact:true}).locator('option:checked').textContent()).toBe(name);
+ await page.getByLabel('Filter by category',{exact:true}).selectOption('');await expect(page.getByLabel('Search affirmations')).toHaveValue('small');await page.getByRole('button',{name:'Clear filters'}).click();await expect(page.getByLabel('Search affirmations')).toHaveValue('');
+ await ready(page,'/my-morning/');await expect(page.locator('.morning-affirmation')).toHaveCount(1);await expect(page.locator('.affirmation-list button')).toHaveCount(0);
+ await page.evaluate(async()=>{const {store,refresh}=window.ocfPrivateLibrary;store.reset();await refresh();});await ready(page);await heart.click();expect((await snapshot(page)).affirmations.favorites).toHaveLength(1);expect((await snapshot(page)).config).toBeNull();
+ expect(requests.every(x=>['GET','HEAD'].includes(x))).toBe(true);
+});
+test('quiet reading preserves multiline customs and starter hearts; management is secondary and storage failure explicit',async({page,browser})=>{
+ await ready(page);await page.getByRole('button',{name:'Add my own line',exact:true}).click();await page.keyboard.press('Escape');expect(await page.evaluate(()=>localStorage.getItem('ocf-learned:v1'))).toBeNull();
+ await page.getByRole('button',{name:'Add my own line',exact:true}).click();const dialog=page.locator('.affirmation-dialog');const text='SYNTHETIC first line\nA second line with 東京 and a deliberately longer readable sentence.';
+ await dialog.getByLabel('My affirmation',{exact:false}).fill(text);await dialog.getByLabel('Save straight to My Morning').check();await dialog.getByRole('button',{name:'Save line',exact:true}).click();
+ await page.getByLabel('Collection',{exact:true}).selectOption('archive');await page.locator('.affirmation-heart').first().click();const before=(await snapshot(page)).affirmations;
+ await ready(page,'/my-morning/');await expect(page.locator('.morning-affirmation')).toHaveCount(2);await expect(page.locator('.affirmation-list button')).toHaveCount(0);expect(await page.locator('.morning-affirmation').last().textContent()).toBe(text);
+ for(const width of [375,1440]){await page.setViewportSize({width,height:900});await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});expect((await page.evaluate(()=>axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}))).violations).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`browser-artifacts/retest-reading-${width}.png`,fullPage:true});}
+ await page.getByRole('button',{name:'Manage favorites',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('.affirmation-heart')).toHaveCount(2);await page.getByRole('button',{name:'Done managing favorites',exact:true}).click();await page.reload();await expect(page.locator('.morning-affirmation')).toHaveCount(2);expect((await snapshot(page)).affirmations).toEqual(before);expect((await exportBackup(page)).affirmations).toEqual(before);
+ const clean=await browser.newContext();try{const p=await clean.newPage();await ready(p,'/my-morning/');await expect(p.locator('.affirmation-list')).toContainText('empty');await expect(p.locator('body')).not.toContainText(text);await ready(p);await p.evaluate(()=>{Storage.prototype.setItem=function(){throw Error('quota');};});await p.locator('.affirmation-heart').first().click();await expect(p.locator('[data-affirmation-status]')).toContainText('not saved in this browser');expect((await p.locator('[data-affirmation-status]').textContent()).split('Changes are only in memory').length).toBe(2);await p.reload();await expect(p.locator('.affirmation-heart').first()).toHaveAttribute('aria-pressed','false');}finally{await clean.close();}
+});
+test('clean mobile catalog search, explicit ordered cues and exact backup round trip without marks',async({page,browser})=>{
+ await page.setViewportSize({width:375,height:812});await ready(page,'/my-morning/');await page.locator('.routine-editor > summary').click();
+ const search=page.getByLabel('Search function cues'),select=page.getByLabel('Choose a function cue');
+ await expect(select.locator('option')).toHaveCount(62);expect(await page.evaluate(()=>localStorage.getItem('ocf-learned:v1'))).toBeNull();
+ async function add(query,text){await search.fill(query);const value=await select.locator('option').filter({hasText:text}).first().getAttribute('value');await select.selectOption(value);await page.getByRole('button',{name:'Add selected cue',exact:true}).click();}
+ await add('Nutricia','Plus Food Less');await page.getByRole('button',{name:'Add selected cue',exact:true}).click();await expect(page.locator('.routine-draft > li')).toHaveCount(1);
+ await add('Plus Recall','Recall — Plus Recall');await expect(select.locator('option').filter({hasText:'Imprint'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Add custom cue',exact:true}).click();await page.locator('.routine-draft textarea').fill('  SYNTHETIC custom cue unchanged  ');
+ await page.getByRole('button',{name:'Move up: cue 3',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Move up: cue 2',exact:true}).click();
+ await page.getByRole('button',{name:'Save routine',exact:true}).click();await expect(page.locator('.routine-editor')).not.toHaveAttribute('open','');
+ const before=await snapshot(page);expect(before.config).toBeNull();expect(before.flags).toEqual([]);expect(before.records).toEqual([]);expect(before.routine.map(x=>x.command||x.text)).toEqual(['  SYNTHETIC custom cue unchanged  ','OCF-CMD-BOD-010-FOOD-LESS','OCF-CMD-COG-006-PRIMARY']);
+ const reading=await page.locator('.routine-reading .routine-cue').allTextContents();await page.reload();await expect(page.locator('.routine-reading .routine-cue')).toHaveCount(3);expect(await page.locator('.routine-reading .routine-cue').allTextContents()).toEqual(reading);expect((await snapshot(page)).routine).toEqual(before.routine);
+ await page.locator('.routine-editor > summary').click();await expect(page.getByRole('button',{name:'Move down: cue 1',exact:true})).toBeVisible();await page.screenshot({path:'browser-artifacts/retest-cue-order-375.png',fullPage:true});await page.keyboard.press('Escape');await expect(page.locator('.routine-editor > summary')).toBeFocused();
+ const backup=await exportBackup(page);expect(backup.routine).toEqual(before.routine);
+ const clean=await browser.newContext();try{const p=await clean.newPage();await ready(p,'/my-morning/');await enablePrivateTools(p);await openPreferences(p);await p.getByText('Backup and reset',{exact:true}).click();await p.getByLabel('Import backup',{exact:false}).setInputFiles({name:'synthetic.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});await p.getByRole('button',{name:'Confirm import and merge'}).click();await closePreferences(p);await p.reload();await expect(p.locator('.routine-reading .routine-cue')).toHaveCount(3);expect((await snapshot(p)).routine).toEqual(before.routine);expect(await p.locator('.routine-reading .routine-cue').allTextContents()).toEqual(reading);}finally{await clean.close();}
+});

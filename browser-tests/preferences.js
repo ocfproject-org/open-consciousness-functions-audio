@@ -13,4 +13,10 @@ async function selectPreference(page,label,value) {
   await page.getByLabel(label,{exact:true}).selectOption(value);
   await closePreferences(page);
 }
-module.exports={openPreferences,closePreferences,selectPreference};
+async function enablePrivateTools(page) {
+  await openPreferences(page);
+  const button=page.getByRole("button",{name:"Enable private tracking",exact:true});
+  if(await button.isVisible()) await button.click();
+  await closePreferences(page);
+}
+module.exports={enablePrivateTools,openPreferences,closePreferences,selectPreference};
