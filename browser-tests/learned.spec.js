@@ -1,4 +1,5 @@
 const {test, expect} = require('@playwright/test');
+const {selectPreference} = require('./preferences');
 const {createHash} = require('node:crypto');
 const {canonical} = require('../site/assets/js/learned.js');
 const KEY = 'ocf-learned:v1';
@@ -37,7 +38,7 @@ test('opt-in self-report records exact guide and audio independently, retains ve
   await expect(panel(page)).not.toContainText('See differences');
   for (let i = 0; i < 3; i++) await mark(page, '0');
   expect(await saved(page)).toHaveLength(1);
-  await page.locator('#edition-filter').selectOption('0.1.0'); expect(await saved(page)).toHaveLength(1);
+  await selectPreference(page, 'Audio edition', '0.1.0'); expect(await saved(page)).toHaveLength(1);
   await mark(page, '1'); expect(await saved(page)).toHaveLength(2);
   await panel(page).locator('summary').filter({hasText: 'audio-0.1.0'}).click();
   await expect(panel(page).getByText('New audio edition available;', {exact: false})).toBeVisible();
@@ -113,6 +114,7 @@ test('multi-tab additions, removals and reset do not resurrect older records', a
 });
 test('Preparation distinguishes official Human Plus unknown edition from OCF audio without adding a function', async ({page}) => {
   await ready(page, '/preparation-learning/');
+  await page.locator('.preparation-exception summary').click();
   await expect(page.getByText('Only people who have already learned the official Human Plus preparation track may skip it.', {exact: false}).first()).toBeVisible();
   await enable(page); await mark(page, 'external');
   let records = await saved(page); expect(records[0].subject).toBe('preparation:human-plus'); expect(records[0].guide).toBeNull(); expect(records[0].recording).toBeNull(); expect(records[0].external).toEqual({edition: null, date: null});
