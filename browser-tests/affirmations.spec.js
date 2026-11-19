@@ -121,3 +121,16 @@ test('legacy private backup previews and recovery bypass corrupt affirmation dat
  await expect(page.locator('.personal-settings')).toContainText('unreadable');await expect(page.getByRole('button',{name:'Confirm import and merge'})).toHaveCount(0);
  expect(await page.evaluate(()=>JSON.stringify({...localStorage}))).toBe(before);expect(await page.evaluate(key=>localStorage.getItem(key),corruptKey)).toBe('{');
 });
+test('a bookmarked Morning URL exposes no synthetic personal content to a clean browser profile or public metadata/settings',async({page,browser})=>{
+ const marker='PRIVATE_SYNTHETIC_AFFIRMATION_7f0d2e91';const requests=[];page.on('request',request=>requests.push({url:request.url(),method:request.method(),body:request.postData()}));
+ await ready(page);await enable(page);await add(page,marker,{favorite:true});await ready(page,'/my-morning/');
+ await expect(page.locator('.affirmation-list')).toContainText(marker);await expect(page.locator('[data-page-share],[data-share-copy]')).toHaveCount(0);
+ const bookmark=page.url();expect(new URL(bookmark).pathname).toBe('/my-morning/');expect(new URL(bookmark).search).toBe('');expect(new URL(bookmark).hash).toBe('');expect(bookmark).not.toContain(marker);
+ const metadata=await page.locator('head meta,head link[rel=canonical],head title').evaluateAll(nodes=>nodes.map(node=>node.outerHTML).join('\n'));expect(metadata).not.toContain(marker);
+ for(const path of ['/my-morning/','/documentation-index.json','/browse-catalog.json','/sitemap.xml'])expect(await(await page.request.get(path)).text()).not.toContain(marker);
+ await openPreferences(page);await page.getByText('Site settings backup',{exact:true}).click();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export site settings',exact:true}).click();const exported=await fs.readFile(await(await download).path(),'utf8');expect(exported).not.toContain(marker);expect(Object.keys(JSON.parse(exported)).sort()).toEqual(['edition','format','kind','schema','theme']);await closePreferences(page);
+ const clean=await browser.newContext();try {
+  const guest=await clean.newPage();await ready(guest,bookmark);await expect(guest.locator('.affirmation-list')).toContainText('morning space is empty');await expect(guest.locator('.affirmation-list')).not.toContainText(marker);expect(await state(guest)).toEqual({custom:[],favorites:[]});expect(await guest.evaluate(()=>localStorage.getItem('ocf-learned:v1'))).toBeNull();await expect(guest.locator('[data-page-share],[data-share-copy]')).toHaveCount(0);
+ }finally{await clean.close();}
+ expect(requests.every(request=>['GET','HEAD'].includes(request.method)&&!request.url.includes(marker)&&!request.body?.includes(marker))).toBe(true);
+});
