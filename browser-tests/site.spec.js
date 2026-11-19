@@ -613,8 +613,8 @@ test('manual and system theme combinations keep banner, hover and focus contrast
     }
   }
   await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
-  await page.keyboard.press('Tab');
   await openPreferences(page);
+  await page.keyboard.press('Tab');
   await page.getByRole('button', { name: /Color theme/ }).focus();
   const modes = await page.evaluate(() => ({
     forcedColors: matchMedia('(forced-colors: active)').matches,
@@ -629,6 +629,7 @@ test('manual and system theme combinations keep banner, hover and focus contrast
   expect(modes.outlineStyle).not.toBe('none');
   expect(parseFloat(modes.outlineWidth)).toBeGreaterThan(0);
   expect(modes.scrollBehavior).toBe('auto');
+  await closePreferences(page);
   await noAxeViolations(page, '.site-header');
 });
 
