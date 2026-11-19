@@ -250,6 +250,7 @@
       const ids=new Set(result.custom.map(item=>item.id));
       result.favorites=favorites.filter(id=>affirmations.starterIds.has(id)||ids.has(id));
       if(result.custom.length>affirmations.MAX_CUSTOM || entries.length>500) { this.affirmationsBlocked=true; this.warning='Too many custom lines; extra stored data has not been deleted.'; result.custom=result.custom.slice(0,affirmations.MAX_CUSTOM); result.favorites=result.favorites.filter(id=>affirmations.starterIds.has(id)||result.custom.some(item=>item.id===id)); }
+      result.custom.sort((a,b)=>a.id.localeCompare(b.id));result.favorites.sort();
       return result;
     }
     affirmationContext(epoch) {

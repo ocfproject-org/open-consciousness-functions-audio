@@ -47,6 +47,12 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  interruptedStore.merge=async(...args)=>{const count=await originalMerge(...args);interruptedStore.saveCustom(line,null,interruptedStore.config().epoch);return count;};
  await assert.rejects(interruptedStore.mergePersonal(incoming),error=>{assert.match(error.message,/Import interrupted after adding 1 learned versions, 1 personal marks/);assert.equal(error.importResult.learned,1);assert.equal(error.importResult.custom,0);return true;});
  assert.equal((await interruptedStore.read()).length,1);assert.equal(interruptedStore.readFlags().length,1);assert.deepEqual(interruptedStore.readAffirmations().custom,[line]);
+ // Storage key enumeration order is unspecified and may change after unrelated writes.
+ const orderedStorage=new Storage(),orderedStore=new Store(orderedStorage,subjects);orderedStore.enable();
+ orderedStore.saveCustom(line,null,orderedStore.config().epoch);orderedStore.saveCustom({...line,id:`custom:${crypto.randomUUID()}`,text:'Another existing line'},null,orderedStore.config().epoch);
+ const beforeOrder=JSON.stringify(orderedStore.readAffirmations());const orderedMerge=orderedStore.merge.bind(orderedStore);
+ orderedStore.merge=async(...args)=>{const count=await orderedMerge(...args);orderedStorage.map=new Map([...orderedStorage.map].reverse());return count;};
+ assert.equal(await orderedStore.mergePersonal({...incoming,affirmations:{custom:[],favorites:[]}}),1);assert.equal(JSON.stringify(orderedStore.readAffirmations()),beforeOrder);
  const quotaImportStorage=new Storage(),quotaSeed=new Store(quotaImportStorage,subjects);quotaSeed.enable();quotaSeed.setFlag('OCF-TST-001','todo',true);const quotaImport=new Store(quotaImportStorage,subjects);quotaImportStorage.setItem=()=>{throw Error('quota');};
  assert.equal(await quotaImport.mergePersonal(incoming),1);assert.deepEqual(quotaImport.lastImportResult,{learned:1,flags:1,custom:1,favorites:1,memoryOnly:true});assert.equal((await quotaImport.read()).length,1);assert.equal(quotaImport.readAffirmations().custom.length,1);assert.equal(quotaImport.readFlags().length,2);
  const epochStore=new Store(new Storage(),subjects);epochStore.enable();const oldEpoch=epochStore.config().epoch;epochStore.reset();epochStore.enable();await assert.rejects(epochStore.mergePersonal(incoming,oldEpoch),/changed/);assert.equal((await epochStore.read()).length,0);

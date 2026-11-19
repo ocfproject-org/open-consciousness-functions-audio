@@ -94,7 +94,7 @@ test('overlapping file selections discard a digest-delayed preview and detached 
  await page.evaluate(()=>window.__oldImportConfirm.click());await expect(page.locator('.personal-settings')).toContainText('file selection changed');
  expect((await state(page)).custom.map(line=>line.text)).toEqual(['Original race-test line']);
  await page.getByRole('button',{name:'Confirm import and merge'}).click();await expect.poll(async()=>(await state(page)).custom.length).toBe(2);
- expect((await state(page)).custom.map(line=>line.text)).toEqual(['Original race-test line','Latest candidate C']);
+ expect((await state(page)).custom.map(line=>line.text).sort()).toEqual(['Latest candidate C','Original race-test line']);
 });
 test('cross-tab reset and re-enable invalidate both a digest-delayed selection and an already rendered preview',async({page,context})=>{
  await ready(page);await enable(page);await add(page,'Original reset-test line');const original=(await state(page)).custom[0];
