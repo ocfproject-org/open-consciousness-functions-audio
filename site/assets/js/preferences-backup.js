@@ -15,7 +15,7 @@
   if (!preferences || !edition || !format || !theme) return;
   const versions = () => [...edition.options].map(option => option.value);
   const node = (tag,text,parent) => {const n=document.createElement(tag);if(text!==undefined)n.textContent=text;parent?.append(n);return n;};
-  const section=node('details',undefined,preferences);section.className='personal-settings preferences-backup';
+  const section=node('details',undefined,preferences);section.className='preferences-backup';
   node('summary','Site settings backup',section);
   node('p','Export or restore theme, audio edition and preferred format. Private library marks and tracking consent are separate and remain unchanged. Search, playback and URLs are excluded. Files stay on your device; nothing is uploaded.',section);
   const notice=node('p','',section);notice.setAttribute('role','status');
@@ -35,7 +35,7 @@
       for(let i=0;i<4&&theme.dataset.themePreference!==value.theme;i++)theme.click();
       edition.value=value.edition;edition.dispatchEvent(new Event('change',{bubbles:true}));
       format.value=value.format;format.dispatchEvent(new Event('change',{bubbles:true}));
-      clear();notice.textContent='Site settings applied. Private library and tracking consent unchanged. Browser storage availability determines whether settings persist.';
+      clear();input.focus();notice.textContent='Site settings applied. Private library and tracking consent unchanged. Browser storage availability determines whether settings persist.';
     } catch(error) {clear();notice.textContent=error.message;}
   });
   const cancel=button('Cancel settings import',()=>{clear();notice.textContent='Settings import cancelled. No settings changed.';input.focus();});
