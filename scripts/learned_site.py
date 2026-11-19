@@ -90,19 +90,26 @@ def install(staging, export, catalog):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(canonical(data) + "\n", encoding="utf-8")
     data_version = hashlib.sha256(target.read_bytes()).hexdigest()[:16]
-    pages = [(staging / "functions" / key / "index.html", key, "../../")
-             for key in data["subjects"] if key.startswith("OCF-")]
-    pages += [(staging / "functions/index.html", "", "../"),
-              (staging / "quick-reference/index.html", "", "../"),
-              (staging / "preparation-learning/index.html", "preparation:ocf", "../")]
-    for page, subject, prefix in pages:
+    for page in sorted(staging.rglob("*.html")):
+        relative = page.relative_to(staging)
+        if relative.as_posix() == "404.html":
+            continue
+        subject = relative.parts[1] if len(relative.parts) == 3 and relative.parts[0] == "functions" and relative.parts[1] in data["subjects"] else ""
+        if relative.as_posix() == "preparation-learning/index.html":
+            subject = "preparation:ocf"
+        view = "function" if subject else {"functions/index.html": "browse", "quick-reference/index.html": "reference"}.get(relative.as_posix(), "settings")
+        prefix = "../" * (len(relative.parts) - 1)
         text = page.read_text(encoding="utf-8")
         assets = (f'<link rel="stylesheet" href="{prefix}assets/css/learned.css">'
                   f'<script src="{prefix}assets/js/learned.js" defer></script>')
         text = text.replace("</head>", assets + "</head>")
         panel = (f'<section class="learned-panel" data-learned-subject="{subject}" '
-                 f'data-learned-src="{prefix}assets/data/learning.json?v={data_version}" aria-labelledby="learned-heading" hidden></section>')
+                 f'data-learned-view="{view}" data-learned-src="{prefix}assets/data/learning.json?v={data_version}" aria-label="Private library actions" hidden></section>')
         # Place after the page introduction, leaving canonical guidance untouched.
+        if view == "settings":
+            text = text.replace("</main>", panel + "</main>", 1)
+            page.write_text(text, encoding="utf-8")
+            continue
         text, count = re.subn(r'(<header class="page-intro\b[^>]*>.*?</header>)',
                               lambda match: match[0] + panel, text, count=1, flags=re.S)
         if count != 1:

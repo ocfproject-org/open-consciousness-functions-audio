@@ -268,6 +268,8 @@
         if (keepPinned) pinned += 1;
       }
     });
+    window.ocfLearned?.decorate();
+    window.ocfLearned?.order(catalogCards, card => card.dataset.functionId);
     resultsCount.textContent = visible.size
       ? `${visible.size} matching session ${visible.size === 1 ? 'edition' : 'editions'}${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}`
       : `No session editions match these filters${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}.`;

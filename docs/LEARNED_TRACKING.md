@@ -8,6 +8,23 @@ names. The browser fetches only the same public learning-data projection for eve
 visitor. People sharing a browser can see its records; exported backups also contain
 private interests.
 
+## Compact controls
+
+Favorite (heart), Learned (circle/check), and To Do (box/check) are independent
+44-pixel icon buttons with accessible names, focus outlines and pressed states.
+Favorite and To Do toggle only after explicit opt-in. Learned opens a native dialog;
+it never silently toggles off an existing version. Save is explicit; Cancel, Escape
+and history navigation discard the pending choice. Remove individual saved versions
+inside the dialog with confirmation. Preferences owns opt-in, backups and reset.
+
+The dialog defaults to the global edition (latest resolves to the current catalog),
+or the exact edition of a clicked Browse card. An unrelated saved historical record
+never determines the target. Choosing an edition inside the dialog does not change
+the global preference. Guide-only and external Preparation remain explicit options.
+Browse and Quick Reference combine personal-state filters and stable state-first
+sorting with existing search and edition filters. Older browsers without atomic DOM
+moves defer sorting while a card is focused or playing, preserving playback.
+
 ## Authority and identity
 
 `learned_site.py` derives `assets/data/learning.json` from the existing pinned public
@@ -63,7 +80,15 @@ and page-show events refresh the view without writing cached lists back. Concurr
 save versus removal of the very same identity is last-operation-wins; unrelated
 versions are preserved. This is browser storage, not a transactional database.
 
-Backup shape is `{ "schema": 1, "records": [...] }`. Each record has exactly
+New exports use `{ "schema": 2, "records": [...], "flags": [...] }`.
+Schema 1 backups remain accepted; importing them preserves existing Favorite/To Do
+marks. Old learned records and settings are unchanged. Flags are separate
+`ocf-learned:v1:flag:<epoch>:<subject>:<kind>` keys, each exactly `{subject, kind}`,
+where kind is `favorite` or `todo`. Imports merge marks without clearing existing
+states; at most 120 marks are accepted. Reset clears both record and flag keys.
+The former UI cannot import schema 2; keep an older backup if rolling back the UI.
+
+The learned record shape is unchanged. Each record has exactly
 `id`, `subject`, `markedAt`, `guide`, `recording`, and `external` fields. Import rejects
 unknown/future schemas, unknown subjects, extra fields, invalid types/identities,
 invalid snapshot hashes, duplicate identities, oversized input and malformed JSON
@@ -92,7 +117,8 @@ New files own projection, UI, scoped styles and tests. Builder touchpoints are o
 installation call before asset hashing and stable-ID attributes on static directory
 cards / Quick Reference rows. `app.js` and `docs.js` compose their existing filters
 with a page-local learned predicate and react to one event. Active unmatched players
-retain the existing pin behavior. `editions.js`, onboarding, navigation, downloads,
+retain the existing pin behavior. A small `ocfPreferences.open(trigger)` hook preserves focus return from icons.
+`editions.js`, onboarding, navigation, downloads,
 source pins, releases and narration are unchanged. One validation-workflow step runs
 the new dependency-free Node checks; Python and browser suites discover their new
 tests automatically.

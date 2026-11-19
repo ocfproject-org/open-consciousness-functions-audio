@@ -75,6 +75,19 @@ class LearnedProjectionTests(unittest.TestCase):
                 self.assertNotIn('onerror', output)
             self.assertIn('onerror', (root / 'assets/data/learning.json').read_text())
 
+    def test_preferences_hooks_on_root_and_nested_pages_skip_404(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in ['index.html', 'guide/index.html', '404.html']:
+                page = root / name
+                page.parent.mkdir(parents=True, exist_ok=True)
+                page.write_text('<head></head><main>Original</main>')
+            install(root, self.export, self.catalog)
+            self.assertIn('src="assets/js/learned.js"', (root / 'index.html').read_text())
+            self.assertIn('src="../assets/js/learned.js"', (root / 'guide/index.html').read_text())
+            self.assertIn('data-learned-view="settings"', (root / 'index.html').read_text())
+            self.assertEqual((root / '404.html').read_text(), '<head></head><main>Original</main>')
+
     def test_missing_intro_fails_instead_of_inserting_outside_main(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

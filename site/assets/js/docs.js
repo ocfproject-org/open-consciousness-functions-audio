@@ -381,6 +381,7 @@
       card.hidden = !visible;
       if (visible) shown += 1;
     }
+    window.ocfLearned?.order(functionCards, card => card.dataset.learnedId);
     for (const group of domainGroups) {
       group.hidden = !group.querySelector('[data-function-card]:not([hidden])');
     }
@@ -414,6 +415,8 @@
       row.hidden = !visible;
       if (visible) shown += 1;
     }
+    window.ocfLearned?.decorate();
+    window.ocfLearned?.order(referenceRows, row => row.dataset.learnedId);
     if (referenceCount) referenceCount.textContent = `${shown} ${shown === 1 ? 'function' : 'functions'}`;
     if (referenceNoResults) referenceNoResults.hidden = shown > 0;
     if (referenceClear) referenceClear.hidden = !referenceControls.some(control => control.value);
