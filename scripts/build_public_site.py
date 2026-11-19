@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 from catalog import validate_catalog
 from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
+from site_references import chain_references, use_references
 
 SOURCE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions"
 SITE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions-audio"
@@ -1668,7 +1669,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     terms = _discovery_section(
         "Tags and discovery terms", function["tags"]
-    ) + _discovery_section("Common-use examples", function["common_uses"])
+    ) + _discovery_section("Common-use examples", function["common_uses"], function["function_id"])
     command_sections = []
     for command in function["commands"]:
         spoken_cue = command.get("spoken_cue", "").strip()
@@ -1858,7 +1859,7 @@ def _function_audio_actions(sessions):
     return f'<nav class="function-audio-actions" aria-label="Listen and download">{"".join(groups)}</nav>'
 
 
-def _discovery_section(title, values):
+def _discovery_section(title, values, function_id=None):
     values = [
         value
         for value in values
@@ -1867,7 +1868,8 @@ def _discovery_section(title, values):
     if not values:
         return ""
     rows = "".join(f"<li>{_html(value['text'])}</li>" for value in values)
-    return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul>{rows}</ul></details>'
+    references = use_references(function_id, values) if function_id else ""
+    return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul>{rows}</ul>{references}</details>'
 
 
 def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
@@ -2169,7 +2171,7 @@ def _function_chains_page(markdown, functions):
                            f'<a href="../functions/{fid}/#cues" aria-label="Use guide: {name}">Use guide</a></div>')
         return (f'<section class="chain-section"><div class="chain-original">{match.group(0)}</div>'
                 f'<details class="chain-learning-links"><summary>Learn or use each step in {title}</summary>'
-                + ''.join(actions) + '</details></section>')
+                + ''.join(actions) + '</details>' + chain_references(title, markdown) + '</section>')
 
     sections = re.sub(r'<h2 id="([^"]+)">([^<]+)</h2>(.*?)(?=<h2|$)', present, rendered, flags=re.S)
     _require(len(seen) == 17 and set(seen) == set().union(*goals.values()),

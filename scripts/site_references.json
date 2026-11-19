@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "A-ODYS2": {
+      "title": "Barbara Bullard, Hemi-Sync Odyssey—Part II (Fall 1993)",
+      "url": "https://archive.org/download/monroe-institute-reports-human-plus/23%20Focus%201993-4%20-%20H-Plus%C2%AE%20Odyssey%20Part%20II%20-%20Barbara%20Bullard.pdf",
+      "sha256": "dd674c2ec0af520ac829c9864c5a5dd46d8c63069b80923232690f0d5f4ca453",
+      "format": "Public archive PDF reproduction; page numbers refer to this PDF"
+    },
+    "A-WISH90": {
+      "title": "Shirley Bliley, H-Plus Potpourri (Summer 1990)",
+      "url": "https://archive.org/download/monroe-institute-reports-human-plus/11%20Focus%201990-3%20-%20H-Plus%C2%AE%20Potpourri%20-%20Shirley%20Bliley.pdf",
+      "sha256": "e1ec093773ed29ba5455c81b1059d745671070c0aed31368354161bdee0697d8",
+      "format": "Public archive PDF reproduction; page numbers refer to this PDF"
+    },
+    "A-HP10": {
+      "title": "High Performance-Ten (HP-10), © 1987",
+      "url": "https://archive.org/download/monroe-institute-reports-human-plus/03%20M.I.A.S.%20High%20Performance%20Ten%20%28HP-10%29.pdf",
+      "sha256": "cf4e802ff22de08eb48ebd2f9fff481fff219af8544e967c72f2035ce63503dd",
+      "format": "Public archive PDF reproduction; page numbers refer to this PDF"
+    }
+  },
+  "uses": [
+    {
+      "function_id": "OCF-BOD-005",
+      "semantic_id": "nutricia-weight-routine",
+      "text_sha256": "ed4eec2ebe480504f9506d216bc8b8458850972c4cd6f943ca64ea7e73f7f06f",
+      "source_id": "A-ODYS2",
+      "page": 1,
+      "scope": "Reported core pairing; not clinical or safety validation."
+    },
+    {
+      "function_id": "OCF-BOD-006",
+      "semantic_id": "tuneup-companion",
+      "text_sha256": "b2a83e228522282a81ff47793d7bab2d6e26a98d2d8c51a3f5316dcaab1c942f",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical pairing suggestion; not efficacy or safety validation."
+    },
+    {
+      "function_id": "OCF-BOD-010",
+      "semantic_id": "appetite-choice-pairing",
+      "text_sha256": "dd5a154a080c533769d4686c1c75f53e216f33f9f29e4c893fd5682b95503ad5",
+      "source_id": "A-ODYS2",
+      "page": 1,
+      "scope": "Reported core pairing; not clinical or safety validation."
+    },
+    {
+      "function_id": "OCF-BOD-010",
+      "semantic_id": "approved-ocf-sequence",
+      "text_sha256": "9be24f5d8164e8fd4f47bf377b80f89a35184dec7593dc6329971e5f731de277",
+      "source_id": "A-ODYS2",
+      "page": 1,
+      "scope": "Nutricia + Eat/No Eat only. Habit Freedom and optional Detox are OCF additions; sequence order is not established here."
+    },
+    {
+      "function_id": "OCF-BOD-013",
+      "semantic_id": "heart-flow-pairing",
+      "text_sha256": "41bb9ee5f98dae91a333629c079531d8f390a3d70d3d9a51eaea0035dc5ede29",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical pairing suggestion; not efficacy or safety validation."
+    },
+    {
+      "function_id": "OCF-COG-002",
+      "semantic_id": "symbol-reasoning",
+      "text_sha256": "5021706cba2c80e598500c68430fd87b39b1351f04ebda4a8f614ad50dca04d6",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical request for symbolic reasoning, not a demonstrated result."
+    },
+    {
+      "function_id": "OCF-COG-004",
+      "semantic_id": "new-vocabulary",
+      "text_sha256": "339bcb42f565fc608f3a2b77b9049a235b88263e9431655d55fd03222f3f8f4b",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical language-study suggestions; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-COG-006",
+      "semantic_id": "recall-studied-material",
+      "text_sha256": "59024e3b4ab8da392774d5f0c44ffa891adda72ff10a7ed28b988e33f24014f2",
+      "source_id": "A-HP10",
+      "page": 4,
+      "scope": "Historical test-context suggestion; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-COG-006",
+      "semantic_id": "foreign-language-recall",
+      "text_sha256": "6c7a22dbb4659c5a5b40ca214de538cf940685c7ae2438d84379d41efa2a8c35",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical language-study suggestions; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-COG-007",
+      "semantic_id": "conversation-thinking",
+      "text_sha256": "23d28eab36ac4d5debbd8313821e7314867689ba1fc7d121a86b30f90c74a5bf",
+      "source_id": "A-HP10",
+      "page": 4,
+      "scope": "Historical conversation pairing; listening guidance is an OCF addition."
+    },
+    {
+      "function_id": "OCF-COG-007",
+      "semantic_id": "language-practice",
+      "text_sha256": "29dd953897c59573e217ebbce0836abac88b9e8a6fb9a21f067e7bbf7c38ea80",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical language-study suggestions; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-COM-001",
+      "semantic_id": "language-speaking",
+      "text_sha256": "a17b5c0e710212e636d638cf92b400f2349cce10c5e1bcd1f53441bf4a2a725d",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical language-study suggestions; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-EMO-001",
+      "semantic_id": "immediate-frustration",
+      "text_sha256": "bc9c99b1e84249d9f64efdb98b2786e51ab1e22ff8682930d4ebea4971be1a5e",
+      "source_id": "A-ODYS2",
+      "page": 2,
+      "scope": "Reported Let Go context; the approved wording is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-EMO-001",
+      "semantic_id": "decision-after-emotion",
+      "text_sha256": "71bf5d7c47206f4e127b4fdd1a21c350049e7da1036f5204ae779063c5ba1b7e",
+      "source_id": "A-ODYS2",
+      "page": 2,
+      "scope": "Reported Let Go context; the approved wording is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-EXP-001",
+      "semantic_id": "goal-with-deadline",
+      "text_sha256": "be9acdcc16fccd4d864abb4889904268a8961118b50ae435e42de6a23e23f1d1",
+      "source_id": "A-ODYS2",
+      "page": 2,
+      "scope": "Reported goal/time and grading context; not demonstrated outcomes."
+    },
+    {
+      "function_id": "OCF-EXP-001",
+      "semantic_id": "grading-planning",
+      "text_sha256": "1cfa6005795a1460c0f20ea5d78ad16b0fbb054f11cce1982a1d71f372e94ea1",
+      "source_id": "A-ODYS2",
+      "page": 2,
+      "scope": "Reported goal/time and grading context; not demonstrated outcomes."
+    },
+    {
+      "function_id": "OCF-FND-006",
+      "semantic_id": "end-temporary-state",
+      "text_sha256": "f9d9a4808f49f13fb41ee6c290057b19bb331876d816a0cad3cc0bd576d4121a",
+      "source_id": "A-HP10",
+      "page": 2,
+      "scope": "Historical Release context; follow the current function instructions."
+    },
+    {
+      "function_id": "OCF-PRF-002",
+      "semantic_id": "test-confidence",
+      "text_sha256": "4d139565959833b0ab69a8df712d17dbccc847178ead96091096afa0a698261a",
+      "source_id": "A-HP10",
+      "page": 4,
+      "scope": "Historical test-context suggestion; this specific exercise is an OCF adaptation."
+    },
+    {
+      "function_id": "OCF-SEN-002",
+      "semantic_id": "seeing-hearing-combo",
+      "text_sha256": "8f5be6453f55499fbf16b2668439a7e91c870f2e60bab7e9308177688ca77ad1",
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Historical pairing suggestion; not efficacy or safety validation."
+    },
+    {
+      "function_id": "OCF-SLP-002",
+      "semantic_id": "after-evening-relax",
+      "text_sha256": "a452a34b1c3a80a6ce4a044948e03da461c9af6de6fdb3fe4141c98823f606b0",
+      "source_id": "A-HP10",
+      "page": 4,
+      "scope": "Historical bedtime context; follow the current Sleep instructions."
+    }
+  ],
+  "chain_document_sha256": "3c7f073d1d7c134f116ac542664b30d4210e2fad79d226113fc85daadba0a8b6",
+  "chains": {
+    "Learning": {
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Overlapping learning practices; today’s selection and order are OCF-authored."
+    },
+    "Daily learning": {
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Partial learning overlap only; Information Access and today’s order are OCF additions."
+    },
+    "Performance": {
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Overlapping sports suggestions; today’s selection and order are OCF-authored."
+    },
+    "Physical maintenance": {
+      "source_id": "A-WISH90",
+      "page": 2,
+      "scope": "Body Tune-Up + Circulation pairing only; the surrounding steps and order are OCF additions."
+    },
+    "Communication": {
+      "source_id": "A-HP10",
+      "page": 4,
+      "scope": "Think + Speak Up pairing only; the remaining steps and order are OCF additions."
+    },
+    "Weight management": {
+      "source_id": "A-ODYS2",
+      "page": 1,
+      "scope": "Nutricia + Eat/No Eat pairing only. Habit Freedom and optional Detox are OCF additions; this does not establish the full chain or its order."
+    }
+  }
+}

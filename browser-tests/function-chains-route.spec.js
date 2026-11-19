@@ -5,7 +5,7 @@ async function canonical(page){
  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://ocfproject.org/function-chains/');
  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content','https://ocfproject.org/function-chains/');
  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content','Function Chains — OCF');
- await expect(page.locator('main ol')).toHaveCount(17);
+ await expect(page.locator('.chain-original ol')).toHaveCount(17);
 }
 test('canonical Function Chains route, metadata, navigation and sitemap use the new name',async({page})=>{
  for(const route of ['/','/start/','/how-it-works/','/functions/OCF-FND-004/','/function-chains/']){
