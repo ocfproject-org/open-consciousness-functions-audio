@@ -2,8 +2,9 @@
 ((root) => {
   'use strict';
   const data = typeof module !== 'undefined' && module.exports ? require('./affirmations-data.js') : root.ocfAffirmationsData;
-  const MAX_CUSTOM = 200, MAX_TEXT = 500;
+  const MAX_CUSTOM = 1500, MAX_TEXT = 500;
   const starterIds = new Set(data.lines.map(line => line.id));
+  const MAX_STORED = MAX_CUSTOM * 2 + starterIds.size;
   const customId = id => typeof id === 'string' && /^custom:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id);
   const fail = () => { throw Error('Unsupported or corrupt affirmation data. Existing lines have not been replaced.'); };
   function exact(value, keys) { if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join('|') !== [...keys].sort().join('|')) fail(); }
@@ -14,7 +15,8 @@
   }
   function validate(value) {
     exact(value, ['custom', 'favorites']);
-    if (!Array.isArray(value.custom) || value.custom.length > MAX_CUSTOM || !Array.isArray(value.favorites) || value.favorites.length > MAX_CUSTOM + starterIds.size) fail();
+    if (!Array.isArray(value.custom) || !Array.isArray(value.favorites)) fail();
+    if(value.custom.length>MAX_CUSTOM || value.favorites.length>MAX_CUSTOM+starterIds.size) throw Error(`The ${MAX_CUSTOM}-line collection capacity would be exceeded. Existing lines have not been replaced; split the collection or remove lines before importing.`);
     const ids = new Set();
     value.custom.forEach(item => { line(item); if (ids.has(item.id)) fail(); ids.add(item.id); });
     const favorites = new Set();
@@ -40,7 +42,7 @@
     const result = {custom: [...custom.values()], favorites: [...new Set([...existing.favorites, ...incoming.favorites.map(id => remap.get(id) || id)])]};
     validate(result); return result;
   }
-  const api = {data, MAX_CUSTOM, MAX_TEXT, starterIds, customId, line, validate, empty, same, merge};
+  const api = {data, MAX_CUSTOM, MAX_STORED, MAX_TEXT, starterIds, customId, line, validate, empty, same, merge};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ocfAffirmationsState = api;
 })(globalThis);
