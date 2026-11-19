@@ -482,3 +482,14 @@ html:has(:target) { scroll-behavior: auto; }
 .download-search-row #download-search { flex: 1; min-width: 0; }
 #download-clear { flex: none; min-height: 44px; }
 .download-cues { margin: .25rem 0 0; font-size: .9rem; }
+
+/* Search leaves navigation, choices, private filters and query controls visible. */
+.browse-search-active .page-intro > :not(h1):not(.audio-preferences-context),
+.browse-search-active .browse-library > .section-heading,
+.browse-search-active .browse-library > p:not(#results-count):not(#catalog-no-results):not(#empty-state),
+.browse-search-active .browse-banner,
+.browse-search-active .selection-tools,
+.browse-search-active #release-extras,
+.browse-search-active .surprise-session:not([data-search-retained]) { display: none !important; }
+.browse-search-active .page-intro { margin-bottom: .5rem; }
+.session-cues { margin: .25rem 0; font-size: .9rem; }

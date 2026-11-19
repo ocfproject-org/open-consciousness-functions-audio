@@ -995,6 +995,8 @@ def build_public_site(
                         command["spoken_cue"]
                         for command in row["commands"]
                         if command.get("spoken_cue")
+                        and command.get("command_status") == "active"
+                        and command.get("spoken_status") in {"canonical", "reviewed"}
                     ],
                     "search_terms": [
                         item["text"]

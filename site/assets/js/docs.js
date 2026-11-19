@@ -15,7 +15,7 @@
     const voiceMatches = !voice || (node.dataset.voice || '').split('|').includes(voice);
     return categoryMatches && audioMatches && languageMatches && voiceMatches && (!terms || normalize(node.dataset.search).includes(terms));
   };
-  // Downloads only: retain all direct matches, then offer bounded typo fallback.
+  // Shared Browse/Downloads ranking: retain all direct matches, then offer bounded typo fallback.
   const normalizeCue = value => normalize(value).replace(/^plus\s+/, '');
   const editDistance = (left, right) => {
     const rows = Array.from({length: left.length + 1}, (_, i) => [i]);
@@ -26,9 +26,9 @@
     }
     return rows[left.length][right.length];
   };
-  const rankDownloads = (cards, query) => {
+  const rankDownloads = (cards, query, score = () => {}) => {
     const term = normalize(query), cueTerm = normalizeCue(query);
-    if (!term) return {matches: [...cards], fuzzy: false};
+    if (!term) { cards.forEach(card => score(card, 0)); return {matches: [...cards], fuzzy: false}; }
     const rows = cards.map((card, index) => {
       const title = normalize(card.dataset.downloadTitle);
       const cues = JSON.parse(card.dataset.downloadCues || '[]').map(normalizeCue);
@@ -40,11 +40,13 @@
       return {card, index, rank, primary: [title, ...cues]};
     });
     const direct = rows.filter(row => Number.isFinite(row.rank));
+    direct.forEach(row => score(row.card, row.rank));
     if (direct.length) return {matches: direct.sort((a, b) => a.rank - b.rank || a.index - b.index).map(row => row.card), fuzzy: false};
     if (cueTerm.length < 4 || cueTerm.length > 64) return {matches: [], fuzzy: false};
     const threshold = cueTerm.length >= 8 ? 2 : 1;
     const close = rows.map(row => ({...row, distance: Math.min(...row.primary.filter(value => Math.abs(value.length - cueTerm.length) <= threshold).map(value => editDistance(value, cueTerm)))}))
       .filter(row => row.distance <= threshold).sort((a, b) => a.distance - b.distance || a.index - b.index);
+    close.forEach(row => score(row.card, 4 + row.distance));
     return {matches: close.map(row => row.card), fuzzy: close.length > 0};
   };
   const safeTranscript = (value, currentURL) => {
@@ -69,6 +71,7 @@
   };
   if (typeof module !== 'undefined') module.exports = {normalize, matches, safeTranscript, highlight, normalizeCue, rankDownloads};
   if (typeof document === 'undefined') return;
+  window.ocfSearch = {rankDownloads};
 
   document.querySelectorAll('[data-no-script-note]').forEach(note => { note.hidden = true; });
 

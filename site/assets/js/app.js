@@ -12,6 +12,7 @@
         id: fn.function_id || 'preparation-learning', title: session.title || fn.title,
         description: documentation.byId?.[fn.function_id]?.description || fn.description || '',
         searchText: documentation.byId?.[fn.function_id]?.searchText || '',
+        cues: documentation.byId?.[fn.function_id]?.cues || [],
         category: documentation.byId?.[fn.function_id]?.category || 'preparation-learning',
         categoryLabel: documentation.byId?.[fn.function_id]?.categoryLabel || 'Preparation Learning',
         categories: documentation.byId?.[fn.function_id]?.categories || ['preparation-learning'],
@@ -28,7 +29,7 @@
       if (available.has(id)) continue;
       items.push({
         id, title: functionDoc.title, description: functionDoc.description,
-        searchText: functionDoc.searchText, category: functionDoc.category,
+        searchText: functionDoc.searchText, cues: functionDoc.cues || [], category: functionDoc.category,
         categoryLabel: functionDoc.categoryLabel,
         categories: functionDoc.categories, href: `${encodeURIComponent(id)}/`,
         locale: '', voice: '', voiceId: '', edition: '', releaseURL: null, assets: [],
@@ -42,15 +43,18 @@
     .replace(/[\p{P}\p{S}]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const filterEntries = (items, query, category, audio, locale, voice, edition = '') => {
-    const terms = normalizeSearch(query);
-    return items.filter(item =>
-      (!terms || normalizeSearch(`${item.id} ${item.title} ${item.description} ${item.searchText}`).includes(terms)) &&
+  const rankEntries = (items, query) => {
+    const rank = typeof module !== 'undefined' ? require('./docs.js').rankDownloads : window.ocfSearch?.rankDownloads;
+    if (!rank) return {matches: items.filter(item => normalizeSearch(`${item.id} ${item.title} ${item.description} ${item.searchText}`).includes(normalizeSearch(query))), fuzzy: false, scores: new Map()};
+    const cards = items.map(item => ({item, dataset: {downloadTitle:item.title, downloadCues:JSON.stringify(item.cues || []), downloadSearch:`${item.id} ${item.title} ${item.description} ${item.searchText}`}}));
+    const scores = new Map(); const result = rank(cards, query, (card, score) => scores.set(card.item, score));
+    return {matches:result.matches.map(card=>card.item), fuzzy:result.fuzzy, scores};
+  };
+  const filterEntries = (items, query, category, audio, locale, voice, edition = '') => rankEntries(items.filter(item =>
       (!category || (item.categories || []).includes(category)) &&
       (!audio || (item.assets.length ? 'yes' : 'no') === audio) &&
       (!locale || item.locale === locale) && (!voice || item.voiceId === voice) &&
-      (!edition || !item.assets.length || item.edition === edition));
-  };
+      (!edition || !item.assets.length || item.edition === edition)), query).matches;
   const downloadActionName = (action, format, item) =>
     `${action} ${String(format || 'file').toUpperCase()} for ${item.title}, ${item.locale}, ${item.voice}, edition ${item.edition}`;
   const downloadList = assets => assets.map(a => `${a.sha256}  ${a.filename}\n${a.download_url}`).join('\n\n') + '\n';
@@ -92,7 +96,7 @@
       return chosen?.item || null;
     };
   };
-  if (typeof module !== 'undefined') module.exports = {surprisePool, chooseSurprise, createSurpriseHistory, safeURL, entries, normalizeSearch, filterEntries, downloadActionName, downloadList, supportedCatalog};
+  if (typeof module !== 'undefined') module.exports = {surprisePool, chooseSurprise, createSurpriseHistory, safeURL, entries, normalizeSearch, rankEntries, filterEntries, downloadActionName, downloadList, supportedCatalog};
   if (typeof document === 'undefined') return;
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
@@ -208,7 +212,7 @@
     save('OCF-selection.m3u8', '#EXTM3U\n' + [...selection.values()].filter(a => a.format === 'mp3').map(a => a.download_url).join('\n') + '\n', 'audio/x-mpegurl');
   });
   function updateSelection() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()).filter(item => window.ocfLearned?.matches(item.id) ?? true));
+    const visible = new Set(rankedVisible().matches);
     const hiddenCount = [...selection.values()].filter(file => (!visible.has(file.sessionItem) || file.format !== currentFormat())).length;
     selectionCount.textContent = `${selection.size} ${selection.size === 1 ? 'file' : 'files'} selected${hiddenCount ? ` (${hiddenCount} hidden by filters)` : ''}`;
     document.getElementById('download-selection').disabled = selection.size === 0;
@@ -248,8 +252,15 @@
     updateSelection();
     selectionCount.focus();
   });
+  function rankedVisible() {
+    const eligible = filterEntries(catalogItems, '', category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()).filter(item => window.ocfLearned?.matches(item.id) ?? true);
+    return rankEntries(eligible, search.value);
+  }
   function render() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()).filter(item => window.ocfLearned?.matches(item.id) ?? true));
+    const ranked = rankedVisible(); const visible = new Set(ranked.matches);
+    const searching = Boolean(normalizeSearch(search.value));
+    document.body.classList.toggle('browse-search-active', searching);
+    document.querySelectorAll('.surprise-session').forEach(section => section.toggleAttribute('data-search-retained', section.contains(document.activeElement) || [...section.querySelectorAll('audio')].some(a=>!a.paused&&!a.ended)));
     count.textContent = `${catalogItems.filter(item => item.assets.length && item.edition === currentEdition()).length} recordings`;
     let pinned = 0;
     catalogItems.forEach((item, index) => {
@@ -269,10 +280,15 @@
       }
     });
     window.ocfLearned?.decorate();
-    window.ocfLearned?.order(catalogCards, card => card.dataset.functionId);
-    resultsCount.textContent = visible.size
+    const priority = card => searching ? ranked.scores.get(catalogItems[catalogCards.indexOf(card)]) ?? 100 : 0;
+    if (window.ocfLearned?.order) window.ocfLearned.order(catalogCards, card => card.dataset.functionId, priority);
+    else if (results.moveBefore || !catalogCards.some(card => card.contains(document.activeElement) || [...card.querySelectorAll('audio')].some(a => !a.paused && !a.ended))) {
+      // Search still ranks when the optional personal tracking script is unavailable.
+      [...catalogCards].sort((a,b) => priority(a)-priority(b) || catalogCards.indexOf(a)-catalogCards.indexOf(b)).forEach(card => results.moveBefore ? results.moveBefore(card,null) : results.append(card));
+    }
+    resultsCount.textContent = (ranked.fuzzy ? 'No exact match; showing close title or cue matches. ' : '') + (visible.size
       ? `${visible.size} matching session ${visible.size === 1 ? 'edition' : 'editions'}${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}`
-      : `No session editions match these filters${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}.`;
+      : `No session editions match these filters${pinned ? `; ${pinned} nonmatching ${pinned === 1 ? 'edition remains' : 'editions remain'} available below` : ''}.`);
     if (noResults) noResults.hidden = visible.size > 0;
     if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control.value);
   }
@@ -417,6 +433,7 @@
     card.dataset.formatSession = JSON.stringify(item.assets.map(asset => asset.format));
     const metadata = [item.categoryLabel || item.category, item.id, item.locale, item.voice, item.edition && `v${item.edition}`].filter(Boolean).join(' · ');
     card.append(el('p', metadata, 'session-meta'));
+    if (item.cues?.length) card.append(el('p', `Spoken cue: ${item.cues.join(' · ')}`, 'session-cues'));
     const pinned = el('p', undefined, 'playback-status');
     pinned.hidden = true; pinned.setAttribute('data-playback-status', ''); pinned.setAttribute('role', 'status'); pinned.setAttribute('aria-live', 'polite');
     card.append(pinned);
@@ -510,7 +527,7 @@
     if (documentationIndex.source_commit !== sourcePin.source_commit) documentationIndex = {functions: []};
     const documentation = {
       byId: Object.fromEntries((documentationIndex.functions || []).map(row => [row.function_id, {
-        title: row.title,
+        title: row.title, cues: row.cues,
         description: row.description,
         category: row.primary_category,
         categoryLabel: row.primary_category_label,

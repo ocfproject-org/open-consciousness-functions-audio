@@ -44,3 +44,15 @@ assert.deepEqual(filterEntries(editions, '', '', '', '', '', '0.1.0'), [editions
 assert.deepEqual(filterEntries(editions, '', '', '', '', '', ''), editions);
 assert.deepEqual(filterEntries(editions, '', '', 'yes', '', '', '0.2.0'), [editions[1]]);
 console.log('Edition filtering: 4 assertions passed');
+const {rankEntries}=require('../site/assets/js/app.js');
+const candidates=[
+ {id:'options',title:'Options',cues:['Plus Options'],description:'Manifest possibilities',searchText:'',assets:[],categories:[]},
+ {id:'prefix',title:'Manifesting',cues:[],description:'',searchText:'',assets:[],categories:[]},
+ {id:'manifest',title:'Manifest',cues:['Plus Manifest'],description:'',searchText:'',assets:[],categories:[]},
+];
+for(const query of ['Manifest','PLUS—MANIFEST','ＭＡＮＩＦＥＳＴ','Manfiest'])assert.equal(rankEntries(candidates,query).matches[0].id,'manifest');
+assert.deepEqual(rankEntries(candidates,'Manifest').matches.map(x=>x.id),['manifest','prefix','options']);
+assert.equal(rankEntries(candidates,'Manfiest').fuzzy,true);
+assert.deepEqual(rankEntries(candidates,'').matches,candidates);
+assert.equal(rankEntries(candidates,'x'.repeat(1000)).matches.length,0);
+console.log('Browse ranking: exact/current cue/prefix before description, Unicode, shorthand, typo fallback and restoration passed');

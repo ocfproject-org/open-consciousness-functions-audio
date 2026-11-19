@@ -213,11 +213,11 @@
     : flags.some(f => f.subject === id && f.kind === kind);
   const normalized = id => id === 'preparation-learning' ? 'preparation:ocf' : id;
   const originalOrder = new WeakMap(); let ordinal = 0;
-  const order = (elements, idFor) => {
+  const order = (elements, idFor, priority = () => 0) => {
     const groups = new Map();
     elements.forEach(element => { if (!originalOrder.has(element)) originalOrder.set(element, ordinal++); const parent = element.parentElement; if (!groups.has(parent)) groups.set(parent, []); groups.get(parent).push(element); });
     for (const [parent, items] of groups) {
-      const ordered = [...items].sort((a,b) => (sortValue === 'default' ? 0 : Number(has(normalized(idFor(b)), sortValue)) - Number(has(normalized(idFor(a)), sortValue))) || originalOrder.get(a) - originalOrder.get(b));
+      const ordered = [...items].sort((a,b) => priority(a) - priority(b) || (sortValue === 'default' ? 0 : Number(has(normalized(idFor(b)), sortValue)) - Number(has(normalized(idFor(a)), sortValue))) || originalOrder.get(a) - originalOrder.get(b));
       if (ordered.some((item,i) => [...parent.children].filter(child => items.includes(child))[i] !== item)) {
         if (!parent.moveBefore && items.some(item => item.contains(document.activeElement) || [...item.querySelectorAll('audio')].some(audio => !audio.paused && !audio.ended))) continue;
         ordered.forEach(item => parent.moveBefore ? parent.moveBefore(item, null) : parent.append(item));

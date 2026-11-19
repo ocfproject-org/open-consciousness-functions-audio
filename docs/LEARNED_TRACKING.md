@@ -149,3 +149,11 @@ replace only these three values through their existing controllers. Cancel or cl
 Preferences discards the preview. Tracking opt-in and progress remain in the separate
 private-library scope, unchanged by settings import. No search, playback, URL, stored
 progress, or other browser data is exported. Downloads/reads are local files, not uploads.
+
+Browse search uses the same bounded ranking as Downloads: exact names/current cues,
+then prefixes, other direct matches and descriptive matches; typo suggestions appear
+only without a direct match. Leading PLUS is optional for cue matching. Relevance
+precedes personal sorting; private-state and edition filters constrain the candidates
+first. Clearing the query restores personal/original order. Search hides introductory
+and export panels without clearing selections or progress. Active audio and focused
+cards retain their existing continuity rules; an active Surprise player stays available.
