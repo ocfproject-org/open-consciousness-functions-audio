@@ -34,3 +34,10 @@ test('relevance outranks personal sorting while favorite filtering and selected 
 test('search ranking works if optional personal tracking fails to load',async({page})=>{
  await page.route('**/assets/js/learned.js*',route=>route.abort());await page.goto('/functions/');await expect(page.locator('#search')).toBeEnabled();await page.locator('#search').fill('Manifest');await first(page);
 });
+test('Surprise remains independently usable below results and active playback survives search movement',async({page})=>{
+ await page.goto('/functions/');await page.getByRole('button',{name:'Surprise me',exact:true}).click();const section=page.locator('.surprise-session'),audio=section.locator('audio');
+ const wav=Buffer.alloc(44+8000*30,128);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVE',8);wav.write('fmt ',12);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(8000,28);wav.writeUInt16LE(1,32);wav.writeUInt16LE(8,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
+ await audio.evaluate(async(a,src)=>{a.src=src;await a.play();a.dataset.testIdentity='surprise';},'data:audio/wav;base64,'+wav.toString('base64'));
+ await page.locator('#search').fill('Manifest');await first(page);await expect(section).toBeVisible();expect(await section.evaluate(s=>Boolean(document.querySelector('#catalog-results').compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);expect(await audio.evaluate(a=>a.paused)).toBe(false);
+ await page.locator('#search').fill('');expect(await audio.evaluate(a=>a.paused)).toBe(false);await expect(audio).toHaveAttribute('data-test-identity','surprise');expect(await section.evaluate(s=>s.nextElementSibling.classList.contains('library-tools'))).toBe(true);
+});

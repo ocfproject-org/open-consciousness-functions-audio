@@ -214,6 +214,7 @@
   function updateSelection() {
     const visible = new Set(rankedVisible().matches);
     const hiddenCount = [...selection.values()].filter(file => (!visible.has(file.sessionItem) || file.format !== currentFormat())).length;
+    document.querySelector('.selection-tools')?.toggleAttribute('data-has-selection', selection.size > 0);
     selectionCount.textContent = `${selection.size} ${selection.size === 1 ? 'file' : 'files'} selected${hiddenCount ? ` (${hiddenCount} hidden by filters)` : ''}`;
     document.getElementById('download-selection').disabled = selection.size === 0;
     document.getElementById('playlist-selection').disabled = ![...selection.values()].some(a => a.format === 'mp3');
@@ -260,7 +261,13 @@
     const ranked = rankedVisible(); const visible = new Set(ranked.matches);
     const searching = Boolean(normalizeSearch(search.value));
     document.body.classList.toggle('browse-search-active', searching);
-    document.querySelectorAll('.surprise-session').forEach(section => section.toggleAttribute('data-search-retained', section.contains(document.activeElement) || [...section.querySelectorAll('audio')].some(a=>!a.paused&&!a.ended)));
+    const surprise = document.querySelector('.surprise-session');
+    const anchor = document.querySelector(searching ? '#release-extras' : '.library-tools');
+    if (surprise && anchor && surprise.nextElementSibling !== anchor) {
+      const parent = anchor.parentElement;
+      if (parent.moveBefore) parent.moveBefore(surprise, anchor);
+      else if (!surprise.contains(document.activeElement) && ![...surprise.querySelectorAll('audio')].some(a=>!a.paused&&!a.ended)) parent.insertBefore(surprise, anchor);
+    }
     count.textContent = `${catalogItems.filter(item => item.assets.length && item.edition === currentEdition()).length} recordings`;
     let pinned = 0;
     catalogItems.forEach((item, index) => {

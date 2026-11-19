@@ -488,8 +488,7 @@ html:has(:target) { scroll-behavior: auto; }
 .browse-search-active .browse-library > .section-heading,
 .browse-search-active .browse-library > p:not(#results-count):not(#catalog-no-results):not(#empty-state),
 .browse-search-active .browse-banner,
-.browse-search-active .selection-tools,
-.browse-search-active #release-extras,
-.browse-search-active .surprise-session:not([data-search-retained]) { display: none !important; }
+.browse-search-active .selection-tools:not([data-has-selection]),
+.browse-search-active #release-extras { display: none !important; }
 .browse-search-active .page-intro { margin-bottom: .5rem; }
 .session-cues { margin: .25rem 0; font-size: .9rem; }

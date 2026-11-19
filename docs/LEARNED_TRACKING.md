@@ -155,5 +155,6 @@ then prefixes, other direct matches and descriptive matches; typo suggestions ap
 only without a direct match. Leading PLUS is optional for cue matching. Relevance
 precedes personal sorting; private-state and edition filters constrain the candidates
 first. Clearing the query restores personal/original order. Search hides introductory
-and export panels without clearing selections or progress. Active audio and focused
-cards retain their existing continuity rules; an active Surprise player stays available.
+and empty export panels without clearing selections or progress. Nonempty file
+selections remain reviewable and removable. Active audio and focused
+cards retain their existing continuity rules; Surprise moves below search results and stays available without interrupting its player.
