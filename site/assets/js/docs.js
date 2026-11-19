@@ -377,7 +377,7 @@
     if (!directorySearch) return;
     let shown = 0;
     for (const card of functionCards) {
-      const visible = matches(card, directorySearch.value, categoryFilter?.value || '', audioFilter?.value || '', languageFilter?.value || '', voiceFilter?.value || '');
+      const visible = matches(card, directorySearch.value, categoryFilter?.value || '', audioFilter?.value || '', languageFilter?.value || '', voiceFilter?.value || '') && (window.ocfLearned?.matches(card.dataset.learnedId) ?? true);
       card.hidden = !visible;
       if (visible) shown += 1;
     }
@@ -410,7 +410,7 @@
     if (!referenceSearch) return;
     let shown = 0;
     for (const row of referenceRows) {
-      const visible = matches(row, referenceSearch.value, referenceCategory?.value || '');
+      const visible = matches(row, referenceSearch.value, referenceCategory?.value || '') && (window.ocfLearned?.matches(row.dataset.learnedId) ?? true);
       row.hidden = !visible;
       if (visible) shown += 1;
     }
@@ -427,6 +427,7 @@
     saveReferenceFilters(); updateReference(); referenceSearch?.focus();
   });
   updateReference();
+  document.addEventListener('ocf-learned-filter-change', () => { updateDirectory(); updateReference(); });
 
   for (const details of document.querySelectorAll('details[data-transcript]')) {
     let loaded = false;

@@ -208,7 +208,7 @@
     save('OCF-selection.m3u8', '#EXTM3U\n' + [...selection.values()].filter(a => a.format === 'mp3').map(a => a.download_url).join('\n') + '\n', 'audio/x-mpegurl');
   });
   function updateSelection() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()).filter(item => window.ocfLearned?.matches(item.id) ?? true));
     const hiddenCount = [...selection.values()].filter(file => (!visible.has(file.sessionItem) || file.format !== currentFormat())).length;
     selectionCount.textContent = `${selection.size} ${selection.size === 1 ? 'file' : 'files'} selected${hiddenCount ? ` (${hiddenCount} hidden by filters)` : ''}`;
     document.getElementById('download-selection').disabled = selection.size === 0;
@@ -249,7 +249,7 @@
     selectionCount.focus();
   });
   function render() {
-    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()));
+    const visible = new Set(filterEntries(catalogItems, search.value, category?.value || '', audioFilter?.value || '', locale?.value || '', voice?.value || '', currentEdition()).filter(item => window.ocfLearned?.matches(item.id) ?? true));
     count.textContent = `${catalogItems.filter(item => item.assets.length && item.edition === currentEdition()).length} recordings`;
     let pinned = 0;
     catalogItems.forEach((item, index) => {
@@ -559,6 +559,7 @@
     });
     window.ocfEditions?.refresh();
     document.addEventListener('ocf-edition-change', () => { render(); updateSelection(); });
+    document.addEventListener('ocf-learned-filter-change', () => { render(); updateSelection(); });
     const onFilter = () => { saveFilterState(); render(); updateSelection(); };
     filterControls.forEach(([, control]) => {
       control.addEventListener('input', onFilter);
