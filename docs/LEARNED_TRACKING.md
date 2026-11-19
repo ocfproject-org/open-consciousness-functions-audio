@@ -108,5 +108,6 @@ SITE_DIR=verified-site node scripts/test_learned.js
 SITE_DIR=verified-site GUIDE_EXPORT=public-guide-export.json npm run test:browser
 ```
 
-This local feature branch must be integrated with the separate P1 site work before
-publishing. No push, deployment, or release change is part of this implementation.
+The feature composes with the shared Preferences dialog and presentation guidance.
+Review the combined build and required CI before merging; this feature does not
+change or republish audio releases.
