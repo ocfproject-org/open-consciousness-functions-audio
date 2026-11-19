@@ -103,6 +103,7 @@ def install(staging, export, catalog):
         assets = (f'<link rel="stylesheet" href="{prefix}assets/css/learned.css">'
                   f'<script src="{prefix}assets/js/affirmations-data.js" defer></script>'
                   f'<script src="{prefix}assets/js/affirmations-state.js" defer></script>'
+                  f'<script src="{prefix}assets/js/morning-state.js" defer></script>'
                   f'<script src="{prefix}assets/js/learned.js" defer></script>'
                   f'<script src="{prefix}assets/js/preferences-backup.js" defer></script>')
         text = text.replace("</head>", assets + "</head>")
