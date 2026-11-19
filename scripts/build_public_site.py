@@ -830,17 +830,18 @@ def build_public_site(
             ),
         )
         _write(
-            staging / "practice-chains" / "index.html",
+            staging / "function-chains" / "index.html",
             _shell(
                 "Function Chains — OCF",
-                _practice_chains_page(_read_markdown(content_dir, "practice-chains.md"), functions),
-                "practice-chains",
+                _function_chains_page(_read_markdown(content_dir, "function-chains.md"), functions),
+                "function-chains",
                 source_commit,
                 toc=True,
-                toc_items=_markdown_toc(_read_markdown(content_dir, "practice-chains.md")),
+                toc_items=_markdown_toc(_read_markdown(content_dir, "function-chains.md")),
                 description="Seventeen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
             ),
         )
+        _write(staging / "practice-chains" / "index.html", _chains_redirect_page(source_commit))
         for route, title in (("how-it-works", "How OCF works"), ("get-involved", "Get involved")):
             markdown = _read_markdown(content_dir, f"{route}.md")
             body = render_markdown(markdown)
@@ -1037,7 +1038,7 @@ def build_public_site(
                     collection["audio_format"] = match[1]
             browse_catalog["releases"].append(public_release)
         _write(staging / "browse-catalog.json", json.dumps(browse_catalog, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n")
-        urls = [PUBLIC_ORIGIN + (path.parent.relative_to(staging).as_posix() + "/" if path.parent != staging else "") for path in sorted(staging.rglob("index.html"))]
+        urls = [PUBLIC_ORIGIN + (path.parent.relative_to(staging).as_posix() + "/" if path.parent != staging else "") for path in sorted(staging.rglob("index.html")) if path.parent.name != "practice-chains"]
         _write(staging / "sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + "".join(f"<url><loc>{_html(url)}</loc></url>" for url in urls) + "</urlset>\n")
         _write(staging / "robots.txt", f"User-agent: *\nAllow: /\nSitemap: {PUBLIC_ORIGIN}sitemap.xml\n")
         not_found = _shell("Page not found — OCF", '<h1>Page not found</h1><p>This address may have changed. <a href="functions/">Browse or search the function library</a>, or <a href="start/">Start Here</a>.</p>', "", source_commit, root=True)
@@ -1230,7 +1231,7 @@ def _shell(
     more_nav = [
         ("Historical names", "historical-names/", "historical-names"),
         ("Related functions", "relationships/", "relationships"),
-        ("Function Chains", "practice-chains/", "practice-chains"),
+        ("Function Chains", "function-chains/", "function-chains"),
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
         ("How OCF works", "how-it-works/", "how-it-works"),
@@ -2056,7 +2057,18 @@ def _historical_names_page(
     )
 
 
-def _practice_chains_page(markdown, functions):
+def _chains_redirect_page(source_commit):
+    body = ('<header class="page-intro"><h1>Function Chains</h1>'
+            '<p>This page has moved to its permanent address.</p>'
+            '<p><a id="chains-new-link" href="../function-chains/">Continue to Function Chains</a></p>'
+            '<noscript><p>JavaScript is disabled. Use the link above to open Function Chains; '
+            'the same section headings are available there.</p></noscript></header>')
+    page = _shell("Function Chains — OCF", body, "function-chains", source_commit)
+    return page.replace("</head>", '<meta name="robots" content="noindex,follow">'
+                        '<script src="../assets/js/chains-redirect.js" defer></script></head>')
+
+
+def _function_chains_page(markdown, functions):
     """Show current spoken cues from the same pinned source as function pages."""
     by_id = {function["function_id"]: function for function in functions}
     selected_commands = {"OCF-BOD-010": "OCF-CMD-BOD-010-FOOD-LESS"}

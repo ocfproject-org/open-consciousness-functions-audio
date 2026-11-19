@@ -179,3 +179,15 @@ verified master fingerprint. No artwork is generated, mirrored or republished.
 Images load lazily with asynchronous decoding and reserved square geometry at
 96px (72px on narrow screens); missing or failed images retain the same space
 with an Artwork unavailable fallback. Release URLs remain original.
+
+## Function Chains URL
+
+Function Chains uses `/function-chains/` as its canonical route, including all
+navigation, internal links, metadata and sitemap entries. The former
+`/practice-chains/` page remains as a static compatibility entry point: JavaScript
+uses history replacement to forward the incoming query and fragment unchanged.
+Without JavaScript (or if the redirect script fails), a visible accessible link
+opens the canonical page; preserving arbitrary incoming query/fragment values
+requires JavaScript on this static host. The alias is noindex, points its
+canonical metadata to the new route, and is excluded from the sitemap.
+The seventeen chains and their stable section anchors are unchanged.

@@ -369,6 +369,7 @@ def _validate_documentation_site(site_root: Path):
         "functions/index.html",
         "quick-reference/index.html",
         "relationships/index.html",
+        "function-chains/index.html",
         "practice-chains/index.html",
         "downloads/index.html",
         "preparation-learning/index.html",
