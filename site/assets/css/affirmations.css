@@ -1,0 +1,30 @@
+.affirmations-page { max-width: 54rem; margin-inline: auto; }
+.affirmation-nav, .affirmation-filters, .affirmation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.affirmation-nav a { padding-block: .65rem; }
+.affirmation-help, .affirmation-tip { font-size: .95rem; }
+.affirmation-filters label { display: grid; gap: .4rem; flex: 1 1 14rem; min-width: 0; }
+.affirmations-page input, .affirmations-page select, .affirmation-dialog textarea, .affirmation-dialog select { width: 100%; max-width: 100%; box-sizing: border-box; }
+.affirmation-list { list-style: none; padding: 0; }
+.affirmation-card { padding: 1.2rem 0; border-top: 1px solid var(--line, #a4a4a4); overflow-wrap: anywhere; }
+.affirmation-text { font-size: clamp(1.15rem, 4vw, 1.45rem); line-height: 1.65; margin: 0 0 .7rem; }
+[data-affirmations-view="morning"] .affirmation-text { font-size: clamp(1.4rem, 5vw, 1.9rem); line-height: 1.7; }
+.affirmation-category { font-size: .85rem; margin: 0 0 .6rem; }
+.affirmations-page button, .affirmation-dialog button, .affirmation-dialog select, .affirmation-dialog input { min-height: 44px; }
+.affirmation-heart { min-width: 44px; font-size: 1.4rem; }
+.affirmation-heart[aria-pressed="true"] { border-width: 2px; }
+.affirmations-page :focus-visible, .affirmation-dialog :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.affirmation-dialog { width: min(32rem, calc(100% - 2rem)); max-height: 85dvh; overflow: auto; box-sizing: border-box; }
+.affirmation-dialog form { display: grid; gap: 1rem; }
+.affirmation-dialog label { display: grid; gap: .35rem; }
+.affirmation-dialog .affirmation-check { display: flex; align-items: center; }
+.affirmation-dialog textarea { min-height: 7rem; resize: vertical; font: inherit; }
+.affirmation-dialog::backdrop { background: #0008; }
+.affirmations-page .page-intro { margin-bottom: .75rem; }
+.affirmation-help-details { margin: .5rem 0 .8rem; }
+.affirmation-help-details summary { min-height: 44px; padding: .5rem 0; box-sizing: border-box; cursor: pointer; }
+.affirmations-page input[type="search"], .affirmation-dialog textarea { min-height: 44px; font: inherit; padding: .6rem; border: 1px solid var(--muted); border-radius: 4px; color: var(--ink); background: var(--paper); }
+.affirmation-dialog { background: var(--paper); color: var(--ink); border: 1px solid var(--muted); border-radius: .7rem; }
+[data-affirmation-status]:empty { display: none; }
+.affirmation-filters label:first-child { flex-basis: 100%; }
+.affirmation-filters label:nth-child(2) { flex: 1 1 12rem; }
+.affirmation-filters > button { align-self: end; }
