@@ -18,6 +18,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 
 from catalog import validate_catalog
+from learned_site import install as install_learned_tracking
 
 SOURCE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions"
 SITE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions-audio"
@@ -1046,6 +1047,7 @@ def build_public_site(
         not_found = not_found.replace('src="assets/', f'src="{PUBLIC_ORIGIN}assets/').replace('<meta name="theme-color"', '<meta name="robots" content="noindex"><meta name="theme-color"')
         not_found = re.sub(r'<link rel="canonical"[^>]+>|<meta property="og:url"[^>]+>', '', not_found)
         _write(staging / "404.html", not_found)
+        install_learned_tracking(staging, guide_export, catalog)
         _apply_edition_presentation(staging, catalog)
         _write_site_receipt(
             staging,
@@ -1494,7 +1496,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
             for row in sessions
         )
         cards_by_domain.setdefault(function["primary_category"], []).append(
-            f'''<article class="function-card" data-function-card data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
+            f'''<article class="function-card" data-function-card data-learned-id="{_html(function["function_id"])}" data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
         )
     groups = "".join(
         f'<section class="domain-group" data-domain-group="{_html(category["id"])}"><h2>{_html(category["label"].title())}</h2><div class="function-grid" data-function-grid>{"".join(cards_by_domain.get(category["id"], []))}</div></section>'
@@ -2042,7 +2044,7 @@ def _quick_reference(functions, sessions_by_function):
             if sessions_by_function.get(function["function_id"]) else "Audio unavailable"
         )
         rows.append(
-            f'<tr role="row" data-reference-row data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
+            f'<tr role="row" data-reference-row data-learned-id="{_html(function["function_id"])}" data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
         )
     options = "".join(
         f'<option value="{_html(item["id"])}">{_html(item["label"].title())}</option>'
