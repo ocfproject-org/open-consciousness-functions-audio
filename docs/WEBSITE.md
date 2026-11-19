@@ -248,3 +248,41 @@ This initial subset is deliberately incomplete: absence of a citation is not a
 claim that no historical context exists. Research inputs, OCR and page images
 remain outside the repository; only verified public links and concise scope notes
 belong in the presentation metadata. No archived teaching text is reproduced.
+
+### Optional device-local affirmations
+
+`/affirmations/` offers 36 original reflection prompts with text search and category
+filters. These are a separate website helper, not canonical OCF functions or audio
+instructions. `/my-morning/` is a bookmarkable reading view of only the current
+browser's favorites. Neither route includes personal text or state in its URL.
+No reminders, notifications, account, upload or analytics are added.
+
+Saving a heart or a custom line requires explicit private-tracking opt-in. Custom
+lines have stable random IDs, an existing category and at most 500 characters;
+there may be up to 200 custom lines. Edit and remove are deliberate actions.
+Imported text is displayed as text, never inserted as HTML or activated as a URL.
+Browser storage is not encrypted; other people using that browser can read it.
+Clearing site data removes it. Storage failure switches to clearly warned,
+page-only memory, which can still be exported before leaving.
+
+The main Preferences panel's **private backup** now exports schema 3:
+`{schema, records, flags, affirmations: {custom, favorites}}`. Custom entries contain
+only `{id, text, category}`; favorite entries are stable starter or custom IDs.
+These files may contain personal text. The independent site-settings backup
+continues to contain only theme, edition and format; it never includes affirmations
+or tracking consent. No backup is uploaded.
+
+Private schema 1 (learned records) and schema 2 (records and flags) remain accepted
+and do not clear affirmations. Imports are validated within the existing 2 MiB
+limit, previewed and explicitly confirmed. Merge retains existing lines; an ID
+collision with different text/category becomes a deterministic separate copy,
+including its favorite association. Repeated import does not duplicate that copy.
+A newer schema is rejected without replacing saved data. Reset includes custom
+lines and My Morning favorites, disables tracking and invalidates stale editors.
+Cross-tab edits check the original line before saving or removing it.
+
+Tests: `node scripts/test_affirmations.js` exercises the private data model;
+`browser-tests/affirmations.spec.js` uses only synthetic personal data for CRUD,
+imports, compatibility, storage failures, cross-tab behavior, keyboard, reflow,
+accessibility and screenshots. Production user progress must not be read or used
+for tests. Public builds contain only starter prompts and empty page shells.

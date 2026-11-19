@@ -4,6 +4,8 @@ import re
 
 def install(root):
     for page in root.rglob("*.html"):
+        if page.relative_to(root).as_posix() == "my-morning/index.html":
+            continue  # Personal reading space: no sharing affordance.
         text = page.read_text(encoding="utf-8")
         canonical = re.search(r'<link rel="canonical" href="https://ocfproject.org/[^"?#]*">', text)
         if not canonical or 'data-page-share' in text or 'http-equiv="refresh"' in text:

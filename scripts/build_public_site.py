@@ -21,6 +21,7 @@ from catalog import validate_catalog
 from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
 from site_references import chain_references, use_references
+from affirmations_site import page as affirmations_page
 
 SOURCE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions"
 SITE_REPOSITORY = "https://github.com/ocfproject-org/open-consciousness-functions-audio"
@@ -844,6 +845,12 @@ def build_public_site(
                 description="Seventeen optional practice sequences for learning, daily life, rest and reflection, with links to each function’s own guide.",
             ),
         )
+        for route, morning in (("affirmations", False), ("my-morning", True)):
+            _write(staging / route / "index.html", _shell(
+                ("My Morning" if morning else "Affirmations") + " — OCF",
+                affirmations_page(morning), route, source_commit,
+                description="Optional original reflection prompts and a device-local space for your favorites.",
+            ))
         _write(staging / "practice-chains" / "index.html", _chains_redirect_page(source_commit))
         for route, title in (("how-it-works", "How OCF works"), ("get-involved", "Get involved")):
             markdown = _read_markdown(content_dir, f"{route}.md")
@@ -1244,6 +1251,8 @@ def _shell(
         ("Historical names", "historical-names/", "historical-names"),
         ("Related functions", "relationships/", "relationships"),
         ("Function Chains", "function-chains/", "function-chains"),
+        ("Affirmations", "affirmations/", "affirmations"),
+        ("My Morning", "my-morning/", "my-morning"),
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
         ("How OCF works", "how-it-works/", "how-it-works"),
