@@ -11,6 +11,8 @@
     const {store,refresh:refreshPrivate}=window.ocfPrivateLibrary;
     const morning=root.dataset.affirmationsView==='morning';
     const list=root.querySelector('[data-affirmation-list]'), status=root.querySelector('[data-affirmation-status]'), count=root.querySelector('[data-affirmation-count]');
+    const PAGE=50;let visible=PAGE;
+    const more=button('Show 50 more lines',list.parentElement,()=>{const before=visible;visible+=PAGE;render();const next=list.children[before]?.querySelector('.affirmation-text');if(next){next.tabIndex=-1;next.focus({preventScroll:true});}else status.focus();});more.hidden=true;list.after(more);
     const search=root.querySelector('[data-affirmation-search]'), category=root.querySelector('[data-affirmation-category]');
     const enable=root.querySelector('[data-affirmation-enable]'), add=root.querySelector('[data-affirmation-add]');
     const dialog=node('dialog',undefined,document.body);dialog.className='affirmation-dialog';dialog.setAttribute('aria-labelledby','affirmation-editor-title');
@@ -50,15 +52,19 @@
       if(enabled&&status.textContent==='Enable private tracking to save favorites or custom lines.')say('');
       const focused=document.activeElement, focusId=focused?.dataset.affirmationId, focusAction=focused?.dataset.action;
       list.replaceChildren();
+      const favoriteIds=new Set(current.favorites);
       const query=(search?.value||'').trim().toLocaleLowerCase();
-      const items=[...data.lines,...current.custom].filter(item=>(!morning||current.favorites.includes(item.id))&&(!category?.value||item.category===category.value)&&(!query||`${item.text} ${data.categories[item.category]}`.toLocaleLowerCase().includes(query)));
+      const items=[...data.lines,...current.custom].filter(item=>(!morning||favoriteIds.has(item.id))&&(!category?.value||item.category===category.value)&&(!query||`${item.text} ${data.categories[item.category]}`.toLocaleLowerCase().includes(query)));
       count.textContent=morning?`${items.length} ${items.length===1?'favorite':'favorites'} on this device`:`${items.length} matching lines`;
       if(!items.length)node('li',morning?'Your morning affirmation list is empty. Choose hearts in the library or add a line of your own.':'No lines match. Try another word or clear the filters.',list);
-      items.forEach(item=>{
+      more.hidden=items.length<=visible;
+      if(!more.hidden)more.textContent=`Show ${Math.min(PAGE,items.length-visible)} more lines`;
+      if(items.length>visible)count.textContent+=` · Showing ${visible}`;
+      items.slice(0,visible).forEach(item=>{
         const card=node('li',undefined,list);card.className='affirmation-card';card.dataset.affirmationId=item.id;
         node('p',item.text,card).className='affirmation-text';
         node('p',`${data.categories[item.category]}${model.customId(item.id)?' · My own line':''}`,card).className='affirmation-category';
-        const actions=node('div',undefined,card);actions.className='affirmation-actions';const on=current.favorites.includes(item.id);
+        const actions=node('div',undefined,card);actions.className='affirmation-actions';const on=favoriteIds.has(item.id);
         const heart=button(on?'♥':'♡',actions,()=>{
           if(!store.config()){say('Enable private tracking before saving favorites.');enable.focus();return;}
           act(()=>{const state=store.readAffirmations();store.favoriteAffirmation(item.id,!state.favorites.includes(item.id),store.config()?.epoch);return on?'Removed from My Morning.':'Saved to My Morning.';});
@@ -71,8 +77,8 @@
       if(focusId&&focused&&!focused.isConnected){const replacement=[...list.querySelectorAll('button')].find(b=>b.dataset.affirmationId===focusId&&b.dataset.action===focusAction);(replacement||status).focus({preventScroll:true});}
       if(dialog.open&&store.config()?.epoch!==epoch){close();say('Private tracking changed in another tab. The unsaved editor was closed.');}
     }
-    search?.addEventListener('input',render);category?.addEventListener('change',render);
-    root.querySelector('[data-affirmation-clear]')?.addEventListener('click',()=>{search.value='';category.value='';render();search.focus();});
+    search?.addEventListener('input',()=>{visible=PAGE;render();});category?.addEventListener('change',()=>{visible=PAGE;render();});
+    root.querySelector('[data-affirmation-clear]')?.addEventListener('click',()=>{search.value='';category.value='';visible=PAGE;render();search.focus();});
     document.addEventListener('ocf-private-library-change',()=>{render();if(store.warning)say(store.warning);});
     window.addEventListener('popstate',()=>{if(dialog.open)close();render();});window.addEventListener('pageshow',()=>{if(dialog.open)close();render();});
     root.querySelector('[data-affirmation-controls]').hidden=false;render();say(store.config()?'':'Enable private tracking to save favorites or custom lines.');

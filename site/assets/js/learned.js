@@ -63,7 +63,7 @@
   }
   async function parseBackup(text, subjects) {
     if (typeof text !== 'string' || new TextEncoder().encode(text).length > LIMIT) fail();
-    let parsed; try { parsed = JSON.parse(text); } catch (_) { fail(); }
+    let parsed; try { parsed = JSON.parse(text.replace(/^\uFEFF/,'')); } catch (_) { fail(); }
     object(parsed, ['schema', 'records']);
     if (parsed.schema !== 1 || !Array.isArray(parsed.records) || parsed.records.length > MAX_RECORDS) fail();
     const ids = new Set(); const identities = new Set();
@@ -92,7 +92,7 @@
   }
   async function parsePersonalBackup(text, subjects) {
     if (typeof text !== 'string' || new TextEncoder().encode(text).length > LIMIT) fail();
-    let value; try { value = JSON.parse(text); } catch (_) { fail(); }
+    let value; try { value = JSON.parse(text.replace(/^\uFEFF/,'')); } catch (_) { fail(); }
     if (value?.schema === 1) return {records: await parseBackup(text, subjects), flags: [], affirmations: null, routine: null};
     object(value, value?.schema === 4 ? ['schema', 'records', 'flags', 'affirmations', 'routine'] : value?.schema === 3 ? ['schema', 'records', 'flags', 'affirmations'] : ['schema', 'records', 'flags']);
     if (![2,3,4].includes(value.schema) || !Array.isArray(value.flags) || value.flags.length > 120) fail();
@@ -279,7 +279,7 @@
         if (this.storage) { this.memory.set(KEY, JSON.stringify(config)); for (const k of this.memory.keys()) if(k.startsWith(`${KEY}:affirmation:`)) this.memory.delete(k); for(const [k,v] of entries) this.memory.set(k,v); }
       } catch (_) { this.fallback(); entries = [...this.memory].filter(([k]) => k.startsWith(prefix)); }
       const result = affirmations.empty(), favorites = [];
-      for(const [key,raw] of entries.slice(0,500)) {
+      for(const [key,raw] of entries.slice(0,affirmations.MAX_STORED)) {
         try {
           if(raw.length > 4000) throw Error();
           const value=JSON.parse(raw), suffix=key.slice(prefix.length);
@@ -289,7 +289,7 @@
       }
       const ids=new Set(result.custom.map(item=>item.id));
       result.favorites=favorites.filter(id=>affirmations.starterIds.has(id)||ids.has(id));
-      if(result.custom.length>affirmations.MAX_CUSTOM || entries.length>500) { this.affirmationsBlocked=true; this.warning='Too many custom lines; extra stored data has not been deleted.'; result.custom=result.custom.slice(0,affirmations.MAX_CUSTOM); result.favorites=result.favorites.filter(id=>affirmations.starterIds.has(id)||result.custom.some(item=>item.id===id)); }
+      if(result.custom.length>affirmations.MAX_CUSTOM || entries.length>affirmations.MAX_STORED) { this.affirmationsBlocked=true; this.warning='Too many custom lines; extra stored data has not been deleted.'; result.custom=result.custom.slice(0,affirmations.MAX_CUSTOM); result.favorites=result.favorites.filter(id=>affirmations.starterIds.has(id)||result.custom.some(item=>item.id===id)); }
       result.custom.sort((a,b)=>a.id.localeCompare(b.id));result.favorites.sort();
       return result;
     }
@@ -308,7 +308,7 @@
       const current=this.readAffirmations(); const prefix=this.affirmationContext(epoch);
       const found=current.custom.find(item=>item.id===line.id);
       if(original ? !found || !affirmations.same(found, original) : found) throw Error('This line changed in another tab. Cancel and reopen it before editing.');
-      if(!found && current.custom.length>=affirmations.MAX_CUSTOM) throw Error('The 200 custom-line limit is reached. Back up and remove a line first.');
+      if(!found && current.custom.length>=affirmations.MAX_CUSTOM) throw Error(`The ${affirmations.MAX_CUSTOM} custom-line limit is reached. Back up and remove a line first.`);
       this.put(prefix+'line:'+line.id, JSON.stringify(line));
     }
     favoriteAffirmation(id, on, epoch) {
@@ -501,8 +501,16 @@
     }
     const manage=node('details',undefined,settings);node('summary','Backup and reset',manage);
     button('Export private backup',manage,()=>act(async()=>{
-      const blob=new Blob([JSON.stringify({schema:4,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
+      const epoch=store.config()?.epoch??null;
+      const payload=JSON.stringify({schema:4,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2);
+      const blob=new Blob([payload],{type:'application/json'});
+      if(blob.size>LIMIT)throw new Error('Private backup exceeds the 2 MiB import limit. Nothing was downloaded or changed. Your data remains in this browser; a smaller scoped export is required, which this build does not provide.');
+      // Offer only a file accepted by this same importer, including every scope.
+      await parsePersonalBackup(payload,data.subjects);
+      if(epoch!==(store.config()?.epoch??null))throw new Error('Private tracking changed while preparing the backup. Nothing was downloaded; review and export again.');
+      const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
     }));
+    node('p',`Up to ${affirmations.MAX_CUSTOM} custom lines with existing category IDs. The complete backup file must be at most 2 MiB to import; long text and other private records also use that space.`,manage);
     const importLabel=node('label','Import backup (schema 1–4, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
     const preview=node('div',undefined,manage);let importGeneration=0,importSelection=null;
     function invalidateImport(clearFile=true) {
@@ -528,7 +536,11 @@
         const known=new Set(records.map(identity));const additions=candidate.records.filter(r=>!known.has(identity(r)));
         node('p',`${additions.length} new learned versions; ${candidate.records.length-additions.length} already saved; ${candidate.flags.length} Favorite/To Do marks to merge. Existing states and versions are retained. Imported snapshots are unverified personal claims.`,preview);
         node('p',`${incomingAffirmations.custom.length} custom affirmations and ${incomingAffirmations.favorites.length} My Morning favorites to merge. Conflicting custom lines are kept as separate copies; no existing lines are replaced. Older backups leave affirmations unchanged.`,preview);
-        const lines=node('details',undefined,preview);node('summary','Preview personal affirmation text',lines);incomingAffirmations.custom.forEach(item=>node('p',item.text,lines));
+        const lines=node('details',undefined,preview);node('summary','Preview personal affirmation text',lines);
+        let shown=0;const previewList=node('div',undefined,lines);
+        const more=button('Show more preview lines',lines,()=>{const before=shown;showPreview();const next=previewList.children[before];if(next){next.tabIndex=-1;next.focus({preventScroll:true});}});
+        function showPreview(){const end=Math.min(shown+50,incomingAffirmations.custom.length);for(;shown<end;shown++)node('p',incomingAffirmations.custom[shown].text,previewList);more.hidden=shown>=incomingAffirmations.custom.length;}
+        showPreview();
         node('p',`${candidate.routine?.length||0} routine cues to merge. Existing order is kept; new cues are appended in backup order. Older backups leave the routine unchanged. Imported guide text is not independently verified.`,preview);
         const cues=node('details',undefined,preview);node('summary','Preview personal routine text',cues);(candidate.routine||[]).forEach(row=>node('p',routine.eligible(row,data.subjects)?routine.cue(row):'Unavailable command (retained without displaying its cue)',cues));
         const cancel=button('Cancel import',preview,()=>{if(current())invalidateImport();});

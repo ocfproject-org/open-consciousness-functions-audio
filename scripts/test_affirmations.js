@@ -19,8 +19,8 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  b.saveCustom({...line,text:'Edited in another tab'},line,epoch);assert.throws(()=>a.saveCustom({...line,text:'Stale edit'},line,epoch),/another tab/);assert.throws(()=>a.removeCustom(line,epoch),/another tab/);
  const before=JSON.stringify(a.readAffirmations());
  for(const value of [null, [], {...backup,schema:4}, {...backup,affirmations:{custom:[{...line,url:'https://example.org'}],favorites:[]}}, {...backup,affirmations:{custom:[{...line,text:'x'.repeat(501)}],favorites:[]}}, {...backup,affirmations:{custom:[{...line,text:'\n'}],favorites:[]}}, {...backup,affirmations:{custom:[{...line,category:'unknown'}],favorites:[]}}, {...backup,affirmations:{custom:[line,line],favorites:[]}}, {...backup,affirmations:{custom:[],favorites:[line.id]}}, {...backup,affirmations:{custom:[],favorites:['starter:unknown:1']}}, {...backup,affirmations:{custom:[],favorites:[model.data.lines[0].id,model.data.lines[0].id]}}]){await assert.rejects(parsePersonalBackup(JSON.stringify(value),{}));assert.equal(JSON.stringify(a.readAffirmations()),before);}
- const tooMany=Array.from({length:201},()=>({...line,id:`custom:${crypto.randomUUID()}`}));assert.throws(()=>model.validate({custom:tooMany,favorites:[]}));
- const full={custom:tooMany.slice(0,200),favorites:[]};await assert.rejects(model.merge(full,{custom:[line],favorites:[]},digest));
+ const tooMany=Array.from({length:model.MAX_CUSTOM+1},()=>({...line,id:`custom:${crypto.randomUUID()}`}));assert.throws(()=>model.validate({custom:tooMany,favorites:[]}));
+ const full={custom:tooMany.slice(0,model.MAX_CUSTOM),favorites:[]};await assert.rejects(model.merge(full,{custom:[line],favorites:[]},digest));
  const pending=a.mergePersonal(parsed);b.reset();await assert.rejects(pending,/another tab|Enable/);assert.deepEqual(a.readAffirmations(),model.empty());assert.throws(()=>a.saveCustom(line,null,epoch),/changed/);
  const denied=new Store({getItem(){throw Error('blocked');}},{});denied.enable();denied.saveCustom(line,null,denied.config().epoch);assert.equal(denied.readAffirmations().custom.length,1);assert.match(denied.warning,/only in memory/);
  const limited=new Storage(),quota=new Store(limited,{});quota.enable();quota.saveCustom(line,null,quota.config().epoch);quota.readAffirmations();limited.setItem=()=>{throw Error('full');};quota.saveCustom({...line,id:`custom:${crypto.randomUUID()}`},null,quota.config().epoch);assert.equal(quota.readAffirmations().custom.length,2);assert.match(quota.warning,/only in memory/);assert.equal(new Store(limited,{}).readAffirmations().custom.length,1);
@@ -61,3 +61,30 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  await assert.rejects(parsePersonalBackup(JSON.stringify({schema:1,records:[{...learned,subject:['preparation:human-plus']}]}),subjects));
  console.log('Affirmations: bounds, stable merges, legacy preservation, malicious text, concurrent edits/reset and storage failure passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Large collections retain every line and every marker, including storage order reversal.
+(async()=>{
+ const cats=Object.keys(model.data.categories);
+ const rows=Array.from({length:1500},(_,i)=>({id:`custom:10000000-0000-0000-0000-${String(i).padStart(12,'0')}`,text:`Synthetic ${i}: café — naïve “choice” 東京 🌱`,category:cats[i%cats.length]}));
+ const storage=new Storage(),store=new Store(storage,{});store.enable();const epoch=store.config().epoch;
+ store.saveCustom(rows[1499],null,epoch);store.favoriteAffirmation(rows[1499].id,true,epoch);
+ for(const count of [743,751]){
+  const backup={schema:3,records:[],flags:[],affirmations:{custom:rows.slice(0,count),favorites:rows.slice(0,count).map(x=>x.id)}};
+  const bytes='\ufeff'+JSON.stringify(backup,null,2).replace(/\n/g,'\r\n');
+  // UTF-8 BOM and Windows line endings preserve all Unicode.
+  const parsed=await parsePersonalBackup(bytes,{});await store.mergePersonal(parsed,epoch);await store.mergePersonal(parsed,epoch);
+  assert.equal(store.readAffirmations().custom.length,count+1);assert.equal(store.readAffirmations().favorites.length,count+1);
+ }
+ const backup={schema:3,records:[],flags:[],affirmations:{custom:rows,favorites:[...rows.map(x=>x.id),...model.starterIds]}};
+ await store.mergePersonal(await parsePersonalBackup(JSON.stringify(backup),{}),epoch);
+ assert.equal(store.readAffirmations().custom.length,1500);assert.equal(store.readAffirmations().favorites.length,1536);assert.equal(storage.length,3037);
+ storage.map=new Map([...storage.map].reverse());const current=store.readAffirmations();assert.equal(current.custom.length,1500);assert.equal(current.favorites.length,1536);assert.equal(store.affirmationsBlocked,false);
+ const restored=new Store(new Storage(),{});restored.enable();await restored.mergePersonal(await parsePersonalBackup(JSON.stringify({...backup,affirmations:current}),{}),restored.config().epoch);assert.deepEqual(restored.readAffirmations(),current);
+ const oldLine=store.readAffirmations().custom[0];store.saveCustom({...oldLine,text:'Edited synthetic row'},oldLine,epoch);const edited=new Store(storage,{}).readAffirmations();assert.equal(edited.custom.length,1500);assert.equal(edited.favorites.length,1536);assert.equal(edited.custom.find(x=>x.id===oldLine.id).text,'Edited synthetic row');
+ const extra={...rows[0],id:'custom:20000000-0000-0000-0000-000000000000'};const writes=storage.writes;
+ await assert.rejects(store.mergePersonal(await parsePersonalBackup(JSON.stringify({...backup,affirmations:{custom:[extra],favorites:[]}}),{}),epoch),/capacity/);assert.equal(storage.writes,writes);assert.equal(store.readAffirmations().custom.length,1500);
+ await assert.rejects(parsePersonalBackup(' '.repeat(2*1024*1024+1),{}));
+ const quotaStorage=new Storage(),quotaStore=new Store(quotaStorage,{});quotaStore.enable();quotaStore.saveCustom(rows[1499],null,quotaStore.config().epoch);const nativeSet=quotaStorage.setItem.bind(quotaStorage);quotaStorage.setItem=(k,v)=>{if(quotaStorage.writes>800)throw Error('quota');nativeSet(k,v);};
+ const subset=await parsePersonalBackup(JSON.stringify({...backup,affirmations:{custom:rows.slice(0,751),favorites:rows.slice(0,751).map(x=>x.id)}}),{});await quotaStore.mergePersonal(subset,quotaStore.config().epoch);assert.equal(quotaStore.readAffirmations().custom.length,752);assert.equal(quotaStore.readAffirmations().favorites.length,751);assert.equal(quotaStore.lastImportResult.memoryOnly,true);assert.match(quotaStore.warning,/only in memory/);assert(new Store(quotaStorage,{}).readAffirmations().custom.some(x=>x.id===rows[1499].id));
+ console.log('Large collections: 743/751 populated retries, 1500 customs + 1536 favorites, reordered storage, Unicode CRLF, round-trip and capacity preflight passed.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
