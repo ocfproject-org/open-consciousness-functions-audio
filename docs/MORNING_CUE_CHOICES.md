@@ -11,26 +11,55 @@ proof of recording cue equivalence.
 ## Optional original Human Plus coverage
 
 The checkbox starts unchecked each time the editor opens. It only affects choices,
-not saved rows. This intentionally bounded catalog contains two independently
-checked public booklet commands, not a projection of OCF historical aliases:
+not saved rows. The reviewed catalog contains 65 concise cue facts across 55
+original titles, with explicit context for each command. These are historical
+Human Plus cues, not claims about current OCF audio or current availability.
 
-| Stable identity | Original title | Printed command | Public reference |
-| --- | --- | --- | --- |
-| `hplus-off-loading-1988` | Off-Loading | PLUS-FADE, FADE | [Original card](https://archive.org/details/function-off-loading), card code 88R1035; also complete booklet |
-| `hplus-attention-booklet` | Attention | PLUS-FOCUS | [Complete booklet](https://archive.org/details/hfunction-exercises-complete-booklet), Attention section |
+`scripts/morning_originals.json` is the reviewed My Morning-only input. Twelve
+wordings are individually corroborated in explicit public archive command fields;
+53 are labelled **Project-recorded**, not individually archive-verified. Review
+corroboration does not establish listening, audio equivalence or effectiveness.
+Only concise titles, commands, identities and public citation locators are kept;
+no research document, source prose or private path is included.
 
-Verification used the public OCR of the [Off-Loading card](https://archive.org/stream/function-off-loading/Off-Loading_djvu.txt)
-and the [complete booklet](https://archive.org/stream/hfunction-exercises-complete-booklet/%20Human%20Plus%20Function%20Exercises%20-%20Complete%20Booklet_djvu.txt).
-Only the brief command words are included; no scripts or instructional prose are
-copied. Reading text uses title case and spaces in place of printed punctuation;
-word sequence and repeated words remain intact. Catalog IDs and their text are
-immutable. No date/edition is guessed for Attention.
+The builder validates every command ID/printed notation against
+`record_metadata.legacy` in the pinned canonical resource, using guide receipt
+paths, SHA-256 hashes and function identities. It rejects resource/pin drift,
+unknown identities, changed role contexts and a stale generated model catalog.
+The source pin remains unchanged. Neither `historical_lookup`, current commands,
+source availability nor generated alias lists authenticate an original cue.
 
-Other original commands are omitted pending individual public-source verification.
-The existing legacy map is not used to infer originals: its availability and
-compatibility fields do not identify every command's role or provenance. In
-particular, Plus Clear is not substituted for the original Off-Loading command.
-No aliases or historical text are added to OCF guides.
+The catalog block in `morning-state.js` is generated with
+`morning_originals.catalog_script(morning_originals.load_catalog())`; the build
+checks this exact block. No additional browser request or storage schema is added.
+Human Plus rows continue to store only UUID, kind, catalog command ID and exact
+reading text. In particular, `hplus-attention-booklet` / `Plus Focus` and
+`hplus-off-loading-1988` / `Plus Fade Fade` remain byte-exact. Printed historical
+notation is retained separately from readable case and punctuation.
+
+Five commands require explicit role/context labels:
+
+| Original context | Command | Role |
+| --- | --- | --- |
+| Contemplation | PLUS-CLOSED | Close |
+| Imprint | PLUS-RECALL | Retrieval |
+| Short Fix | PLUS-RELEASE | Short Fix release |
+| Zoning | PLUS-CANCEL | Cancel |
+| Release | PLUS-RELEASE | Standalone release |
+
+They are included, not held as uncertain wording, and are not labelled generic
+activations. The picker searches original titles, cue text/notation, command IDs,
+roles and evidence labels. Search normalization affects matching only. A selected
+cue summary exposes context and evidence on small screens before Add.
+
+Fifteen context-specific lookup aliases are explicitly excluded in the review
+input. They are not additional original commands in those function contexts.
+For example, Strong-Quick's `Plus Release` lookup is excluded, while the genuine
+standalone Release and Short Fix release commands remain separate choices.
+The numerical Comfort/Sleep words and retired OCF aliases are not substituted
+for the reviewed historical notation. No global word ban or text-only identity
+merge is applied. All 65 reconciled cues are included; no unresolved wording
+exclusions remain beyond the 15 listed lookup pairs.
 
 Focus has identical words in the two systems. The checkbox offers one choice:
 OCF when off, explicitly labelled Human Plus when on. If either is already saved,
@@ -48,8 +77,9 @@ imports cannot inject source URLs, labels, unknown commands or arbitrary fields.
 Routine order and IDs survive export/import, and normal merge semantics remain.
 Schema 4 rejects Human Plus rows rather than silently extending its old contract.
 
-Pre-update builds do not support schema 5 and reject it before applying records;
-there is no forward-compatibility claim. Existing custom/function rows are not
+Builds before original-cue support reject schema 5 before applying records.
+Builds with only the first two originals reject newly added catalog IDs. There
+is no forward-compatibility claim. Existing custom/function rows are not
 encoded differently. Same-browser downgrade cannot read a mixed saved routine;
 it reports unsupported data and must not overwrite it. Export a private backup
 before changing site versions. No routine data enters site settings exports,

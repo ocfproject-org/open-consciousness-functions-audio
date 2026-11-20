@@ -14,7 +14,34 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  assert.equal(model.choiceKey(rows[0]),model.choiceKey(revised));
  assert.notEqual(model.choiceKey(rows[0]),model.choiceKey({...rows[1],guide:same}));
  const changed=structuredClone(revised);changed.guide.snapshot.fields['command.OCF-CMD-BOD-010-PRIMARY.spoken_cue']='Different cue';assert.notEqual(model.choiceKey(rows[0]),model.choiceKey(changed));
- const originals=Object.entries(model.historical).map(([command,entry])=>({id:crypto.randomUUID(),kind:'hplus',command,text:entry.text}));
+ const originals=Object.entries(model.historical).filter(([id])=>['hplus-attention-booklet','hplus-off-loading-1988'].includes(id)).map(([command,entry])=>({id:crypto.randomUUID(),kind:'hplus',command,text:entry.text}));
+ // Every reviewed original validates without widening the 50-row routine limit.
+ const facts=require('./morning_originals.json'),all=Object.entries(model.historical);
+ assert.equal(all.length,65);assert.equal(new Set(all.map(([,e])=>e.title)).size,55);
+ assert.equal(all.filter(([,e])=>e.evidence==='archive-command').length,12);
+ assert.equal(all.filter(([,e])=>e.evidence==='project-recorded').length,53);
+ for(const fact of facts.rows){const entry=model.historical[fact.id];assert.equal(entry.text,fact.text);assert.equal(entry.notation,fact.notation);assert.equal(entry.role,fact.role);assert.equal(entry.legacyCommand,fact.legacy_command_id);}
+ for(let start=0;start<all.length;start+=20){
+  const batch=all.slice(start,start+20).map(([command,e])=>({id:crypto.randomUUID(),kind:'hplus',command,text:e.text}));
+  const backup={schema:5,records:[],flags:[],affirmations:{custom:[],favorites:[]},routine:batch};
+  const parsed=await parsePersonalBackup(JSON.stringify(backup),subjects);assert.deepEqual(parsed.routine,batch);
+  assert.deepEqual(await model.merge(batch,parsed.routine,subjects,digest,canonical),batch);
+ }
+ const hp=id=>({id:crypto.randomUUID(),kind:'hplus',command:id,text:model.historical[id].text});
+ assert.equal(model.historical['hplus-attention-booklet'].text,'Plus Focus');
+ assert.equal(model.historical['hplus-off-loading-1988'].text,'Plus Fade Fade');
+ assert.notEqual(model.choiceKey(hp('hplus-ocf-cmd-fnd-006-primary')),model.choiceKey(hp('hplus-ocf-cmd-bod-015-legacy-02')));
+ assert.notEqual(model.choiceKey(hp('hplus-ocf-cmd-cog-006-primary')),model.choiceKey(hp('hplus-ocf-cmd-cog-004-recall')));
+ assert.notEqual(model.choiceKey(hp('hplus-ocf-cmd-bod-010-primary')),model.choiceKey(rows[0]));
+ assert.throws(()=>model.validate([{...hp('hplus-attention-booklet'),command:'OCF-CMD-FND-002-PRIMARY'}],subjects));
+ assert.throws(()=>model.validate([{...rows[0],command:'hplus-ocf-cmd-bod-010-primary'}],subjects));
+ for(const [subject,alias] of facts.excluded)assert(!all.some(([,e])=>e.legacyCommand.startsWith('OCF-CMD-'+subject.slice(4)+'-')&&e.text.toLowerCase()===alias.toLowerCase()));
+ assert(model.matchesSearch('Zoning Plus Cancel Cancel','zoning cancel'));
+ assert(model.matchesSearch('Off-Loading Plus Fade Fade','offloading'));
+ assert(!model.matchesSearch('Strong-Quick Plus Strong-Quick Historical function / mode','Strong Quick Release'));
+ assert.equal(model.searchText('  MÖBIUS—WEST  '),'mobius west');
+ assert.equal(model.searchText('PLUS-FADE, FADE'),'plus fade fade');
+ assert.equal(model.searchText('PLUS-BALANCE-BLOODPRESSURE'),'plus balance bloodpressure');
  const mixed={schema:5,records:[],flags:[],affirmations:{custom:[],favorites:[]},routine:[rows[0],...originals]};
  assert.deepEqual((await parsePersonalBackup(JSON.stringify(mixed),subjects)).routine,mixed.routine);
  assert.equal(model.backupSchema(mixed.routine),5);assert.equal(model.backupSchema(rows),4);

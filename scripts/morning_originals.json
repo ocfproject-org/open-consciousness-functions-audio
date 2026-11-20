@@ -1,0 +1,787 @@
+{
+  "schema_version": 1,
+  "source_commit": "c79421aee896c49e7da8e52c9171aa5568274291",
+  "sources": [
+    "https://archive.org/stream/hfunction-exercises-complete-booklet/%20Human%20Plus%20Function%20Exercises%20-%20Complete%20Booklet_djvu.txt",
+    "https://archive.org/stream/function-off-loading/Off-Loading_djvu.txt"
+  ],
+  "rows": [
+    {
+      "id": "hplus-attention-booklet",
+      "legacy_command_id": "OCF-CMD-FND-002-PRIMARY",
+      "title": "Attention",
+      "notation": "PLUS-FOCUS",
+      "text": "Plus Focus",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-FND-002-Focus.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 363"
+    },
+    {
+      "id": "hplus-ocf-cmd-fnd-003-primary",
+      "legacy_command_id": "OCF-CMD-FND-003-PRIMARY",
+      "title": "Recharge",
+      "notation": "PLUS-RECHARGE",
+      "text": "Plus Recharge",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-FND-003-Quick-Recharge.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-001-primary",
+      "legacy_command_id": "OCF-CMD-BOD-001-PRIMARY",
+      "title": "Brain: Repairs & Maintenance (P)",
+      "notation": "PLUS-FLOW BETTER",
+      "text": "Plus Flow Better",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-001-Brain-Flow.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 495"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-014-legacy-01",
+      "legacy_command_id": "OCF-CMD-BOD-014-LEGACY-01",
+      "title": "Regenerate",
+      "notation": "PLUS-BUILD, LIVE",
+      "text": "Plus Build, Live",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-014-Regenerate.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-002-primary",
+      "legacy_command_id": "OCF-CMD-COG-002-PRIMARY",
+      "title": "Buy the Numbers",
+      "notation": "PLUS-CALCULATE",
+      "text": "Plus Calculate",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-002-Mental-Calculation.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-fnd-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-FND-004-LEGACY-01",
+      "title": "Relax",
+      "notation": "PLUS-RELAX, RELAX",
+      "text": "Plus Relax, Relax",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-FND-004-Relax.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 4065"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-002-primary",
+      "legacy_command_id": "OCF-CMD-BOD-002-PRIMARY",
+      "title": "Circulation",
+      "notation": "PLUS-FLOW SMOOTH",
+      "text": "Plus Flow Smooth",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-002-Circulation.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 739"
+    },
+    {
+      "id": "hplus-ocf-cmd-fnd-006-primary",
+      "legacy_command_id": "OCF-CMD-FND-006-PRIMARY",
+      "title": "Release",
+      "notation": "PLUS-RELEASE",
+      "text": "Plus Release",
+      "role": "standalone-release",
+      "repo_file": "OCF-FND-006-Release.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-003-primary",
+      "legacy_command_id": "OCF-CMD-COG-003-PRIMARY",
+      "title": "Contemplation",
+      "notation": "PLUS-OPEN",
+      "text": "Plus Open",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-003-Contemplation.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-003-closed",
+      "legacy_command_id": "OCF-CMD-COG-003-CLOSED",
+      "title": "Contemplation",
+      "notation": "PLUS-CLOSED",
+      "text": "Plus Closed",
+      "role": "close",
+      "repo_file": "OCF-COG-003-Contemplation.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-fnd-005-legacy-01",
+      "legacy_command_id": "OCF-CMD-FND-005-LEGACY-01",
+      "title": "Reset",
+      "notation": "PLUS-RESET, RESET",
+      "text": "Plus Reset, Reset",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-FND-005-Reset.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-003-legacy-01",
+      "legacy_command_id": "OCF-CMD-BOD-003-LEGACY-01",
+      "title": "De-Discomfort",
+      "notation": "PLUS-55515",
+      "text": "Plus 55515",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-003-Comfort.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-001-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-001-LEGACY-01",
+      "title": "Restorative Sleep",
+      "notation": "PLUS-HEAL, HEAL",
+      "text": "Plus Heal, Heal",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-001-Restorative-Sleep.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-lif-001-primary",
+      "legacy_command_id": "OCF-CMD-LIF-001-PRIMARY",
+      "title": "De-Hab",
+      "notation": "PLUS-NO MORE, NO MORE",
+      "text": "Plus No More, No More",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-LIF-001-Habit-Freedom.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-aut-001-primary",
+      "legacy_command_id": "OCF-CMD-AUT-001-PRIMARY",
+      "title": "See-Be",
+      "notation": "PLUS-AUTOMATE",
+      "text": "Plus Automate",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-AUT-001-Automatic-Action.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-BOD-004-LEGACY-01",
+      "title": "De-Tox: Body",
+      "notation": "PLUS-CLEAN, CLEAR",
+      "text": "Plus Clean, Clear",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-004-Detox.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-001-primary",
+      "legacy_command_id": "OCF-CMD-SEN-001-PRIMARY",
+      "title": "Sensory: Hearing",
+      "notation": "PLUS-HEAR MORE",
+      "text": "Plus Hear More",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-001-Hearing.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-001-hear-less",
+      "legacy_command_id": "OCF-CMD-SEN-001-HEAR-LESS",
+      "title": "Sensory: Hearing",
+      "notation": "PLUS-HEAR LESS",
+      "text": "Plus Hear Less",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-001-Hearing.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-005-primary",
+      "legacy_command_id": "OCF-CMD-BOD-005-PRIMARY",
+      "title": "Eat/No Eat",
+      "notation": "PLUS-SATISFIED, SUPPLIED",
+      "text": "Plus Satisfied, Supplied",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-005-Appetite-Choice.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-002-legacy-01",
+      "legacy_command_id": "OCF-CMD-SEN-002-LEGACY-01",
+      "title": "Sensory: Seeing",
+      "notation": "PLUS-SEE BETTER",
+      "text": "Plus See Better",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-002-Seeing.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-002-legacy-01",
+      "legacy_command_id": "OCF-CMD-PRF-002-LEGACY-01",
+      "title": "Eight-Great",
+      "notation": "PLUS-EIGHT, GREAT",
+      "text": "Plus Eight, Great",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-002-Inner-Power.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-003-legacy-01",
+      "legacy_command_id": "OCF-CMD-SEN-003-LEGACY-01",
+      "title": "Sensory: Smell",
+      "notation": "PLUS-SMELL GREATER",
+      "text": "Plus Smell Greater",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-003-Smell.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-003-legacy-02",
+      "legacy_command_id": "OCF-CMD-SEN-003-LEGACY-02",
+      "title": "Sensory: Smell",
+      "notation": "PLUS-SMELL LESSER",
+      "text": "Plus Smell Lesser",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-003-Smell.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-emg-001-primary",
+      "legacy_command_id": "OCF-CMD-EMG-001-PRIMARY",
+      "title": "Emergency: Injury",
+      "notation": "PLUS-CONTROL, BALANCE, RESTORE",
+      "text": "Plus Control, Balance, Restore",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EMG-001-Injury-Response.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-SEN-004-LEGACY-01",
+      "title": "Sensory: Taste",
+      "notation": "PLUS-TASTE GREATER",
+      "text": "Plus Taste Greater",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-004-Taste.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-004-legacy-02",
+      "legacy_command_id": "OCF-CMD-SEN-004-LEGACY-02",
+      "title": "Sensory: Taste",
+      "notation": "PLUS-TASTE LESSER",
+      "text": "Plus Taste Lesser",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-004-Taste.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-emg-002-primary",
+      "legacy_command_id": "OCF-CMD-EMG-002-PRIMARY",
+      "title": "Emergency: Toxic",
+      "notation": "PLUS-CLEAR, REMOVE",
+      "text": "Plus Clear, Remove",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EMG-002-Toxic-Exposure-Response.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-005-legacy-01",
+      "legacy_command_id": "OCF-CMD-SEN-005-LEGACY-01",
+      "title": "Sensory: Touch",
+      "notation": "PLUS-TOUCH GREATER",
+      "text": "Plus Touch Greater",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-005-Touch.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-sen-005-legacy-02",
+      "legacy_command_id": "OCF-CMD-SEN-005-LEGACY-02",
+      "title": "Sensory: Touch",
+      "notation": "PLUS-TOUCH LESSER",
+      "text": "Plus Touch Lesser",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SEN-005-Touch.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-emo-003-primary",
+      "legacy_command_id": "OCF-CMD-EMO-003-PRIMARY",
+      "title": "Empathizing",
+      "notation": "PLUS-PROFILE, PROFILE",
+      "text": "Plus Profile, Profile",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EMO-003-Empathize.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-012-legacy-01",
+      "legacy_command_id": "OCF-CMD-BOD-012-LEGACY-01",
+      "title": "Sex Drive",
+      "notation": "PLUS-SEX GREATER",
+      "text": "Plus Sex Greater",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-012-Sex-Drive.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-012-legacy-02",
+      "legacy_command_id": "OCF-CMD-BOD-012-LEGACY-02",
+      "title": "Sex Drive",
+      "notation": "PLUS-SEX LESSER",
+      "text": "Plus Sex Lesser",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-012-Sex-Drive.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-006-primary",
+      "legacy_command_id": "OCF-CMD-BOD-006-PRIMARY",
+      "title": "Heart: Repairs & Maintenance (P)",
+      "notation": "PLUS-HEART, BETTER, BETTER",
+      "text": "Plus Heart, Better, Better",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-006-Heart-Flow.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 2177"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-015-legacy-01",
+      "legacy_command_id": "OCF-CMD-BOD-015-LEGACY-01",
+      "title": "Short Fix",
+      "notation": "PLUS-GO NUMB, GO NUMB",
+      "text": "Plus Go Numb, Go Numb",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-015-Temporary-Numbing.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 5548"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-015-legacy-02",
+      "legacy_command_id": "OCF-CMD-BOD-015-LEGACY-02",
+      "title": "Short Fix",
+      "notation": "PLUS-RELEASE",
+      "text": "Plus Release",
+      "role": "release",
+      "repo_file": "OCF-BOD-015-Temporary-Numbing.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 5549"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-008-primary",
+      "legacy_command_id": "OCF-CMD-BOD-008-PRIMARY",
+      "title": "Immunizing",
+      "notation": "PLUS-ALERT, DESTROY",
+      "text": "Plus Alert, Destroy",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-008-Immune-Readiness.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-002-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-002-LEGACY-01",
+      "title": "Sleep",
+      "notation": "PLUS-20-20",
+      "text": "Plus 20-20",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-002-Sleep.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-COG-004-LEGACY-01",
+      "title": "Imprint",
+      "notation": "PLUS-IMPRINT, IMPRINT",
+      "text": "Plus Imprint, Imprint",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-004-Imprint.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-004-recall",
+      "legacy_command_id": "OCF-CMD-COG-004-RECALL",
+      "title": "Imprint",
+      "notation": "PLUS-RECALL",
+      "text": "Plus Recall",
+      "role": "retrieval",
+      "repo_file": "OCF-COG-004-Imprint.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-005-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-005-LEGACY-01",
+      "title": "Sleep Easy",
+      "notation": "PLUS-QUIET, SLEEP",
+      "text": "Plus Quiet, Sleep",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-005-Sleep-Easy.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-emo-001-primary",
+      "legacy_command_id": "OCF-CMD-EMO-001-PRIMARY",
+      "title": "Let-Go",
+      "notation": "PLUS-LET GO",
+      "text": "Plus Let Go",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EMO-001-Let-Go.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-com-001-primary",
+      "legacy_command_id": "OCF-CMD-COM-001-PRIMARY",
+      "title": "Speak Up",
+      "notation": "PLUS-SPEAK UP",
+      "text": "Plus Speak Up",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COM-001-Speak-Up.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-PRF-004-LEGACY-01",
+      "title": "Light Foot",
+      "notation": "PLUS-LIGHTER, LIGHTER",
+      "text": "Plus Lighter, Lighter",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-004-Light-Foot.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-006-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-006-LEGACY-01",
+      "title": "Stay Awake",
+      "notation": "PLUS-ONE, AWAKE, ALERT, ONE, ONE",
+      "text": "Plus One, Awake, Alert, One, One",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-006-Stay-Awake.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 6013"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-009-primary",
+      "legacy_command_id": "OCF-CMD-BOD-009-PRIMARY",
+      "title": "Lungs: Repairs & Maintenance (P)",
+      "notation": "PLUS-BREATH BETTER",
+      "text": "Plus Breath Better",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-009-Breathe-Better.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 2834"
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-006-legacy-01",
+      "legacy_command_id": "OCF-CMD-PRF-006-LEGACY-01",
+      "title": "Strong-Quick",
+      "notation": "PLUS-STRONG-QUICK",
+      "text": "Plus Strong-Quick",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-006-Strong-Quick.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 6127"
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-005-primary",
+      "legacy_command_id": "OCF-CMD-PRF-005-PRIMARY",
+      "title": "Make Your Day",
+      "notation": "PLUS-THIS DAY",
+      "text": "Plus This Day",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-005-Make-Your-Day.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-003-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-003-LEGACY-01",
+      "title": "Sweet Dreams",
+      "notation": "PLUS-THEME, DREAM, SLEEP",
+      "text": "Plus Theme, Dream, Sleep",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-003-Dream-Theme.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-exp-001-legacy-01",
+      "legacy_command_id": "OCF-CMD-EXP-001-LEGACY-01",
+      "title": "Möbius West",
+      "notation": "PLUS-CHANGE, CHANGE",
+      "text": "Plus Change, Change",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EXP-001-Manifest.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-003-primary",
+      "legacy_command_id": "OCF-CMD-PRF-003-PRIMARY",
+      "title": "Synchronizing",
+      "notation": "PLUS-SMOOTH, FAST",
+      "text": "Plus Smooth, Fast",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-003-Coordination.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-010-primary",
+      "legacy_command_id": "OCF-CMD-BOD-010-PRIMARY",
+      "title": "Nutricia",
+      "notation": "PLUS-FOOD MORE",
+      "text": "Plus Food More",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-010-Nutricia.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-010-food-less",
+      "legacy_command_id": "OCF-CMD-BOD-010-FOOD-LESS",
+      "title": "Nutricia",
+      "notation": "PLUS-FOOD LESS",
+      "text": "Plus Food Less",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-010-Nutricia.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-007-primary",
+      "legacy_command_id": "OCF-CMD-COG-007-PRIMARY",
+      "title": "Think Fast",
+      "notation": "PLUS-THINK",
+      "text": "Plus Think",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-007-Think-Fast.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-off-loading-1988",
+      "legacy_command_id": "OCF-CMD-EMO-002-LEGACY-01",
+      "title": "Off-Loading",
+      "notation": "PLUS-FADE, FADE",
+      "text": "Plus Fade Fade",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EMO-002-Offload.yaml",
+      "archive_source_index": 1,
+      "archive_locator": "OCR line 189"
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-013-primary",
+      "legacy_command_id": "OCF-CMD-BOD-013-PRIMARY",
+      "title": "Tune-Up",
+      "notation": "PLUS-BALANCE, HEAL",
+      "text": "Plus Balance, Heal",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-013-Body-Tune-Up.yaml",
+      "archive_source_index": 0,
+      "archive_locator": "OCR line 6672"
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-005-legacy-01",
+      "legacy_command_id": "OCF-CMD-COG-005-LEGACY-01",
+      "title": "Options",
+      "notation": "PLUS-OPTIONS, CHOICES",
+      "text": "Plus Options, Choices",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-005-Options.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-slp-004-legacy-01",
+      "legacy_command_id": "OCF-CMD-SLP-004-LEGACY-01",
+      "title": "Wake/Know",
+      "notation": "PLUS-SLEEP, HELP",
+      "text": "Plus Sleep, Help",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-SLP-004-Sleep-Insight.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-006-primary",
+      "legacy_command_id": "OCF-CMD-COG-006-PRIMARY",
+      "title": "Recall",
+      "notation": "PLUS-RECALL",
+      "text": "Plus Recall",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-006-Recall.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-exp-002-legacy-01",
+      "legacy_command_id": "OCF-CMD-EXP-002-LEGACY-01",
+      "title": "Zoning",
+      "notation": "PLUS-INSULATE, INSULATE",
+      "text": "Plus Insulate, Insulate",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-EXP-002-Insulate.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-exp-002-cancel",
+      "legacy_command_id": "OCF-CMD-EXP-002-CANCEL",
+      "title": "Zoning",
+      "notation": "PLUS-CANCEL",
+      "text": "Plus Cancel",
+      "role": "cancel",
+      "repo_file": "OCF-EXP-002-Insulate.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-fnd-001-primary",
+      "legacy_command_id": "OCF-CMD-FND-001-PRIMARY",
+      "title": "Access to Energy",
+      "notation": "PLUS-ENERGIZE",
+      "text": "Plus Energize",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-FND-001-Access-to-Energy.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-cog-001-primary",
+      "legacy_command_id": "OCF-CMD-COG-001-PRIMARY",
+      "title": "Access to Information",
+      "notation": "PLUS-RETRIEVE",
+      "text": "Plus Retrieve",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-COG-001-Information-Access.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-prf-001-primary",
+      "legacy_command_id": "OCF-CMD-PRF-001-PRIMARY",
+      "title": "Do This Now",
+      "notation": "PLUS-DO-THIS-NOW",
+      "text": "Plus Do-This-Now",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-PRF-001-Do-This-Now.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-007-primary",
+      "legacy_command_id": "OCF-CMD-BOD-007-PRIMARY",
+      "title": "Hypertension",
+      "notation": "PLUS-BALANCE-BLOODPRESSURE",
+      "text": "Plus Balance Blood Pressure",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-007-Blood-Pressure-Balance.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    },
+    {
+      "id": "hplus-ocf-cmd-bod-011-primary",
+      "legacy_command_id": "OCF-CMD-BOD-011-PRIMARY",
+      "title": "Passages",
+      "notation": "PLUS-EQUALIZE-HARMONIZE",
+      "text": "Plus Equalize-Harmonize",
+      "role": "historical-function-or-mode",
+      "repo_file": "OCF-BOD-011-Hormonal-Transitions.yaml",
+      "archive_source_index": null,
+      "archive_locator": null
+    }
+  ],
+  "excluded": [
+    [
+      "OCF-BOD-003",
+      "Plus Five Five Five One Five"
+    ],
+    [
+      "OCF-BOD-004",
+      "PLUS-DETOX"
+    ],
+    [
+      "OCF-BOD-006",
+      "PLUS-HEART-BETTER"
+    ],
+    [
+      "OCF-BOD-006",
+      "Plus Heart Better"
+    ],
+    [
+      "OCF-BOD-009",
+      "Plus Breathe Better"
+    ],
+    [
+      "OCF-EMO-002",
+      "PLUS-CLEAR"
+    ],
+    [
+      "OCF-EXP-001",
+      "PLUS-PROGRAM"
+    ],
+    [
+      "OCF-EXP-002",
+      "PLUS-ZONE"
+    ],
+    [
+      "OCF-PRF-002",
+      "PLUS-STRONG"
+    ],
+    [
+      "OCF-PRF-004",
+      "PLUS-LIGHT"
+    ],
+    [
+      "OCF-PRF-006",
+      "Plus Release"
+    ],
+    [
+      "OCF-SLP-001",
+      "PLUS-RESTORE"
+    ],
+    [
+      "OCF-SLP-002",
+      "Plus Twenty Twenty"
+    ],
+    [
+      "OCF-SLP-004",
+      "PLUS-KNOW"
+    ],
+    [
+      "OCF-SLP-005",
+      "PLUS-SLEEP EASY"
+    ]
+  ]
+}
