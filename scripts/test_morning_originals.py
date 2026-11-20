@@ -14,7 +14,9 @@ class MorningOriginalsTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # macOS temporary roots use /var -> /private/var. Fixtures name the
+        # physical root; the separate resource-symlink rejection stays intact.
+        self.root = Path(self.temp.name).resolve()
         self.doc = load_catalog()
         self.functions = []
         records = {}
