@@ -12,7 +12,7 @@ function start(){
  const status=node('p','',root);status.setAttribute('role','status');status.tabIndex=-1;
  const editor=node('details',undefined,root);editor.className='routine-editor';const summary=node('summary','Edit routine',editor);
  const body=node('div',undefined,editor);
- let original=null,epoch=null,draft=[],generation=0,busy=false;
+ let original=null,epoch=null,draft=[],generation=0,busy=false,stale=false,invalidate=()=>{},hasInput=()=>false;
  const say=text=>{status.textContent=[text,store.warning].filter(Boolean).join(' ');};
  function describe(row,parent){
   if(row.kind==='custom'){node('p','My own cue',parent).className='routine-meta';return;}
@@ -28,14 +28,14 @@ function start(){
   if(!state.rows.length)node('li','No cues saved. Open Edit routine to choose functions or add your own cue.',list);
   for(const row of state.rows){const li=node('li',undefined,list);node('p',model.eligible(row,store.subjects)?model.cue(row):'This command is no longer supported in the current guide. Its saved entry is retained; review or remove it in Edit routine.',li).className='routine-cue';describe(row,li);}
   if(store.warning)say('');
-  if(editor.open&&original&&((store.manualConfig()?.epoch??null)!==epoch||JSON.stringify(state)!==JSON.stringify(original))){generation++;editor.open=false;original=null;summary.focus();say('Private data changed in another tab. Unsaved edits were closed; reopen the routine.');}
+  if(!busy&&editor.open&&original&&((store.manualConfig()?.epoch??null)!==epoch||JSON.stringify(state)!==JSON.stringify(original))){stale=true;invalidate();}
  }
- function close(message='Edits canceled.'){generation++;editor.open=false;original=null;summary.focus();say(message);}
+ function close(message='Routine editor closed.'){if(busy)return;if(hasInput()&&!confirm('Discard unfinished custom cue text? Closing does not undo completed actions.'))return;generation++;editor.open=false;original=null;hasInput=()=>false;summary.focus();say(message);}
  async function open(){
-  const turn=++generation;body.replaceChildren();original=store.readRoutine();epoch=store.manualConfig()?.epoch??null;draft=structuredClone(original.rows);
+  const turn=++generation;stale=false;hasInput=()=>false;body.replaceChildren();original=store.readRoutine();epoch=store.manualConfig()?.epoch??null;draft=structuredClone(original.rows);
   if(epoch){try{store.routineContext(epoch);}catch(e){node('p',e.message,body);return;}}
   node('p','Search all published activation cues. Favorites use the current guide; Learned choices use the saved guide snapshot. Audio edition does not determine cue text. Imported snapshots are not independently verified.',body);
-  node('p','Your routine reads from top to bottom. Use Move up and Move down to choose its order, then Save routine. Nothing is added to Favorites or Learned.',body);
+  node('p','Each completed action saves in this browser. Use Move up and Move down to choose the reading order. Unfinished custom text is not saved. Nothing is added to Favorites or Learned.',body);
   const records=await store.read();if(turn!==generation||!editor.open||(store.manualConfig()?.epoch??null)!==epoch)return;
   const choices=[];const seen=new Set();let unsupported=0;
   function offer(subject,guide,origin,group){
@@ -62,37 +62,66 @@ function start(){
   search.addEventListener('input',showChoices);showChoices();
   if(unsupported)node('p','Some learned snapshots have no supported activation command. No replacement cue has been substituted.',body);
   const draftList=node('ol',undefined,body);draftList.className='routine-draft';
+  const editorStatus=node('p','Private backups include your cue text.',body);editorStatus.setAttribute('role','status');editorStatus.tabIndex=-1;
+  const reload=button('Reload saved routine',body,()=>{if(busy)return;if(hasInput()&&!confirm('Discard unfinished custom cue text and reload the saved routine?'))return;open();});reload.hidden=true;
+  invalidate=()=>{editorStatus.textContent='Routine changed in another tab. Your input is kept here, but no action was saved. Reload the saved routine before making changes.';reload.hidden=false;};
+  async function commit(candidate,message,onSaved){
+   if(busy)return;if(stale){invalidate();editorStatus.focus();return;}
+   busy=true;const controls=[...body.querySelectorAll('button,input,select,textarea')].map(n=>[n,n.disabled]);controls.forEach(([n])=>n.disabled=true);
+   let applied=false;
+   try{
+    await store.saveRoutineIntent(candidate,original,epoch);
+    original=store.readRoutine();epoch=store.manualConfig()?.epoch??null;draft=structuredClone(original.rows);
+    applied=true;render();await refresh();
+   }catch(e){editorStatus.textContent='Not saved. '+e.message+' '+store.warning;reload.hidden=false;editorStatus.focus();}
+   finally{busy=false;controls.forEach(([n,disabled])=>{if(n.isConnected)n.disabled=disabled;});if(applied){draw();if(store.storage){editorStatus.textContent=message;onSaved?.();}else{editorStatus.textContent='Not saved in this browser. A page-only copy is available; keep or export it before leaving. Your input has been kept. '+store.warning;editorStatus.focus();}}render();}
+  }
   function draw(focusId,action){
    draftList.replaceChildren();draft.forEach((row,index)=>{
     const li=node('li',undefined,draftList);li.dataset.routineId=row.id;
-    if(row.kind==='custom'){const label=node('label','Custom cue',li),text=node('textarea',undefined,label);text.maxLength=500;text.value=row.text;text.setAttribute('aria-label',`Custom cue ${index+1}`);text.addEventListener('input',()=>{row.text=text.value;});}
-    else {node('p',model.eligible(row,store.subjects)?model.cue(row):'Unavailable command — retained until you remove it',li);describe(row,li);}
+    node('p',row.kind==='custom'?row.text:model.eligible(row,store.subjects)?model.cue(row):'Unavailable command — retained until you remove it',li).className='routine-cue';
+    describe(row,li);
     const actions=node('div',undefined,li);actions.className='routine-actions';
-    for(const [name,delta] of [['Move up',-1],['Move down',1]]){const b=button(name,actions,()=>{const target=index+delta;[draft[index],draft[target]]=[draft[target],draft[index]];draw(row.id,name);editorStatus.textContent=`Moved to position ${target+1}. Save routine to keep this order.`;});b.disabled=index+delta<0||index+delta>=draft.length;b.setAttribute('aria-label',`${name}: cue ${index+1}`);b.dataset.action=name;}
-    button('Remove',actions,()=>{draft.splice(index,1);draw();editorStatus.textContent='Cue removed from draft. Save to apply, or Cancel to keep the saved list.';editorStatus.focus();}).setAttribute('aria-label',`Remove cue ${index+1}`);
+    if(row.kind==='custom')button('Edit custom cue',actions,()=>editCustom(row)).setAttribute('aria-label',`Edit custom cue ${index+1}`);
+    for(const [name,delta] of [['Move up',-1],['Move down',1]]){
+     const b=button(name,actions,()=>{const candidate=structuredClone(draft),target=index+delta;[candidate[index],candidate[target]]=[candidate[target],candidate[index]];commit(candidate,`Moved to position ${target+1} and saved.`,()=>draw(row.id,name));});
+     b.disabled=index+delta<0||index+delta>=draft.length;b.setAttribute('aria-label',`${name}: cue ${index+1}`);b.dataset.action=name;
+    }
+    button('Remove',actions,()=>{if(busy)return;if(!confirm('Remove this cue from your saved routine?'))return;commit(draft.filter(x=>x.id!==row.id),'Cue removed and saved.',()=>editorStatus.focus());}).setAttribute('aria-label',`Remove cue ${index+1}`);
    });
    if(focusId){const li=[...draftList.children].find(n=>n.dataset.routineId===focusId);const next=[...li.querySelectorAll('button')].find(b=>b.dataset.action===action&&!b.disabled)||li.querySelector('button:not(:disabled)');next?.focus();}
   }
   const add=button('Add selected cue',body,()=>{
    if(select.value===''){editorStatus.textContent='Choose a function cue first.';select.focus();return;}
    const row=choices[Number(select.value)].row;
-   if(draft.some(x=>x.kind==='function'&&x.subject===row.subject&&x.command===row.command&&x.guide.fingerprint===row.guide.fingerprint&&x.guide.commit===row.guide.commit)){editorStatus.textContent='That guide command is already in your draft.';return;}
+   if(draft.some(x=>x.kind==='function'&&x.subject===row.subject&&x.command===row.command&&x.guide.fingerprint===row.guide.fingerprint&&x.guide.commit===row.guide.commit)){editorStatus.textContent='That guide command is already in your routine.';return;}
    if(draft.length>=model.MAX){editorStatus.textContent='The routine limit is 50 cues.';return;}
-   draft.push({...structuredClone(row),id:crypto.randomUUID()});draw();editorStatus.textContent='Added to draft. Save routine to keep it.';
+   commit([...draft,{...structuredClone(row),id:crypto.randomUUID()}],'Cue added and saved. Choose another cue.',()=>{search.value='';select.value='';showChoices();search.focus();});
   });
-  // Keep selection and its action together, before the ordered draft.
   body.insertBefore(add,draftList);
-  button('Add custom cue',body,()=>{if(draft.length>=model.MAX){editorStatus.textContent='The routine limit is 50 cues.';return;}draft.push({id:crypto.randomUUID(),kind:'custom',text:''});draw();draftList.lastElementChild.querySelector('textarea').focus();});
-  const editorStatus=node('p','Nothing changes until you save. Private backups include your cue text.',body);editorStatus.setAttribute('role','status');editorStatus.tabIndex=-1;
-  const actions=node('div',undefined,body);actions.className='routine-actions';
-  const cancel=button('Cancel routine edits',actions,()=>close());
-  const save=button('Save routine',actions,async()=>{
-   if(busy)return;busy=true;save.disabled=true;cancel.disabled=true;
-   try{const candidate=structuredClone(draft);const saved=await store.saveRoutineIntent(candidate,original,epoch);close(!saved?'No cues selected. Nothing was saved.':store.storage?'Routine saved in this browser.':'Routine available on this page only; not saved in this browser.');render();await refresh();}
-   catch(e){editorStatus.textContent=e.message+' '+store.warning;editorStatus.focus();}
-   finally{busy=false;save.disabled=false;cancel.disabled=false;}
-  });draw();
+  const customAdd=button('Add custom cue',body,()=>editCustom(null));
+  const custom=node('div',undefined,body);custom.className='routine-custom-editor';custom.hidden=true;
+  const customLabel=node('label','Custom cue',custom),text=node('textarea',undefined,customLabel);text.maxLength=500;
+  let editing=null,initialText='';
+  hasInput=()=>!custom.hidden&&text.value!==initialText;
+  function editCustom(row){
+   if(busy)return;if(hasInput()&&!confirm('Discard unfinished custom cue text?'))return;
+   editing=row;initialText=row?.text||'';text.value=initialText;custom.hidden=false;apply.textContent=row?'Apply custom edit':'Add custom cue now';text.focus();
+  }
+  const customActions=node('div',undefined,custom);customActions.className='routine-actions';
+  const apply=button('Add custom cue now',customActions,()=>{
+   if(editing&&!draft.some(row=>row.id===editing.id)){editorStatus.textContent='This cue was removed. Your unfinished text is still here; cancel this edit before adding a new cue.';editorStatus.focus();return;}
+   if(!text.value.trim()){editorStatus.textContent='Enter a custom cue first.';text.focus();return;}
+   if(!editing&&draft.length>=model.MAX){editorStatus.textContent='The routine limit is 50 cues.';return;}
+   const row=editing?{...editing,text:text.value}:{id:crypto.randomUUID(),kind:'custom',text:text.value};
+   const candidate=editing?draft.map(x=>x.id===editing.id?row:x):[...draft,row];
+   commit(candidate,editing?'Custom edit saved.':'Custom cue added and saved.',()=>{initialText=text.value;custom.hidden=true;customAdd.focus();});
+  });
+  button('Cancel custom edit',customActions,()=>{if(hasInput()&&!confirm('Discard unfinished custom cue text?'))return;custom.hidden=true;customAdd.focus();});
+  button('Done',body,()=>close());draw();
+
  }
+ summary.addEventListener('click',event=>{if(editor.open){event.preventDefault();close();}});
  editor.addEventListener('toggle',()=>{list.hidden=editor.open;if(editor.open)open();else{generation++;original=null;}});
  editor.addEventListener('keydown',event=>{if(event.key==='Escape'&&!busy){event.preventDefault();close();}});
  document.addEventListener('ocf-private-library-change',render);
