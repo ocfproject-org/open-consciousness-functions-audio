@@ -94,12 +94,13 @@
     if (typeof text !== 'string' || new TextEncoder().encode(text).length > LIMIT) fail();
     let value; try { value = JSON.parse(text.replace(/^\uFEFF/,'')); } catch (_) { fail(); }
     if (value?.schema === 1) return {records: await parseBackup(text, subjects), flags: [], affirmations: null, routine: null};
-    object(value, value?.schema === 4 ? ['schema', 'records', 'flags', 'affirmations', 'routine'] : value?.schema === 3 ? ['schema', 'records', 'flags', 'affirmations'] : ['schema', 'records', 'flags']);
-    if (![2,3,4].includes(value.schema) || !Array.isArray(value.flags) || value.flags.length > 120) fail();
+    object(value, [4,5].includes(value?.schema) ? ['schema', 'records', 'flags', 'affirmations', 'routine'] : value?.schema === 3 ? ['schema', 'records', 'flags', 'affirmations'] : ['schema', 'records', 'flags']);
+    if (![2,3,4,5].includes(value.schema) || !Array.isArray(value.flags) || value.flags.length > 120) fail();
     const seen = new Set();
     value.flags.forEach(flag => { validateFlag(flag, subjects); const key = `${flag.subject}:${flag.kind}`; if (seen.has(key)) fail(); seen.add(key); });
+    if(value.schema===4&&value.routine?.some(row=>row?.kind==='hplus'))fail();
     const records = await parseBackup(JSON.stringify({schema: 1, records: value.records}), subjects);
-    return {records, flags: value.flags, affirmations: value.schema >= 3 ? affirmations.validate(value.affirmations) : null, routine: value.schema === 4 ? await routine.verify(value.routine,subjects,validateRecord) : null};
+    return {records, flags: value.flags, affirmations: value.schema >= 3 ? affirmations.validate(value.affirmations) : null, routine: value.schema >= 4 ? await routine.verify(value.routine,subjects,validateRecord) : null};
   }
   class Store {
     constructor(storage, subjects) { this.storage = storage; this.subjects = subjects; this.memory = new Map(); this.warning = ''; this.blocked = false; }
@@ -208,7 +209,7 @@
       if (expectedEpoch !== undefined && config.epoch !== expectedEpoch) throw new Error('Private tracking changed. Preview the backup again before importing.');
       const includesAffirmations=value.affirmations !== null && value.affirmations !== undefined;
       const includesRoutine=value.routine !== null && value.routine !== undefined;
-      const envelope=includesRoutine ? {schema:4,records:value.records,flags:value.flags,affirmations:value.affirmations,routine:value.routine} : includesAffirmations ? {schema:3,records:value.records,flags:value.flags,affirmations:value.affirmations} : {schema:2,records:value.records,flags:value.flags};
+      const envelope=includesRoutine ? {schema:routine.backupSchema(value.routine),records:value.records,flags:value.flags,affirmations:value.affirmations,routine:value.routine} : includesAffirmations ? {schema:3,records:value.records,flags:value.flags,affirmations:value.affirmations} : {schema:2,records:value.records,flags:value.flags};
       const validated = await parsePersonalBackup(JSON.stringify(envelope), this.subjects);
       const assertEpoch=()=>{if(this.config()?.epoch!==config.epoch)throw new Error('Tracking changed in another tab. Review before importing.');};
       assertEpoch();
@@ -526,7 +527,8 @@
     const manage=node('details',undefined,settings);node('summary','Backup and reset',manage);
     button('Export private backup',manage,()=>act(async()=>{
       const epoch=store.affirmationConfig()?.epoch??null;
-      const payload=JSON.stringify({schema:4,records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2);
+      // Mixed Human Plus routines require schema 5; older readers reject before writes.
+      const payload=JSON.stringify({schema:routine.backupSchema(store.readRoutine().rows),records:await store.read(),flags:store.readFlags(),affirmations:store.readAffirmations(),routine:store.readRoutine().rows},null,2);
       const blob=new Blob([payload],{type:'application/json'});
       if(blob.size>LIMIT)throw new Error('Private backup exceeds the 2 MiB import limit. Nothing was downloaded or changed. Your data remains in this browser; a smaller scoped export is required, which this build does not provide.');
       // Offer only a file accepted by this same importer, including every scope.
@@ -535,7 +537,7 @@
       const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='ocf-private-library-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return 'Private backup downloaded.';
     }));
     node('p',`Up to ${affirmations.MAX_CUSTOM} custom lines with existing category IDs. The complete backup file must be at most 2 MiB to import; long text and other private records also use that space.`,manage);
-    const importLabel=node('label','Import backup (schema 1–4, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
+    const importLabel=node('label','Import backup (schema 1–5, up to 2 MiB) ',manage);const file=node('input',undefined,importLabel);file.type='file';file.accept='.json,application/json';
     const preview=node('div',undefined,manage);let importGeneration=0,importSelection=null;
     function invalidateImport(clearFile=true) {
       importGeneration++;importSelection=null;preview.replaceChildren();

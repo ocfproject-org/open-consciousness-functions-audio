@@ -18,3 +18,5 @@
 .routine-provenance {overflow-wrap:anywhere}
 
 .routine-cue { white-space: pre-wrap; }
+.routine-editor .routine-original-choice { display: flex; align-items: center; gap: .6rem; min-height: 44px; cursor: pointer; }
+.routine-editor .routine-original-choice input { width: 1.2rem; min-height: 1.2rem; margin: 0; flex: none; }

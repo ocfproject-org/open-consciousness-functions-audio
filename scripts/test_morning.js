@@ -10,6 +10,17 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  assert.notEqual(rows[0].command,rows[1].command);await model.verify(rows,subjects,validateRecord);
  // Distinct command identities survive even if their display/spoken cue strings coincide.
  const same=structuredClone(guide);same.snapshot.fields['command.OCF-CMD-BOD-010-FOOD-LESS.spoken_cue']='Plus Food More';assert.equal(model.commands(same).length,2);
+ const revised={...rows[0],guide:{...guide,commit:'a'.repeat(40)},origin:'current'};
+ assert.equal(model.choiceKey(rows[0]),model.choiceKey(revised));
+ assert.notEqual(model.choiceKey(rows[0]),model.choiceKey({...rows[1],guide:same}));
+ const changed=structuredClone(revised);changed.guide.snapshot.fields['command.OCF-CMD-BOD-010-PRIMARY.spoken_cue']='Different cue';assert.notEqual(model.choiceKey(rows[0]),model.choiceKey(changed));
+ const originals=Object.entries(model.historical).map(([command,entry])=>({id:crypto.randomUUID(),kind:'hplus',command,text:entry.text}));
+ const mixed={schema:5,records:[],flags:[],affirmations:{custom:[],favorites:[]},routine:[rows[0],...originals]};
+ assert.deepEqual((await parsePersonalBackup(JSON.stringify(mixed),subjects)).routine,mixed.routine);
+ assert.equal(model.backupSchema(mixed.routine),5);assert.equal(model.backupSchema(rows),4);
+ await assert.rejects(parsePersonalBackup(JSON.stringify({...mixed,schema:4}),subjects));
+ for(const bad of [{...originals[0],text:'Plus Clear'},{...originals[0],command:['hplus-off-loading-1988']},{...originals[0],source:'https://example.com'}])await assert.rejects(parsePersonalBackup(JSON.stringify({...mixed,routine:[bad]}),subjects));
+ assert.equal((await model.merge(mixed.routine,mixed.routine,subjects,digest,canonical)).length,3);
  const storage=new Storage(),a=new Store(storage,subjects),b=new Store(storage,subjects);assert.deepEqual(a.readRoutine().rows,[]);assert.equal(storage.length,0);a.enable();const epoch=a.config().epoch;
  await a.saveRoutine(rows,a.readRoutine(),epoch);assert.deepEqual(b.readRoutine().rows,rows);
  const stale=a.readRoutine();await b.saveRoutine([...rows].reverse(),b.readRoutine(),epoch);await assert.rejects(a.saveRoutine(rows,stale,epoch),/changed/);

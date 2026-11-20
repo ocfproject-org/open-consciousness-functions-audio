@@ -16,6 +16,7 @@ function start(){
  const say=text=>{status.textContent=[text,store.warning].filter(Boolean).join(' ');};
  function describe(row,parent){
   if(row.kind==='custom'){node('p','My own cue',parent).className='routine-meta';return;}
+  if(row.kind==='hplus'){const entry=model.historical[row.command],details=node('details',undefined,parent);details.className='routine-provenance';node('summary',`Original Human Plus · ${entry.title}`,details);node('p',entry.reference,details).className='routine-meta';const source=node('a','Public booklet reference',details);source.href=entry.source;return;}
   const command=model.commands(row.guide).find(c=>c.command===row.command);
   const details=node('details',undefined,parent);details.className='routine-provenance';node('summary',`${store.subjects[row.subject].title} · ${command.role==='mode'?'Alternate mode':'Activation'} · guide ${row.guide.commit.slice(0,8)}`,details);parent=details;
   node('p',row.command,parent).className='routine-meta';
@@ -43,26 +44,39 @@ function start(){
    for(const c of commands){
     const row={id:crypto.randomUUID(),kind:'function',subject,command:c.command,guide:structuredClone(guide),origin};
     if(!model.eligible(row,store.subjects))continue;
-    const key=[origin,subject,c.command,guide.commit,guide.fingerprint].join('|');if(seen.has(key))continue;seen.add(key);choices.push({row,group});
+    const key=model.choiceKey(row);if(seen.has(key))continue;seen.add(key);choices.push({row,group});
    }
   }
-  store.readFlags().filter(f=>f.kind==='favorite'&&f.subject.startsWith('OCF-')).forEach(f=>offer(f.subject,store.subjects[f.subject]?.guide,'current','Favorite functions — current guides'));
   records.filter(r=>r.subject.startsWith('OCF-')).forEach(r=>offer(r.subject,r.guide,'learned','Learned — saved guides'));
+  store.readFlags().filter(f=>f.kind==='favorite'&&f.subject.startsWith('OCF-')).forEach(f=>offer(f.subject,store.subjects[f.subject]?.guide,'current','Favorite functions — current guides'));
   Object.keys(store.subjects).filter(id=>/^OCF-[A-Z]{3}-[0-9]{3}$/.test(id)).sort().forEach(id=>offer(id,store.subjects[id].guide,'current','All other functions — current guides'));
+  for(const [command,entry] of Object.entries(model.historical))choices.push({row:{id:crypto.randomUUID(),kind:'hplus',command,text:entry.text},group:'Original Human Plus — public booklet'});
+  const legacyLabel=node('label',undefined,body),legacy=node('input',undefined,legacyLabel);legacy.type='checkbox';legacyLabel.className='routine-original-choice';legacyLabel.append(document.createTextNode(' Show original Human Plus cues'));
+  const coverage=node('details',undefined,body);node('summary','Original cue coverage',coverage);
+  node('p','Optional, for cues you already learned. Only Attention and Off-Loading have been verified here against the public booklet. Other originals are not included. When enabled, identical Focus wording is offered once, with Human Plus provenance. Existing saved sources never change. These are not OCF recording cues.',coverage);
   const searchLabel=node('label','Search function cues',body),search=node('input',undefined,searchLabel);search.type='search';search.maxLength=200;search.placeholder='Function name or activation cue';
   const label=node('label','Choose a function cue',body),select=node('select',undefined,label);select.setAttribute('aria-label','Choose a function cue');
   const matches=node('p','',body);matches.setAttribute('role','status');
   const normalize=value=>value.normalize('NFKC').toLocaleLowerCase().trim();
   function showChoices(){
    const previous=select.value,query=normalize(search.value);select.replaceChildren();node('option','Choose explicitly…',select).value='';let count=0;const groups=new Map();
-   choices.forEach(({row,group},i)=>{const c=model.commands(row.guide).find(x=>x.command===row.command);if(query&&!normalize(`${store.subjects[row.subject].title} ${c.text} ${row.subject}`).includes(query))return;let parent=groups.get(group);if(!parent){parent=node('optgroup',undefined,select);parent.label=group;groups.set(group,parent);}node('option',`${store.subjects[row.subject].title} — ${c.text} (${c.role}; ${row.origin==='learned'?'learned snapshot':'current guide'} ${row.guide.commit.slice(0,8)})`,parent).value=String(i);count++;});
+   choices.forEach(({row,group},i)=>{
+    if(draft.some(saved=>model.choiceKey(saved)===model.choiceKey(row)))return;
+    const hp=row.kind==='hplus';if(hp&&!legacy.checked)return;
+    if(!hp&&legacy.checked&&choices.some(x=>x.row.kind==='hplus'&&model.choiceKey(x.row)===model.choiceKey(row)))return;
+    const c=hp?{text:row.text,role:'activation'}:model.commands(row.guide).find(x=>x.command===row.command),title=hp?model.historical[row.command].title:store.subjects[row.subject].title;
+    if(query&&!normalize(`${title} ${c.text} ${row.subject||''}`).includes(query))return;
+    let parent=groups.get(group);if(!parent){parent=node('optgroup',undefined,select);parent.label=group;groups.set(group,parent);}
+    const provenance=hp?'Original Human Plus':`OCF ${c.role}; ${row.command}; ${row.origin==='learned'?'learned snapshot':'current guide'} ${row.guide.commit.slice(0,8)}`;
+    node('option',`${title} — ${c.text} (${provenance})`,parent).value=String(i);count++;
+   });
    if([...select.options].some(option=>option.value===previous))select.value=previous;
-   matches.textContent=count?`${count} eligible guide commands. Choose one explicitly.`:'No eligible cues match. Try a function name or activation wording.';
+   matches.textContent=count?`${count} available cue choices. Choose one explicitly.`:'No eligible cues match. Try a function name or activation wording.';
   }
-  search.addEventListener('input',showChoices);showChoices();
+  legacy.addEventListener('change',showChoices);search.addEventListener('input',showChoices);showChoices();
   if(unsupported)node('p','Some learned snapshots have no supported activation command. No replacement cue has been substituted.',body);
   const draftList=node('ol',undefined,body);draftList.className='routine-draft';
-  const editorStatus=node('p','Private backups include your cue text.',body);editorStatus.setAttribute('role','status');editorStatus.tabIndex=-1;
+  const editorStatus=node('p','Private backups include your cue text. Backups containing Human Plus cues need this version of the site or newer (schema 5).',body);editorStatus.setAttribute('role','status');editorStatus.tabIndex=-1;
   const reload=button('Reload saved routine',body,()=>{if(busy)return;if(hasInput()&&!confirm('Discard unfinished custom cue text and reload the saved routine?'))return;open();});reload.hidden=true;
   invalidate=()=>{editorStatus.textContent='Routine changed in another tab. Your input is kept here, but no action was saved. Reload the saved routine before making changes.';reload.hidden=false;};
   async function commit(candidate,message,onSaved){
@@ -74,7 +88,7 @@ function start(){
     original=store.readRoutine();epoch=store.manualConfig()?.epoch??null;draft=structuredClone(original.rows);
     applied=true;render();await refresh();
    }catch(e){editorStatus.textContent='Not saved. '+e.message+' '+store.warning;reload.hidden=false;editorStatus.focus();}
-   finally{busy=false;controls.forEach(([n,disabled])=>{if(n.isConnected)n.disabled=disabled;});if(applied){draw();if(store.storage){editorStatus.textContent=message;onSaved?.();}else{editorStatus.textContent='Not saved in this browser. A page-only copy is available; keep or export it before leaving. Your input has been kept. '+store.warning;editorStatus.focus();}}render();}
+   finally{busy=false;controls.forEach(([n,disabled])=>{if(n.isConnected)n.disabled=disabled;});if(applied){draw();if(store.storage){showChoices();editorStatus.textContent=message;onSaved?.();}else{editorStatus.textContent='Not saved in this browser. A page-only copy is available; keep or export it before leaving. Your input has been kept. '+store.warning;editorStatus.focus();}}render();}
   }
   function draw(focusId,action){
    draftList.replaceChildren();draft.forEach((row,index)=>{
@@ -93,8 +107,8 @@ function start(){
   }
   const add=button('Add selected cue',body,()=>{
    if(select.value===''){editorStatus.textContent='Choose a function cue first.';select.focus();return;}
-   const row=choices[Number(select.value)].row;
-   if(draft.some(x=>x.kind==='function'&&x.subject===row.subject&&x.command===row.command&&x.guide.fingerprint===row.guide.fingerprint&&x.guide.commit===row.guide.commit)){editorStatus.textContent='That guide command is already in your routine.';return;}
+   const row=choices[Number(select.value)]?.row;if(!row)return;
+   if(draft.some(x=>model.choiceKey(x)===model.choiceKey(row))){editorStatus.textContent='That guide command is already in your routine.';return;}
    if(draft.length>=model.MAX){editorStatus.textContent='The routine limit is 50 cues.';return;}
    commit([...draft,{...structuredClone(row),id:crypto.randomUUID()}],'Cue added and saved. Choose another cue.',()=>{search.value='';select.value='';showChoices();search.focus();});
   });

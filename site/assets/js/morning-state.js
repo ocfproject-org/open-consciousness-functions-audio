@@ -5,6 +5,11 @@ const MAX=50, uuid=x=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}
 const fail=()=>{throw Error('Unsupported or corrupt morning routine. Existing cues have not been replaced.');};
 const exact=(x,keys)=>{if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).sort().join('|')!==keys.sort().join('|'))fail();};
 const text=(x,max)=>typeof x==='string'&&x.trim().length>0&&x.length<=max&&!/[\u0000-\u001f\u007f]/u.test(x);
+// Deliberately bounded public-source coverage. No aliases inferred as originals.
+const historical=Object.freeze({
+ 'hplus-off-loading-1988':Object.freeze({title:'Off-Loading',text:'Plus Fade Fade',notation:'PLUS-FADE, FADE',source:'https://archive.org/details/function-off-loading',reference:'Human Plus Function Exercises booklet · Off-Loading · 88R1035'}),
+ 'hplus-attention-booklet':Object.freeze({title:'Attention',text:'Plus Focus',notation:'PLUS-FOCUS',source:'https://archive.org/details/hfunction-exercises-complete-booklet',reference:'Human Plus Function Exercises booklet · Attention'})
+});
 const roles=new Set(['activation','mode']);
 function commands(guide){
  const fields=guide?.snapshot?.fields;if(!fields||guide.snapshot.schema!==1)return [];
@@ -17,6 +22,7 @@ function validate(rows,subjects){
  for(const row of rows){
   if(!row||!uuid(row.id)||ids.has(row.id))fail();ids.add(row.id);
   if(row.kind==='custom'){exact(row,['id','kind','text']);if(!text(row.text,500))fail();}
+  else if(row.kind==='hplus'){exact(row,['id','kind','command','text']);if(typeof row.command!=='string'||!Object.hasOwn(historical,row.command)||row.text!==historical[row.command].text)fail();}
   else {
    exact(row,['id','kind','subject','command','guide','origin']);
    if(row.kind!=='function'||typeof row.subject!=='string'||!/^OCF-[A-Z]{3}-\d{3}$/.test(row.subject)||!Object.hasOwn(subjects,row.subject)||!['learned','current'].includes(row.origin))fail();
@@ -34,8 +40,19 @@ async function verify(rows,subjects,validateRecord){
  for(const row of rows)if(row.kind==='function')await validateRecord({id:row.id,subject:row.subject,markedAt:'2026-01-01T00:00:00.000Z',guide:row.guide,recording:null,external:null},subjects);
  return rows;
 }
-const cue=row=>row.kind==='custom'?row.text:commands(row.guide).find(c=>c.command===row.command)?.text;
-const eligible=(row,subjects)=>row.kind==='custom'||commands(subjects[row.subject]?.guide).some(c=>c.command===row.command&&c.role===commands(row.guide).find(x=>x.command===row.command)?.role);
+const cue=row=>row.kind==='custom'||row.kind==='hplus'?row.text:commands(row.guide).find(c=>c.command===row.command)?.text;
+const eligible=(row,subjects)=>row.kind==='custom'||(row.kind==='hplus'&&Object.hasOwn(historical,row.command)&&row.text===historical[row.command].text)||commands(subjects[row.subject]?.guide).some(c=>c.command===row.command&&c.role===commands(row.guide).find(x=>x.command===row.command)?.role);
+// Same command and wording across guide revisions is one choice. Roles and IDs
+// remain distinct; identical words from different systems retain labelled origins.
+const wording=value=>value?.normalize('NFC').toLowerCase().trim().replace(/\s+/g,' ');
+function choiceKey(row){
+ const originalFocus=row.kind==='hplus'&&row.command==='hplus-attention-booklet';
+ const ocfFocus=row.kind==='function'&&row.command==='OCF-CMD-FND-002-PRIMARY'&&row.guide.locale==='en-US'&&wording(cue(row))==='plus focus';
+ if(originalFocus||ocfFocus)return 'shared:focus:plus focus';
+ if(row.kind==='function')return JSON.stringify([row.kind,row.subject,row.command,row.guide.locale,wording(cue(row))]);
+ if(row.kind==='hplus')return JSON.stringify([row.kind,row.command,row.text]);
+ return null;
+}
 async function merge(existing,incoming,subjects,digest,canonical){
  validate(existing,subjects);validate(incoming,subjects);
  const result=structuredClone(existing), content=row=>canonical(Object.fromEntries(Object.entries(row).filter(([k])=>k!=='id')));
@@ -47,6 +64,7 @@ async function merge(existing,incoming,subjects,digest,canonical){
  }
  return validate(result,subjects);
 }
-const api={MAX,uuid,commands,validate,verify,cue,eligible,merge};
+const backupSchema=rows=>rows?.some(row=>row.kind==='hplus')?5:4;
+const api={backupSchema,MAX,uuid,historical,choiceKey,commands,validate,verify,cue,eligible,merge};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ocfMorningState=api;
 })(globalThis);
