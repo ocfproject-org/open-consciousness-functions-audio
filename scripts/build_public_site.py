@@ -763,6 +763,8 @@ def build_public_site(
     historical_rows = _historical_lookup_rows(
         historical_reference_markdown, functions, source_root
     )
+    from morning_originals import verify_build as verify_morning_originals
+    verify_morning_originals(functions, source_root, guide_export["source_commit"], site_root)
     histories = _source_histories(source_root, guide_export["source_commit"], functions)
     sessions_by_function, preparation_sessions = _catalog_sessions(catalog)
     all_session_rows = [

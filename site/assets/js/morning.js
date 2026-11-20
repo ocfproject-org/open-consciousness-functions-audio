@@ -16,7 +16,7 @@ function start(){
  const say=text=>{status.textContent=[text,store.warning].filter(Boolean).join(' ');};
  function describe(row,parent){
   if(row.kind==='custom'){node('p','My own cue',parent).className='routine-meta';return;}
-  if(row.kind==='hplus'){const entry=model.historical[row.command],details=node('details',undefined,parent);details.className='routine-provenance';node('summary',`Original Human Plus · ${entry.title}`,details);node('p',entry.reference,details).className='routine-meta';const source=node('a','Public booklet reference',details);source.href=entry.source;return;}
+  if(row.kind==='hplus'){const entry=model.historical[row.command],details=node('details',undefined,parent);details.className='routine-provenance';node('summary',`Original Human Plus · ${entry.title} · ${entry.roleLabel}`,details);node('p',`${entry.notation} · ${entry.evidenceLabel}. ${entry.reference}`,details).className='routine-meta';const source=node('a',entry.evidence==='archive-command'?'Public archive command reference':'Pinned project legacy record',details);source.href=entry.source;if(entry.evidence==='archive-command'){node('span',' · ',details);const repo=node('a','Pinned project legacy record',details);repo.href=entry.repoSource;}return;}
   const command=model.commands(row.guide).find(c=>c.command===row.command);
   const details=node('details',undefined,parent);details.className='routine-provenance';node('summary',`${store.subjects[row.subject].title} · ${command.role==='mode'?'Alternate mode':'Activation'} · guide ${row.guide.commit.slice(0,8)}`,details);parent=details;
   node('p',row.command,parent).className='routine-meta';
@@ -35,7 +35,7 @@ function start(){
  async function open(){
   const turn=++generation;stale=false;hasInput=()=>false;body.replaceChildren();original=store.readRoutine();epoch=store.manualConfig()?.epoch??null;draft=structuredClone(original.rows);
   if(epoch){try{store.routineContext(epoch);}catch(e){node('p',e.message,body);return;}}
-  node('p','Search all published activation cues. Favorites use the current guide; Learned choices use the saved guide snapshot. Audio edition does not determine cue text. Imported snapshots are not independently verified.',body);
+  node('p','Search OCF activation/mode cues and optional original Human Plus cues. Favorites use the current guide; Learned choices use the saved guide snapshot. Audio edition does not determine cue text. Imported snapshots are not independently verified.',body);
   node('p','Each completed action saves in this browser. Use Move up and Move down to choose the reading order. Unfinished custom text is not saved. Nothing is added to Favorites or Learned.',body);
   const records=await store.read();if(turn!==generation||!editor.open||(store.manualConfig()?.epoch??null)!==epoch)return;
   const choices=[];const seen=new Set();let unsupported=0;
@@ -50,14 +50,17 @@ function start(){
   records.filter(r=>r.subject.startsWith('OCF-')).forEach(r=>offer(r.subject,r.guide,'learned','Learned — saved guides'));
   store.readFlags().filter(f=>f.kind==='favorite'&&f.subject.startsWith('OCF-')).forEach(f=>offer(f.subject,store.subjects[f.subject]?.guide,'current','Favorite functions — current guides'));
   Object.keys(store.subjects).filter(id=>/^OCF-[A-Z]{3}-[0-9]{3}$/.test(id)).sort().forEach(id=>offer(id,store.subjects[id].guide,'current','All other functions — current guides'));
-  for(const [command,entry] of Object.entries(model.historical))choices.push({row:{id:crypto.randomUUID(),kind:'hplus',command,text:entry.text},group:'Original Human Plus — public booklet'});
+  for(const [command,entry] of Object.entries(model.historical))choices.push({row:{id:crypto.randomUUID(),kind:'hplus',command,text:entry.text},group:'Original Human Plus — historical cues'});
   const legacyLabel=node('label',undefined,body),legacy=node('input',undefined,legacyLabel);legacy.type='checkbox';legacyLabel.className='routine-original-choice';legacyLabel.append(document.createTextNode(' Show original Human Plus cues'));
   const coverage=node('details',undefined,body);node('summary','Original cue coverage',coverage);
-  node('p','Optional, for cues you already learned. Only Attention and Off-Loading have been verified here against the public booklet. Other originals are not included. When enabled, identical Focus wording is offered once, with Human Plus provenance. Existing saved sources never change. These are not OCF recording cues.',coverage);
-  const searchLabel=node('label','Search function cues',body),search=node('input',undefined,searchLabel);search.type='search';search.maxLength=200;search.placeholder='Function name or activation cue';
+  node('p','Optional, for cues you already learned: 65 historical cues across 55 original titles. Twelve command wordings are individually corroborated in public archive command fields; the other 53 are project-recorded, not individually archive-verified. Roles distinguish function/mode cues, Close, Retrieval, Short Fix release, standalone Release and Cancel. These are not OCF recording cues. Availability and audio equivalence are not verified. Only Attention/Focus shares an existing choice; saved sources never change.',coverage);
+  const searchLabel=node('label','Search function cues',body),search=node('input',undefined,searchLabel);search.type='search';search.maxLength=200;search.placeholder='Function name, cue or role';
   const label=node('label','Choose a function cue',body),select=node('select',undefined,label);select.setAttribute('aria-label','Choose a function cue');
   const matches=node('p','',body);matches.setAttribute('role','status');
-  const normalize=value=>value.normalize('NFKC').toLocaleLowerCase().trim();
+  const choiceInfo=node('p','',body);choiceInfo.className='routine-choice-info';choiceInfo.setAttribute('role','status');
+  const normalize=model.searchText;
+  function describeChoice(){const row=select.value===''?null:choices[Number(select.value)]?.row;choiceInfo.textContent=!row?'':row.kind==='hplus'?`${model.historical[row.command].title} — ${row.text}. ${model.historical[row.command].roleLabel}. Original Human Plus · ${model.historical[row.command].evidenceLabel}. Printed: ${model.historical[row.command].notation}`:`${store.subjects[row.subject].title} — ${model.cue(row)}. OCF guide cue.`;}
+  select.addEventListener('change',describeChoice);
   function showChoices(){
    const previous=select.value,query=normalize(search.value);select.replaceChildren();node('option','Choose explicitly…',select).value='';let count=0;const groups=new Map();
    choices.forEach(({row,group},i)=>{
@@ -65,12 +68,15 @@ function start(){
     const hp=row.kind==='hplus';if(hp&&!legacy.checked)return;
     if(!hp&&legacy.checked&&choices.some(x=>x.row.kind==='hplus'&&model.choiceKey(x.row)===model.choiceKey(row)))return;
     const c=hp?{text:row.text,role:'activation'}:model.commands(row.guide).find(x=>x.command===row.command),title=hp?model.historical[row.command].title:store.subjects[row.subject].title;
-    if(query&&!normalize(`${title} ${c.text} ${row.subject||''}`).includes(query))return;
+    const entry=hp?model.historical[row.command]:null;
+    const terms=normalize(`${title} ${c.text} ${row.subject||''} ${entry?`${entry.notation} ${entry.roleLabel} ${entry.legacyCommand} ${entry.evidenceLabel}`:''}`);
+    if(!model.matchesSearch(terms,query))return;
     let parent=groups.get(group);if(!parent){parent=node('optgroup',undefined,select);parent.label=group;groups.set(group,parent);}
-    const provenance=hp?'Original Human Plus':`OCF ${c.role}; ${row.command}; ${row.origin==='learned'?'learned snapshot':'current guide'} ${row.guide.commit.slice(0,8)}`;
+    const provenance=hp?`Original Human Plus; ${entry.roleLabel}; ${entry.evidenceLabel}`:`OCF ${c.role}; ${row.command}; ${row.origin==='learned'?'learned snapshot':'current guide'} ${row.guide.commit.slice(0,8)}`;
     node('option',`${title} — ${c.text} (${provenance})`,parent).value=String(i);count++;
    });
    if([...select.options].some(option=>option.value===previous))select.value=previous;
+   describeChoice();
    matches.textContent=count?`${count} available cue choices. Choose one explicitly.`:'No eligible cues match. Try a function name or activation wording.';
   }
   legacy.addEventListener('change',showChoices);search.addEventListener('input',showChoices);showChoices();
