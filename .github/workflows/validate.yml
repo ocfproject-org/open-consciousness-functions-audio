@@ -41,6 +41,7 @@ jobs:
         run: python scripts/validate_site.py
       - name: Run offline publication and catalog tests
         run: python -m unittest discover -s scripts -p 'test_*.py'
+      - run: node scripts/test_smart_playback.mjs
       - name: Check browser script syntax
         run: node --check site/assets/js/app.js
       - name: Test catalog search and selection logic
@@ -64,8 +65,9 @@ jobs:
           PYTHONPATH: ocf-source/scripts
         run: |
           python scripts/refresh_catalog.py --output verified-catalog.json
+          python scripts/smart_playback_media.py --output experiment-media
           python -m ocf_tools.public_site_export --source-commit "${{ steps.source.outputs.commit }}" --output public-guide-export.json
-          python scripts/build_public_site.py --site-root site --content-dir docs/website --source-pin site/source.json --guide-export public-guide-export.json --catalog verified-catalog.json --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md --output verified-site
+          python scripts/build_public_site.py --site-root site --content-dir docs/website --source-pin site/source.json --guide-export public-guide-export.json --catalog verified-catalog.json --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --output verified-site
           python scripts/validate_site.py verified-site
       - name: Install pinned browser test dependencies
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
@@ -81,6 +83,9 @@ jobs:
         env:
           AUDIO_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
+      - name: Verify isolated streaming experiment
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: node scripts/test_smart_playback_browser.cjs
       - name: Retain public-safe browser acceptance evidence
         if: always() && matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         uses: actions/upload-artifact@v4

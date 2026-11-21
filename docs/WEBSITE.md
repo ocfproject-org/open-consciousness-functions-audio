@@ -332,3 +332,21 @@ Library, My Morning and import-preview rendering is incremental in batches of 50
 The main library contains 743 categorized public lines, with the original 36 starter IDs retained in an explicit archive view. Current, public-only, custom and archive search/filter choices are separate; My Morning resolves saved IDs from both. A matching private custom line stays a separate private record with its own heart, text and ID. No migration deletes, publishes, re-keys or merges private lines. All provided records have stable `public:` or `starter:` IDs; content revisions must retain the old record in the archive rather than reuse an ID. Public favorite IDs use the existing schema-3/4 backup representation; import into an older site without those IDs fails validation without writes. Current versions keep all archived IDs.
 
 The catalog validator bounds public records to 2,000, rejects malformed fields and duplicate current phrases, and optionally accepts a short text-only subtopic. Initial rendering remains 50 rows; search covers every row in the selected collection and category, with clear matching/shown counts. The default public-only view excludes archived and private rows, so previously imported copies cannot crowd the public first screen or inflate its count. Current and custom views retain private lines unchanged; explicitly adding a new custom line opens the custom view so the saved line is visible. Clear filters and reload return to public-only. No account or import is needed to read public lines. Hearts, My Morning, imports and custom text remain opt-in and browser-local.
+
+### Isolated Comfort experiment: exact public media mirror
+
+The owner-authorized Smart Playback usability fix stages only the already-public
+Comfort 0.2.0 MP3 in `experiments/smart-playback/`, to permit same-origin Web Audio
+without a download/file-picker step. This is a scoped exception to companion-only
+copying; it does not change normal players, release URLs, release contents, other
+recordings, or authorize new/private voice assets. No audio is committed.
+
+Both validation and Pages build jobs download the fixed official release URL via
+`scripts/smart_playback_media.py`. HTTPS redirects are limited to GitHub's release
+hosts; exact 55,927,570-byte size and SHA-256 must match. The builder repeats the
+identity check before its inventory receipt and all existing browser checks.
+Nothing is appended by the deploy job. The extra artifact size is 53.34 MiB, below
+the 1 GiB Pages site limit; total artifact size must be checked before rollout.
+Canonical downloads remain on GitHub Releases. Remove the staging flag/step and
+experiment in a normal validated deployment to roll back this mirror; no release
+or domain/security configuration changes are necessary.

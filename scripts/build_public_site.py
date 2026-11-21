@@ -733,6 +733,7 @@ def build_public_site(
     content_dir: Path,
     historical_reference: Path,
     transcript_fetcher=None,
+    smart_playback_media: Path | None = None,
 ):
     """Build all local pages from one pinned OCF export and verified release catalog."""
     validate_guide_export(guide_export, source_pin)
@@ -1065,6 +1066,12 @@ def build_public_site(
         install_morning_routine(staging)
         install_page_sharing(staging)
         _apply_edition_presentation(staging, catalog)
+        if smart_playback_media is not None:
+            from smart_playback_media import stage
+
+            # Owner-authorized exact public Comfort mirror, inventoried before validation.
+            with Path(smart_playback_media).open("rb") as media:
+                stage(media, staging / "experiments" / "smart-playback")
         _write_site_receipt(
             staging,
             guide_export=guide_export,
@@ -2353,6 +2360,7 @@ def _validate_build(args):
         source_pin=source_pin,
         content_dir=args.content_dir,
         historical_reference=args.historical_reference,
+        smart_playback_media=args.smart_playback_media,
     )
 
 
@@ -2365,6 +2373,7 @@ def main(argv=None):
     parser.add_argument("--catalog", type=Path, required=True)
     parser.add_argument("--historical-reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--smart-playback-media", type=Path, help="Exact approved public Comfort MP3; verified and inventoried in the isolated experiment")
     args = parser.parse_args(argv)
     try:
         result = _validate_build(args)
