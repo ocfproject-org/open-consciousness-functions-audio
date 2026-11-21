@@ -92,6 +92,14 @@ that the phone issue is eliminated. No physical Android or hardware-output test
 was performed. The revised scheduling removes observed race opportunities, while
 phone confirmation remains necessary.
 
+The Android screenshot showed the older fallback rejecting a browser without
+`AudioParam.cancelAndHoldAtTime`. The player now uses standard timed linear
+ramps with tracked interpolation when that optional method is absent. This
+preserves hold-and-ramp behavior without changing the source track or the
+desktop native fade. The mobile browser regressions explicitly remove the
+method before playback to exercise the reported capability gap; handset review
+remains separate.
+
 Thirty-six repeated join captures (nine joins × two repeats × two viewports) had
 no digital-zero run, no fallback, peak ≤0.4840 and maximum adjacent-sample step
 ≤0.07310. Separate continuous runs traverse all nine joins and exercise resume

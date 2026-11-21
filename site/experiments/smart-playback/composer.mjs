@@ -10,6 +10,52 @@ export function makePlan(duration, cuts = [], fade = .2) {
 }
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const DURATION = 1387.357641723356;
+// Web Audio exposes cancelScheduledValues on older mobile engines but not
+// cancelAndHoldAtTime. Keep the small envelope in audio-clock time on that path.
+export class GainEnvelope {
+  constructor(param) {
+    this.param = param;
+    this.native = typeof param.cancelAndHoldAtTime === 'function';
+    this.points = [[0, 0]];
+    param.value = 0;
+  }
+  valueAt(time) {
+    for (let i = 1; i < this.points.length; i++) {
+      const [t, v] = this.points[i], [prev, start] = this.points[i - 1];
+      if (time < t) return start + (v - start) * Math.max(0, (time - prev) / (t - prev));
+    }
+    return this.points.at(-1)[1];
+  }
+  hold(time) {
+    if (this.native) { this.param.cancelAndHoldAtTime(time); return; }
+    // Compatibility schedules only endpoints, never setValueCurveAtTime:
+    // cancelling during a native value curve can leave it active and make a
+    // replacement event inside that interval invalid.
+    const value = this.valueAt(time);
+    this.param.cancelScheduledValues(time);
+    this.set(value, time);
+  }
+  mute(time) {
+    this.param.cancelScheduledValues(time);
+    this.set(0, time);
+  }
+  set(value, time) {
+    this.param.setValueAtTime(value, time);
+    if (!this.native) this.points = [[time, value]];
+  }
+  ramp(value, time) {
+    this.param.linearRampToValueAtTime(value, time);
+    if (!this.native) this.points.push([time, value]);
+  }
+  curve(values, start, duration) {
+    if (this.native) { this.param.setValueCurveAtTime(values, start, duration); return; }
+    this.param.setValueAtTime(values[0], start);
+    // Keep the lead-in ramp: the user can pause before this fade begins.
+    this.points = this.points.filter(([t]) => t < start);
+    this.points.push([start, values[0]]);
+    for (let i = 1; i < values.length; i++) this.ramp(values[i], start + duration * i / (values.length - 1));
+  }
+}
 export class Composer {
   constructor(elements, notify = () => {}) {
     this.media = elements; this.notify = notify; this.generation = 0;
@@ -40,11 +86,10 @@ export class Composer {
     try {
       const nodes = this.media.map(el => {
         const gain = ctx.createGain();
-        if (typeof gain.gain.cancelAndHoldAtTime !== 'function') throw Error('Scheduled gain holds are unavailable in this browser');
-        gain.gain.value = 0;
+        const envelope = new GainEnvelope(gain.gain);
         const node = ctx.createMediaElementSource(el);
         node.connect(gain); gain.connect(ctx.destination);
-        return {node, gain};
+        return {node, gain, envelope};
       });
       this.ctx = ctx; this.nodes = nodes;
     } catch (error) { await ctx.close(); throw error; }
@@ -62,7 +107,7 @@ export class Composer {
     const i = s.n % 2, m = this.media[i];
     if (this.assign.get(i) !== s.n) {
       if (this.running && !m.paused) throw Error('Refusing to seek an active stream');
-      if (this.ctx) { const g = this.nodes[i].gain.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setValueAtTime(0, this.ctx.currentTime); }
+      if (this.ctx) this.nodes[i].envelope.mute(this.ctx.currentTime);
       m.pause(); m.preload = 'auto'; if (m.readyState === 0) m.load();
       this.assign.set(i, s.n); m.currentTime = position;
     }
@@ -78,9 +123,8 @@ export class Composer {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     for (const node of this.nodes) {
-      const g = node.gain.gain;
-      // cancelAndHold preserves the instantaneous value during an overlap.
-      g.cancelAndHoldAtTime(now); g.linearRampToValueAtTime(0, now + ramp);
+      // Hold the instantaneous value during an overlap on both gain paths.
+      node.envelope.hold(now); node.envelope.ramp(0, now + ramp);
     }
   }
   pause() {
@@ -114,7 +158,7 @@ export class Composer {
     this.key = active.map(s => s.n).join(',');
     const now = this.ctx.currentTime, fadePosition = this.current() + .012;
     const values = this.weights(Math.min(fadePosition, active[0].end - .0001));
-    for (let i = 0; i < 2; i++) { const g = this.nodes[i].gain.gain; g.cancelScheduledValues(now); g.setValueAtTime(0, now); g.linearRampToValueAtTime(values[i], now + .012); }
+    for (let i = 0; i < 2; i++) { const g = this.nodes[i].envelope; g.mute(now); g.ramp(values[i], now + .012); }
     if (active.length === 2) this.fade(active, fadePosition, now + .012, true);
   }
   fade(active, t, start = this.ctx.currentTime, resumed = false) {
@@ -122,9 +166,9 @@ export class Composer {
     if (length < .025) throw Error('Insufficient buffered overlap');
     const phase = resumed ? (t - active[1].start) / this.plan.fade : 0;
     for (const s of active) {
-      const g = this.nodes[s.n % 2].gain.gain, curve = new Float32Array(128);
+      const g = this.nodes[s.n % 2].envelope, curve = new Float32Array(128);
       for (let j = 0; j < curve.length; j++) { const x = phase + (1 - phase) * j / (curve.length - 1); curve[j] = s.n === active[0].n ? Math.cos(x * Math.PI / 2) : Math.sin(x * Math.PI / 2); }
-      g.setValueCurveAtTime(curve, start, length);
+      g.curve(curve, start, length);
     }
   }
   async tick() {
@@ -150,9 +194,9 @@ export class Composer {
           this.t = t;
           this.clockOffset = t - (active[0].start + this.media[this.leader % 2].currentTime - active[0].from);
           for (let i = 0; i < 2; i++) if (i !== this.leader % 2) {
-            const g = this.nodes[i].gain.gain;
             // Wait for the scheduled fade to finish before recycling this slot.
-            g.cancelAndHoldAtTime(this.ctx.currentTime); g.setValueAtTime(0, this.ctx.currentTime); this.media[i].pause();
+            const g = this.nodes[i].envelope; const now = this.ctx.currentTime;
+            g.hold(now); g.set(0, now); this.media[i].pause();
           }
         }
         this.key = key; this.stats.transitions.push({at: t, latency: performance.now() - stamp});

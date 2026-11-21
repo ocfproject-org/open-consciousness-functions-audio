@@ -1,4 +1,4 @@
-import {Composer,makePlan} from './composer.mjs?v=stream-1';
+import {Composer,makePlan} from './composer.mjs?v=mobile-gain-2';
 export const SHA='401a132683e40b34576f8411c50096521429f4ee003c8d3d684f775fe07d76ec',SIZE=55927570,DURATION=1387.357641723356;
 export function validateEvidence(e){if(e?.schema!==1||e.source_sha256!==SHA||e.decoded_seconds!==DURATION||e.sample_rate!==44100||e.channels!==2||e.crossfade_seconds!==.2||e.controls?.preparation!==false||e.controls?.return!==false||e.controls?.relaxation!==true||e.cuts?.length!==9)throw Error('Unsupported evidence');let end=186;for(let i=0;i<9;i++){const c=e.cuts[i];if(!Number.isFinite(c.from)||!Number.isFinite(c.to)||c.from<=end||c.to<=c.from||c.to>=488||c.first_resumed_count_start-c.to<.49||c.first_resumed_count_start-c.to>.51)throw Error('Unsafe edit boundary');end=c.to;}return e;}
 if(typeof document!=='undefined'){

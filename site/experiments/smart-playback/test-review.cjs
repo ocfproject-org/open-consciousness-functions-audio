@@ -9,6 +9,9 @@ const {chromium}=require('@playwright/test'), assert=require('assert/strict'), f
  try{for(const mobile of [false,true]){
   const context=await browser.newContext({viewport:mobile?{width:375,height:812}:{width:1280,height:900},isMobile:mobile,hasTouch:mobile});
   await context.addInitScript({path:require.resolve('axe-core/axe.min.js')});
+  // Mobile viewport emulation alone does not model the missing AudioParam API
+  // seen on the reported Android device. Remove it before any playback exists.
+  if(mobile)await context.addInitScript(()=>Object.defineProperty(AudioParam.prototype,'cancelAndHoldAtTime',{value:undefined,configurable:true}));
   const page=await context.newPage(),writes=[];page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))writes.push(r.method());});
   await page.goto(base+'/experiments/smart-playback/preview.html');await page.waitForFunction(()=>!document.querySelector('#controls').disabled);
   assert.equal(await page.locator('input[type=file]').count(),0);assert.equal(await page.locator('#relaxation').inputValue(),'full');
@@ -19,6 +22,7 @@ const {chromium}=require('@playwright/test'), assert=require('assert/strict'), f
   assert.equal(await page.evaluate(()=>composer.plan.segments.length),10);
   await page.evaluate(()=>composer.seek(191));await page.locator('#play').focus();await page.keyboard.press('Enter');await page.waitForTimeout(1800);
   assert(await page.evaluate(()=>composer.running&&composer.current()>192&&composer.stats.fallbacks===0));
+  assert.equal(await page.evaluate(()=>composer.nodes.every(x=>x.envelope.native)),!mobile);
   await page.locator('#pause').click();const t=await page.evaluate(()=>composer.current());await page.waitForTimeout(150);assert(Math.abs(await page.evaluate(()=>composer.current())-t)<.02);
   await page.locator('#play').click();await page.waitForTimeout(300);assert(await page.evaluate(()=>composer.running));await page.locator('#pause').click();
   await page.locator('#relaxation').selectOption('full');await page.waitForFunction(()=>!composer.running&&composer.plan.saved===0);
