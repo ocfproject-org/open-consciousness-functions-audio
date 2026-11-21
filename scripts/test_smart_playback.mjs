@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {Composer, makePlan} from '../site/experiments/smart-playback/composer.mjs';
+import {Composer, GainEnvelope, makePlan} from '../site/experiments/smart-playback/composer.mjs';
 globalThis.document = {hidden:false,addEventListener(){},removeEventListener(){}};
 const operations=[];
 class Gain {
@@ -37,3 +37,26 @@ try {
  p.media[0].ended=true;await p.tick();assert(!p.running,'natural media end completes playback');
  console.log('PASS smart playback plan, media clock, inactive-slot guard, mute/ramp, overlap resume, cancellation and fallback');
 } finally {p.destroy();}
+
+
+// Reproduce the missing method on Android and hold during lead-in and overlap.
+const param=new Gain();
+param.cancelAndHoldAtTime=undefined;
+const g=new GainEnvelope(param);
+g.set(0,30);g.ramp(.4,30.012);g.curve([.4,.7,1],30.012,.2);
+assert(Math.abs(g.valueAt(30.006)-.2)<.000001);
+assert(Math.abs(g.valueAt(30.062)-.55)<.000001);
+g.hold(30.062);
+assert(Math.abs(operations.at(-1)[1]-.55)<.000001);
+g.ramp(0,30.074);
+assert.equal(g.valueAt(31),0);
+const priorCreate=AudioContext.prototype.createGain;
+AudioContext.prototype.createGain=function(){const node=priorCreate.call(this);node.gain.cancelAndHoldAtTime=undefined;return node};
+const compat=new Composer([media(),media()]);
+try{
+ await compat.load('https://example.invalid/fixture.mp3',[{from:5,to:10}]);
+ await compat.seek(4.9); await compat.play(); assert(compat.running);assert(compat.nodes.every(x=>!x.envelope.native));
+ compat.ctx.currentTime+=.02;await compat.pause();assert(compat.media.every(x=>x.paused));
+ await compat.play();assert(compat.running);assert.equal(compat.stats.fallbacks,0);
+ console.log('PASS missing cancelAndHoldAtTime: lead-in, overlap, pause and resume');
+}finally{compat.destroy();AudioContext.prototype.createGain=priorCreate;}
