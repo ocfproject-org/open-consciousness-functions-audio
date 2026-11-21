@@ -35,45 +35,7 @@
         "quick_return": false,
         "replacement": false
       },
-      "reason": "No public exact-master speech/DSP edit ledger or compatible publicly authorized short inserts. Quick Return eligibility is unverified; no early exit is offered.",
-      "voice_ids": [
-        "mike-original"
-      ]
-    },
-    {
-      "function_id": "OCF-COG-001",
-      "title": "Information Access",
-      "edition": "audio-0.2.0",
-      "source_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
-      "release_url": "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/tag/audio-0.2.0",
-      "locale": "en-US",
-      "asset": {
-        "download_url": "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/audio-0.2.0/OCF-COG-001---Information-Access---en-US---Mike---Original-Voice---v0.2.0-1cec73930f88.mp3",
-        "sha256": "cf329e8f23e545cc045a920f90e60c6faa3eb9747d395e62df4f6c383a15380a",
-        "size_bytes": 67554846,
-        "duration_seconds": 1676.512653,
-        "channels": 2,
-        "sample_rate_hz": 44100,
-        "provenance": {
-          "master_sha256": "4c2713919857e1b5abfa67e8ee36a84808d3b3260503d16c6f9570fda69e5d2c",
-          "render_source": {
-            "base_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
-            "snapshot_scope": "public-repository-files",
-            "snapshot_sha256": "a969b45f4ecb398dab44b528506c7080ce6f86468abf1b007b1e8490e85c81a9",
-            "state": "frozen-working-tree"
-          },
-          "source_manifest_sha256": "fcf3aa56c8ed0737424029f6e3b39849f07cd1e3dd1f0ba7035d025d55a366ed",
-          "source_ocf_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
-          "technical_receipt_sha256": "534fcec6eeb47a813b1abda27e5b43523dbec94f5c613ecfad7dd0faaf4687cd"
-        }
-      },
-      "capabilities": {
-        "setting_aside": false,
-        "relaxation": false,
-        "quick_return": false,
-        "replacement": false
-      },
-      "reason": "No public exact-master speech/DSP edit ledger or compatible publicly authorized short inserts. Quick Return eligibility is unverified; no early exit is offered.",
+      "reason": "Short relaxation requires the exact downloaded public MP3, verified locally; remote release playback remains Full. No public-derived box reminder has verified sentence boundaries.",
       "voice_ids": [
         "mike-original"
       ]

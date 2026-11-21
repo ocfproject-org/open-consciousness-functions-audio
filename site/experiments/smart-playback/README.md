@@ -1,97 +1,98 @@
-# Smart Playback public-delivery review — blocked draft
+# Comfort public-file Smart Playback experiment
 
-**This is not ready for the requested shortened-session audition. Do not deploy
-it as a working Smart Playback preview.** It is a small, isolated review of the
-public-release delivery path and explicit fail-closed controls. No private audio,
-short insert, voice asset, private path, or new release is included.
+One isolated, unlisted page: `experiments/smart-playback/preview.html`.
+It is noindex/nofollow, omitted from navigation/sitemap, uses no shared scripts,
+styles or service worker, and writes no persistent state. Full remains default.
+No audio, voice assets, private timings or private paths are included in this PR.
 
-`preview.html` is deliberately not named `index.html`, so the existing builder
-does not add it to the sitemap. It has `noindex,nofollow`, no incoming site link,
-no shared scripts/styles, no service worker, no analytics and no browser-state
-writes. All files in this change live in this directory. The main website,
-ordinary player, downloads, navigation and preferences are unchanged.
+## How it works
 
-## What can be tested
+The original public Comfort 0.2.0 MP3 plays natively from its immutable GitHub
+release URL. A fresh actual range request returned 206 with byte ranges but no
+Access-Control-Allow-Origin. Therefore remote playback is never attached to Web
+Audio: that would silence it. No proxy or security exception is introduced.
 
-- Explicit page-only opt-in; Full Guidance is the only available mode.
-- Native playback of the published Comfort or Information Access MP3, audio
-  0.2.0, directly from its immutable GitHub release URL.
-- Selection stops/unloads the previous recording; no autoplay or replacement.
-- Independent setting-aside, relaxation and return controls remain disabled.
-  Manifest edits cannot enable unverified shortening.
-- Exact public asset SHA-256, duration, master provenance and release identity.
-  Values are projected from the repository's verified published catalog; this is
-  not a second content registry or a browser claim to have hashed the full media.
-- A bounded, explicit two-byte CORS/range probe with safe cancellation and no
-  proxy, alternate host or rehosting.
+For Short relaxation, the reader downloads that original MP3 and chooses it with
+a file input. The browser checks its exact 55,927,570-byte size and SHA-256:
+`401a132683e40b34576f8411c50096521429f4ee003c8d3d684f775fe07d76ec`.
+The file is read locally, never uploaded. Its name/path is not displayed, stored
+or sent. Two media elements share the same local File/blob URL; the browser does
+not decode the whole session into an AudioBuffer or create another full track.
+The checksum temporarily reads the compressed file into memory; this is not a
+zero-memory streaming checksum. Reload discards the file selection and settings.
 
-## Actual delivery evidence
+Short relaxation retains every number One through Ten, about six seconds between
+numbers, the full relaxation introduction and Ten guidance. It omits the nine
+detailed body-scan units following One through Nine. Nine 200 ms stereo equal-power
+crossfades join speech-free margins of the exact public recording. Full box
+instructions/action time, every later learning/closure/reinforcement stage and
+Comfort's complete ending remain intact. No Quick Return is available.
 
-The Comfort MP3 is SHA-256
-`401a132683e40b34576f8411c50096521429f4ee003c8d3d684f775fe07d76ec`,
-55,927,570 bytes. A normal TLS-verified request followed GitHub's redirect to
-`release-assets.githubusercontent.com`; it returned HTTP 206,
-`Content-Range: bytes 0-4095/55927570`, and `Accept-Ranges: bytes`.
-The final response had **no Access-Control-Allow-Origin header**. Signed redirect
-query strings are not retained here.
+Decoded Full: 1387.357642 seconds (23:07.4).
+Short relaxation: 1144.437824 seconds (19:04.4).
+Savings: 242.919818 seconds (4:02.9), including nine overlaps.
+Container duration 1387.389388 differs slightly from decoded duration.
 
-Fresh Chromium against the actual URL decoded native duration 1387.357642 seconds
-and advanced playback to 1.112091 seconds without a media error. Seeking was
-tested. Cross-origin `fetch` failed under normal browser security. Native playback
-is not proof of Web Audio access or audible hardware output. No AudioContext is
-attached to the release element, avoiding cross-origin Web Audio silence.
+Preparation remains independently Full/disabled: the public measured ledger
+bounds whole box paragraphs, not a faithful short reminder sentence. This page
+does not invent a boundary or reuse a private reminder. Choosing either mode
+pauses playback; missing/late buffers fail closed to paused Full. The original
+player/download remain available independently of local Web Audio support.
 
-A separately hash-verified copy of that same public asset decoded a one-second
-stereo interval to 88,200 float sample values: peak 0.279909, RMS L/R
-0.089591/0.088349. This is a decoder check, not a browser/hardware output measure.
-Physical Android was not available; mobile verification is Chromium emulation.
+## Exact source and rights boundary
 
-## Why shortcuts are unavailable
+Public release:
+<https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/tag/audio-0.2.0>
 
-The public release's timed text and technical sidecar do not provide the complete
-joined exact-master speech/DSP safe-edit ledger. Silence or matching guide text
-does not grant permission to splice or skip. The matching local short inserts
-are private and are excluded. A successful private full-file listening comparison
-does not prove browser transition quality or release compatibility.
+The source identity comes from its verified publication manifest
+`d75262e2ebd70fcb768bfb6f7cca207fa644bfbee83d6be9cfa94924319e3c43`.
+The public master identity is
+`fea70d6b1979827d74f785b313d53e90d7acf82fb140a9c9aced9c96e2a545bf`;
+the exact retained render report and delivery receipts were checked locally.
+Only safe public-recording boundary projections appear in `evidence.json`.
+Its canonical JSON digest is checked before the UI enables experiments.
+Neither that report nor its paths/private envelope is published.
 
-Consequently neither native automatic seeking nor Web Audio replacement is
-enabled. Quick Return eligibility is unverified and no early exit is offered.
-Required learning, reinforcement, closure and Focus transitions are never cut.
+No separate audio redistribution license was established from the audio repository
+or release notes. This implementation consequently republishes NO snippets or
+full tracks and makes no claim that the source software's Apache license covers
+voice recordings. It uses the owner's already-public recording selected by the
+reader, within the explicitly authorized experiment. No synthesized/private
+narration, private insert or new release is involved.
 
-The safe next path needs publicly authorized, immutable compatible short inserts
-and reviewed exact-release timing/DSP evidence, plus a verified browser delivery
-path. A CORS-capable approved origin would be needed for Web Audio; this PR does
-not add a proxy or change hosting/security. A native seek alternative could be
-considered only for independently reviewed safe windows—not derived from VTT
-alone. Public distribution of private inserts requires separate authorization.
+## Verification and reproduction
 
-## Local tryout and checks
-
-From the repository root, with its pinned npm dependencies installed:
+With the pinned Playwright dependencies installed, serve `site` on loopback:
 
 ```sh
 python3 -m http.server 8791 --bind 127.0.0.1 --directory site
-node site/experiments/smart-playback/test-review.cjs http://127.0.0.1:8791 /tmp/ocf-public-smart-evidence
+node site/experiments/smart-playback/test-review.cjs \
+  http://127.0.0.1:8791 LOCAL_RESULTS_DIRECTORY OPTIONAL_PUBLIC_MP3
+node site/experiments/smart-playback/test-output.cjs \
+  http://127.0.0.1:8791 LOCAL_PCM_DIRECTORY EXACT_PUBLIC_MP3
 ```
 
-Open `http://127.0.0.1:8791/experiments/smart-playback/preview.html` on that
-workstation. This is a delivery diagnostic, not a meaningful short-session
-audition. Return-to-Browse links resolve in the complete generated website.
-Test output stays outside the repository. The test uses fresh browser state,
-actual public release delivery, keyboard opt-in, source switching, mobile reflow,
-axe, no outbound writes, no local state, and malformed identity rejection.
-It does not claim that a synthetic test proves real audio transitions.
+The output harness explicitly loads `test-capture.mjs` to measure actual stereo
+PCM. The page itself never imports it or records audio. Test outputs stay outside
+the repository. A synthetic or incorrect file cannot enable Short modes.
 
-## Preview, production and rollback boundary
+The bounded real-file proof captured all nine joins twice on desktop and 375px
+mobile emulation (36 windows), with zero digital-zero gaps and no clipping.
+All 36 following-count excerpts matched exact public-source decode; minimum
+channel correlation was 0.99967. This is digital output, not physical hardware
+sound or a human listening approval. Continuous playback traversed all nine joins (18 scheduler transitions) on
+both desktop and mobile emulation without silent gaps or fallback. UI acceptance
+and output receipts are retained locally; physical Android remains untested.
 
-The existing Pages workflow deploys only `main`; there is no configured PR preview
-environment. CI's browser evidence artifact is not a hosted application. This
-draft does not change workflows, deploy Pages, or provide a live public audition.
-The unlisted-path permission does not make Full-only playback a ready result.
+## Isolation and rollback
 
-If a later independently approved version is merged and deployed, rollback is
-removal/revert of this directory followed by the normal successful Pages build
-and deployment. Removal takes effect after that deployment and CDN/browser cache
-expiry, not immediately when a revert is committed. Already-open pages can retain
-their loaded original audio. There are no service-worker caches or persistent
-experiment settings to clear. No rollback is needed for this unmerged draft.
+All changes remain under this directory. Existing main player, homepage,
+preferences, navigation, downloads, catalog and service-worker behavior are
+unchanged. No release, upload, analytics or network-write endpoint is added.
+There is no configured PR preview; Pages publishes only checked main commits.
+Do not describe a local tryout as a deployed URL.
+
+Rollback is reverting/removing this directory through the normal checked Pages
+workflow. It takes effect after successful deployment/cache refresh. Already-open
+pages may retain loaded code/local blobs until closed; no experiment storage or
+service worker remains to clear.
