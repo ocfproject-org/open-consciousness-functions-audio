@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "publication_manifest_sha256": "d75262e2ebd70fcb768bfb6f7cca207fa644bfbee83d6be9cfa94924319e3c43",
+  "records": [
+    {
+      "function_id": "OCF-BOD-003",
+      "title": "Comfort",
+      "edition": "audio-0.2.0",
+      "source_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
+      "release_url": "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/tag/audio-0.2.0",
+      "locale": "en-US",
+      "asset": {
+        "download_url": "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/audio-0.2.0/OCF-BOD-003---Comfort---en-US---Mike---Original-Voice---v0.2.0-5d43bb02034a.mp3",
+        "sha256": "401a132683e40b34576f8411c50096521429f4ee003c8d3d684f775fe07d76ec",
+        "size_bytes": 55927570,
+        "duration_seconds": 1387.389388,
+        "channels": 2,
+        "sample_rate_hz": 44100,
+        "provenance": {
+          "master_sha256": "fea70d6b1979827d74f785b313d53e90d7acf82fb140a9c9aced9c96e2a545bf",
+          "render_source": {
+            "base_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
+            "snapshot_scope": "public-repository-files",
+            "snapshot_sha256": "a969b45f4ecb398dab44b528506c7080ce6f86468abf1b007b1e8490e85c81a9",
+            "state": "frozen-working-tree"
+          },
+          "source_manifest_sha256": "eb9b71a5f06ffaeea7ef6d4f1a2ad23dfc5c7143528830ec597aa8701ca7de08",
+          "source_ocf_commit": "3bcb8c13214d4d934fb1cddfbe360103c7be0778",
+          "technical_receipt_sha256": "ee6db21c9e50211781af1de66c0335b033038349223ee6096f6702570786aa3f"
+        }
+      },
+      "capabilities": {
+        "setting_aside": false,
+        "relaxation": false,
+        "quick_return": false,
+        "replacement": false
+      },
+      "reason": "Short relaxation requires the exact downloaded public MP3, verified locally; remote release playback remains Full. No public-derived box reminder has verified sentence boundaries.",
+      "voice_ids": [
+        "mike-original"
+      ]
+    }
+  ]
+}

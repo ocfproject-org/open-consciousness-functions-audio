@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "source_sha256": "401a132683e40b34576f8411c50096521429f4ee003c8d3d684f775fe07d76ec",
+  "decoded_seconds": 1387.357641723356,
+  "sample_rate": 44100,
+  "channels": 2,
+  "controls": {
+    "preparation": false,
+    "relaxation": true,
+    "return": false
+  },
+  "crossfade_seconds": 0.2,
+  "cuts": [
+    {
+      "after": "One.",
+      "before": "Two.",
+      "from": 192.499887,
+      "to": 217.579864,
+      "first_resumed_count_start": 218.079864,
+      "omitted_unit": "relaxation.support.unit-2"
+    },
+    {
+      "after": "Two.",
+      "before": "Three.",
+      "from": 224.339864,
+      "to": 251.059841,
+      "first_resumed_count_start": 251.559841,
+      "omitted_unit": "relaxation.face.unit-2"
+    },
+    {
+      "after": "Three.",
+      "before": "Four.",
+      "from": 257.659819,
+      "to": 286.739796,
+      "first_resumed_count_start": 287.239796,
+      "omitted_unit": "relaxation.jaw-neck.unit-2"
+    },
+    {
+      "after": "Four.",
+      "before": "Five.",
+      "from": 293.419773,
+      "to": 318.579751,
+      "first_resumed_count_start": 319.079751,
+      "omitted_unit": "relaxation.shoulders.unit-2"
+    },
+    {
+      "after": "Five.",
+      "before": "Six.",
+      "from": 325.499728,
+      "to": 355.419728,
+      "first_resumed_count_start": 355.919728,
+      "omitted_unit": "relaxation.hands.unit-2"
+    },
+    {
+      "after": "Six.",
+      "before": "Seven.",
+      "from": 362.259728,
+      "to": 390.299705,
+      "first_resumed_count_start": 390.799705,
+      "omitted_unit": "relaxation.chest-breathing.unit-2"
+    },
+    {
+      "after": "Seven.",
+      "before": "Eight.",
+      "from": 397.059705,
+      "to": 423.179683,
+      "first_resumed_count_start": 423.679683,
+      "omitted_unit": "relaxation.abdomen-lower-back.unit-2"
+    },
+    {
+      "after": "Eight.",
+      "before": "Nine.",
+      "from": 429.85966,
+      "to": 455.419637,
+      "first_resumed_count_start": 455.919637,
+      "omitted_unit": "relaxation.hips-thighs.unit-2"
+    },
+    {
+      "after": "Nine.",
+      "before": "Ten.",
+      "from": 462.139615,
+      "to": 487.579592,
+      "first_resumed_count_start": 488.079592,
+      "omitted_unit": "relaxation.lower-legs-feet.unit-2"
+    }
+  ],
+  "protected_dsp_windows": [
+    {
+      "end_s": 655.959342,
+      "envelope_provenance": "explicit DSP transition duration",
+      "event_id": "open.transition",
+      "from": "focus-10",
+      "semantic": "focus.eleven.transition.open",
+      "start_s": 630.959342,
+      "to": "focus-11"
+    },
+    {
+      "end_s": 841.93873,
+      "envelope_provenance": "explicit duration ending at uniquely measured audible closure-confirmation endpoint",
+      "event_id": "close.close",
+      "from": "focus-11",
+      "semantic": "focus.eleven.close",
+      "start_s": 831.93873,
+      "to": "focus-10"
+    }
+  ],
+  "retained": "Entire box and action time, all ten numbers, full Ten guidance, all following learning/reinforcement/closure/return.",
+  "basis": "Exact public recording measured speech/DSP ledger; local file bytes must match source_sha256. No private timing or media."
+}
