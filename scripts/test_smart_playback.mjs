@@ -30,5 +30,10 @@ try {
  await p.seek(4.9);await p.play();assert.equal(p.active(p.t).length,2);assert(operations.filter(x=>x[0]==='curve').length===2);
  await p.pause();const token=p.generation;p.generation++;await assert.rejects(p.ready(p.media[0],token),/Cancelled/);
  p.fallback('synthetic starvation');assert.equal(p.plan.saved,0);assert.equal(p.stats.fallbacks,1);assert(!p.running);
+ await p.stopBarrier;
+ p.plan=makePlan(1387.357641723356);p.leader=0;p.t=1387.2;p.clockOffset=.5;p.running=true;
+ p.media[0].currentTime=1387.3;p.media[0].ended=false;
+ await p.tick();assert(p.running,'estimated duration must not truncate the source ending');
+ p.media[0].ended=true;await p.tick();assert(!p.running,'natural media end completes playback');
  console.log('PASS smart playback plan, media clock, inactive-slot guard, mute/ramp, overlap resume, cancellation and fallback');
 } finally {p.destroy();}

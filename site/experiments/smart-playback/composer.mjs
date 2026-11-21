@@ -133,7 +133,7 @@ export class Composer {
     if (t >= this.plan.duration - .01) {
       // Small HTML-media clock offsets must never truncate the original ending.
       const last = this.media[this.leader % 2];
-      if (last.ended || last.currentTime >= DURATION - .01) this.pause();
+      if (last.ended) this.pause();
       return;
     }
     if (this.media[this.leader % 2].readyState < 3 || this.ctx.state !== 'running') { this.fallback('Playback interrupted or buffering'); return; }
