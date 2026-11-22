@@ -16,35 +16,33 @@
   const url = canonical && publicURL(canonical.getAttribute('href'));
   if (!panel || !url) return;
   const copy = panel.querySelector('[data-share-copy]');
-  const native = panel.querySelector('[data-share-native]');
   const status = panel.querySelector('[data-share-status]');
   const manual = panel.querySelector('[data-share-manual]');
   const input = panel.querySelector('[data-share-url]');
   let busy = false;
   panel.hidden = false;
-  native.hidden = typeof navigator.share !== 'function';
   function fallback() {
     manual.hidden = false; input.value = url; input.focus(); input.select();
     status.textContent = 'Automatic copying is unavailable. Copy the page link below.';
   }
-  async function action(kind) {
+  copy.addEventListener('click', async () => {
     if (busy) return;
-    busy = true; copy.disabled = true; native.disabled = true;
-    status.textContent = ''; manual.hidden = true;
+    busy = true;
+    copy.setAttribute('aria-disabled', 'true');
+    status.textContent = '';
+    manual.hidden = true;
     try {
-      if (kind === 'native') {
-        await navigator.share({url});
-        status.textContent = 'Share dialog closed.';
-      } else {
-        if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') { fallback(); return; }
-        await navigator.clipboard.writeText(url);
-        status.textContent = 'Link copied.';
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+        fallback();
+        return;
       }
-    } catch (error) {
-      if (kind === 'native') status.textContent = error && error.name === 'AbortError' ? 'Sharing cancelled.' : 'Sharing is unavailable. Use Copy link instead.';
-      else fallback();
-    } finally { busy = false; copy.disabled = false; native.disabled = false; }
-  }
-  copy.addEventListener('click', () => action('copy'));
-  native.addEventListener('click', () => action('native'));
+      await navigator.clipboard.writeText(url);
+      status.textContent = 'Link copied.';
+    } catch (_) {
+      fallback();
+    } finally {
+      busy = false;
+      copy.removeAttribute('aria-disabled');
+    }
+  });
 })();
