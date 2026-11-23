@@ -105,7 +105,7 @@
   class Store {
     constructor(storage, subjects) { this.storage = storage; this.subjects = subjects; this.memory = new Map(); this.warning = ''; this.blocked = false; }
     fallback() { this.storage = null; this.warning = 'Changes are only in memory and will be lost when you leave this page. Browser storage is unavailable; saved data in other tabs may differ.'; }
-    config(includeManual = false) {
+    config(includeManual = true) {
       let raw;
       try { raw = this.storage ? this.storage.getItem(KEY) : this.memory.get(KEY); } catch (_) { this.fallback(); raw = this.memory.get(KEY); }
       if (!raw) { this.blocked = false; return null; }
@@ -116,11 +116,12 @@
       try { if (this.storage) this.storage.setItem(key, value); } catch (_) { this.fallback(); }
       this.memory.set(key, value);
     }
-    enable() {
-      const current=this.config(true);
-      if (this.blocked) throw new Error('Reset unsupported settings before enabling tracking.');
-      // Explicitly enabling the other tools adopts an existing affirmation epoch.
-      if (!current || current.manualOnly) this.put(KEY, JSON.stringify({schema:1,epoch:current?.epoch||globalThis.crypto.randomUUID()}));
+    writeConfig(expectedEpoch) {
+      const current = this.config();
+      if (this.blocked) throw Error('Saved local settings are unreadable. They were not overwritten.');
+      if (expectedEpoch !== undefined && (current?.epoch ?? null) !== expectedEpoch)
+        throw Error('Saved items changed in another tab. Review before saving.');
+      return current || this.enableManual();
     }
     manualConfig() { return this.config(true); }
     affirmationConfig() { return this.manualConfig(); }
@@ -154,9 +155,9 @@
       return records.sort((a, b) => b.markedAt.localeCompare(a.markedAt) || a.id.localeCompare(b.id));
     }
     async merge(records, expectedEpoch) {
-      const config = this.config(); if (!config || this.blocked) throw new Error('Enable private tracking before saving.');
-      if(expectedEpoch!==undefined && config.epoch!==expectedEpoch)throw new Error('Tracking changed in another tab. Review before saving.');
+      const before=this.config()?.epoch ?? null;
       for (const record of records) await validateRecord(record, this.subjects);
+      const config=this.writeConfig(expectedEpoch===undefined?before:expectedEpoch);
       const existing = await this.read();
       const identities = new Set(existing.map(identity));
       const additions = records.filter(record => !identities.has(identity(record)));
@@ -167,8 +168,8 @@
         const id = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
         prepared.push({...record, id});
       }
-      // Re-check after asynchronous validation: another tab may have reset tracking.
-      if (this.config()?.epoch !== config.epoch) throw new Error('Tracking changed in another tab. Review its current state before saving.');
+      // Re-check after asynchronous validation: another tab may have cleared the library.
+      if (this.config()?.epoch !== config.epoch) throw new Error('Saved items changed in another tab. Review its current state before saving.');
       for (const saved of prepared) {
         // Identity-derived keys deduplicate concurrent saves without overwriting other versions.
         this.put(`${KEY}:record:${config.epoch}:${saved.id}`, JSON.stringify(saved));
@@ -198,20 +199,20 @@
     }
     setFlag(subject, kind, on, expectedEpoch) {
       validateFlag({subject, kind}, this.subjects);
-      const config = this.config(); if (!config || this.blocked) throw new Error('Enable private tracking before saving.');
-      if(expectedEpoch!==undefined && config.epoch!==expectedEpoch)throw new Error('Tracking changed in another tab. Review before saving.');
+      const config = this.writeConfig(expectedEpoch);
       const key = `${KEY}:flag:${config.epoch}:${subject}:${kind}`;
       if (on) this.put(key, JSON.stringify({subject, kind}));
       else { try { this.storage?.removeItem(key); } catch (_) { this.fallback(); this.warning += ' The saved browser copy could not be removed.'; } this.memory.delete(key); }
     }
     async mergePersonal(value, expectedEpoch) {
-      const config = this.config(); if (!config) throw new Error('Enable private tracking before importing.');
-      if (expectedEpoch !== undefined && config.epoch !== expectedEpoch) throw new Error('Private tracking changed. Preview the backup again before importing.');
+      const before=this.config()?.epoch ?? null;
+      if(expectedEpoch!==undefined&&before!==expectedEpoch)throw Error('Saved items changed. Preview the backup again before importing.');
       const includesAffirmations=value.affirmations !== null && value.affirmations !== undefined;
       const includesRoutine=value.routine !== null && value.routine !== undefined;
       const envelope=includesRoutine ? {schema:routine.backupSchema(value.routine),records:value.records,flags:value.flags,affirmations:value.affirmations,routine:value.routine} : includesAffirmations ? {schema:3,records:value.records,flags:value.flags,affirmations:value.affirmations} : {schema:2,records:value.records,flags:value.flags};
       const validated = await parsePersonalBackup(JSON.stringify(envelope), this.subjects);
-      const assertEpoch=()=>{if(this.config()?.epoch!==config.epoch)throw new Error('Tracking changed in another tab. Review before importing.');};
+      const config=this.writeConfig(before);
+      const assertEpoch=()=>{if(this.config()?.epoch!==config.epoch)throw new Error('Saved items changed in another tab. Review before importing.');};
       assertEpoch();
       let initialRoutine=null, mergedRoutine=null;
       if(includesRoutine){
@@ -405,7 +406,7 @@
     if (!response.ok) throw new Error('Public learning information could not be loaded.');
     const data = await response.json();
     const preferences = document.getElementById('preferences');
-    if (!preferences?.showModal) throw new Error('This browser needs native dialog support for private tracking.');
+    if (!preferences?.showModal) throw new Error('This browser needs native dialog support for saved items.');
     let storage; try { storage = localStorage; } catch (_) { storage = null; }
     const store = new Store(storage, data.subjects); if (!storage) store.fallback();
     const pageSubject = panel.dataset.learnedSubject;
@@ -413,10 +414,9 @@
     if (view !== 'settings') panel.hidden = false;
     const notice = node('p', '', panel); notice.className = 'personal-notice'; notice.setAttribute('role','status'); notice.tabIndex = -1;
     const settings = node('section', undefined, preferences); settings.className = 'personal-settings';
-    node('h2', 'Private library', settings);
-    node('p', 'Optional browser-local favorites, to-do items and learned self-reports. No account, analytics or upload. Shared-device users can see these interests. Clearing site data removes them; private backups include custom affirmations, favorite lines and ordered routine cues, and may contain personal text. Site settings backups do not include this library.', settings);
+    node('h2', 'Saved items', settings);
+    node('p', 'Favorites, To Do, and Learned are saved in this browser. Use the backup controls below to move your saved items to another browser.', settings);
     const settingsNotice = node('p', '', settings); settingsNotice.setAttribute('role','status');
-    const enable = button('Enable private tracking', settings, () => act(async () => { store.enable(); return 'Private tracking enabled. Choose an action explicitly to save it.'; }));
     const counts = node('p', '', settings);
     const recordsDisclosure = node('details', undefined, settings); node('summary', 'Review saved learned versions', recordsDisclosure);
     const settingsRecords = node('div', undefined, recordsDisclosure);
@@ -432,16 +432,15 @@
     const dateLabel = node('label','External learning date (otherwise unknown) ',external);
     const externalDate = node('input',undefined,dateLabel); externalDate.type='date';
     node('p','Self-report only. Guide and recording sources are separate; teaching changes are not verified. Your global audio edition stays unchanged.',modal);
-    const modalEnable = button('Enable private tracking',modal,()=>act(async()=>{store.enable();return 'Tracking enabled. Save explicitly to mark this version learned.';}));
     const actions = node('div',undefined,modal); actions.className='personal-dialog-actions';
     let activeSubject = '', opener = null, pendingEpoch = null, explicitChoice = false;
     const close = () => { if (modal.open) modal.close(); if (opener?.isConnected && !opener.closest('[hidden]')) opener.focus(); };
     button('Cancel',actions,close);
     const save = button('Save learned version',actions,()=>act(async()=>{
-      if (!store.config() || store.config().epoch !== pendingEpoch) throw new Error('Tracking changed. Review this choice and enable tracking before saving.');
+      if ((store.config()?.epoch ?? null) !== pendingEpoch) throw Error('Saved items changed. Review this choice before saving.');
       const current = data.subjects[activeSubject]; const isExternal = selection.value === 'external';
       const record = {id:crypto.randomUUID(),subject:isExternal?'preparation:human-plus':activeSubject,markedAt:new Date().toISOString(),guide:isExternal?null:current.guide,recording:isExternal||selection.value==='guide'?null:current.recordings[Number(selection.value)],external:isExternal?{edition:externalEdition.value.trim()||null,date:externalDate.value||null}:null};
-      const added=await store.merge([record]); close(); return added?'Learned version saved; previous versions retained.':'That learned version is already saved.';
+      const added=await store.merge([record],pendingEpoch); close(); return added?'Learned version saved; previous versions retained.':'That learned version is already saved.';
     }));
     const versions = node('details',undefined,modal); node('summary','Saved versions and changes',versions);
     const saved = node('div',undefined,versions);
@@ -477,29 +476,28 @@
       if(id==='preparation:ocf')node('option','Already learned official Human Plus preparation',selection).value='external';
       defaultChoice(edition);externalEdition.value='';externalDate.value='';external.open=false;versions.open=false;
       heading.textContent=`Mark learned: ${current.title}`;updateTarget();renderRecords(saved,records.filter(r=>r.subject===id||(id==='preparation:ocf'&&r.subject==='preparation:human-plus')));
-      modalNotice.textContent=store.config()?'Nothing changes until you save.':'Enable private tracking, then explicitly save this version.';
-      save.disabled=!store.config();modalEnable.hidden=Boolean(store.config());
+      modalNotice.textContent='Nothing changes until you save.';
+      save.disabled=store.blocked;
       if(!modal.open)modal.showModal();selection.focus();
     }
     document.addEventListener('ocf-edition-change',()=>{if(modal.open&&!explicitChoice){defaultChoice();updateTarget();}});
     function openSettings(trigger) {
       opener=trigger;
       // Delegate to the shared controller so Escape/Back and focus restoration stay consistent.
-      window.ocfPreferences?.open(trigger); enable.focus();
+      window.ocfPreferences?.open(trigger); settingsNotice.focus();
     }
     const icons={favorite:'♡',learned:'✓',todo:'☐'};
     const labels={favorite:'Favorite',learned:'Learned',todo:'To Do'};
     function addButtons(parent,id,edition='') {
       if(parent.querySelector(':scope > .personal-actions')||!Object.hasOwn(data.subjects,id))return;
-      const bar=node('div',undefined,parent);bar.className='personal-actions';bar.setAttribute('role','group');bar.setAttribute('aria-label',`Private library: ${data.subjects[id].title}`);
+      const bar=node('div',undefined,parent);bar.className='personal-actions';bar.setAttribute('role','group');bar.setAttribute('aria-label',`Saved items: ${data.subjects[id].title}`);
       for(const kind of ['favorite','learned','todo']) {
         const control=button('',bar,()=>{
           if(kind==='learned'){openLearned(id,control,edition);return;}
-          if(!store.config()){openSettings(control);return;}
           act(async()=>{store.readFlags();const on=!store.readFlags().some(f=>f.subject===id&&f.kind===kind);store.setFlag(id,kind,on);return `${labels[kind]} ${on?'added':'removed'} for ${data.subjects[id].title}.`;});
         });
         control.dataset.personalSubject=id;control.dataset.personalKind=kind;
-        control.setAttribute('aria-label',`${labels[kind]}: ${data.subjects[id].title}`);control.dataset.help=labels[kind];control.title=kind==='learned'?'Choose a learned version or review/remove saved versions':`${labels[kind]} — private, independent of learned status`;
+        control.setAttribute('aria-label',`${labels[kind]}: ${data.subjects[id].title}`);control.dataset.help=labels[kind];control.title=kind==='learned'?'Choose a learned version or review/remove saved versions':`${labels[kind]} — saved in this browser`;
         node('span',icons[kind],control).setAttribute('aria-hidden','true');node('span',labels[kind],control).className='personal-action-label';
         if(kind==='learned'){control.setAttribute('aria-haspopup','dialog');control.setAttribute('aria-controls',modal.id);}
       }
@@ -555,8 +553,8 @@
         if(input.size>LIMIT)throw new Error('Backup exceeds 2 MiB.');
         const candidate=await parsePersonalBackup(await input.text(),data.subjects);if(!current())return;
         const incomingAffirmations=candidate.affirmations || affirmations.empty();
-        if(candidate.affirmations!==null) {const local=store.readAffirmations();store.affirmationContext(selection.epoch);await affirmations.merge(local,candidate.affirmations,digest);}
-        if(candidate.routine!==null){const local=store.readRoutine();store.routineContext(selection.epoch);await routine.merge(local.rows,candidate.routine,data.subjects,digest,canonical);}
+        if(candidate.affirmations!==null) {const local=store.readAffirmations();if(selection.epoch!==null)store.affirmationContext(selection.epoch);await affirmations.merge(local,candidate.affirmations,digest);}
+        if(candidate.routine!==null){const local=store.readRoutine();if(selection.epoch!==null)store.routineContext(selection.epoch);await routine.merge(local.rows,candidate.routine,data.subjects,digest,canonical);}
         // Web Crypto can yield after validation: do not show even a partial stale preview.
         if(!current())return;
         const known=new Set(records.map(identity));const additions=candidate.records.filter(r=>!known.has(identity(r)));
@@ -571,21 +569,21 @@
         const cues=node('details',undefined,preview);node('summary','Preview personal routine text',cues);(candidate.routine||[]).forEach(row=>node('p',routine.eligible(row,data.subjects)?routine.cue(row):'Unavailable command (retained without displaying its cue)',cues));
         const cancel=button('Cancel import',preview,()=>{if(current())invalidateImport();});
         const confirm=button('Confirm import and merge',preview,()=>act(async()=>{
-          if(!current())throw new Error('Private tracking or file selection changed. Preview the backup again before importing.');
+          if(!current())throw new Error('Saved items or file selection changed. Preview the backup again before importing.');
           confirm.disabled=true;cancel.disabled=true;file.disabled=true;
           try {
             // Use this closure's immutable candidate/epoch, never a later selection.
             const count=await store.mergePersonal(candidate,selection.epoch);
-            if(current())invalidateImport();
+            if(importSelection===selection)invalidateImport();
             return `${count} learned versions imported; personal marks merged. ${store.lastImportResult.custom} custom lines and ${store.lastImportResult.favorites} My Morning favorites and ${store.lastImportResult.routine} routine cues added.${store.lastImportResult.memoryOnly?' Changes are only in memory; export before leaving.':''}`;
           } finally {file.disabled=false;confirm.disabled=false;cancel.disabled=false;}
         }));
         await refresh('Backup validated. Review and confirm before import.');
       } catch(error) {if(current())showError(error);}
     });
-    button('Reset all private tracking',manage,()=>act(async()=>{
-      if(!window.confirm('Remove all learned versions, favorites, to-do marks, custom affirmations, My Morning favorites and routine cues from this browser and turn tracking off? Export a backup first to keep them.'))return;
-      store.reset();invalidateImport();if(modal.open)close();return 'Private tracking reset.';
+    button('Clear saved items',manage,()=>act(async()=>{
+      if(!window.confirm('Remove all learned versions, favorites, to-do marks, custom affirmations, My Morning favorites and routine cues from this browser? Export a backup first to keep them.'))return;
+      store.reset();invalidateImport();if(modal.open)close();return 'Saved items cleared.';
     }));
     function renderRecords(saved,shown) {
       saved.replaceChildren();if(!shown.length)node('p','No learned versions saved here.',saved);
@@ -635,13 +633,11 @@
     async function refresh(message='') {
       invalidateChangedImportEpoch();
       const turn=++generation;const loaded=await store.read();if(turn!==generation)return;
-      records=loaded;flags=store.readFlags();const enabled=Boolean(store.config());
-      enable.hidden=enabled;modalEnable.hidden=enabled;save.disabled=!enabled;
-      if(modal.open&&!pendingEpoch&&enabled)pendingEpoch=store.config().epoch;
+      records=loaded;flags=store.readFlags();save.disabled=store.blocked;
       const text=[message,store.warning].filter(Boolean).join(' ');
       notice.textContent=text;notice.hidden=!text;
-      settingsNotice.textContent=[text,enabled?(store.storage?'Private tracking enabled in this browser.':'Enabled for this page only; not persisted.'):store.affirmationConfig()?'Affirmations and routine cues are saved only when you choose. Function learning controls remain off.':'Tracking is off. Enable explicitly before saving.'].filter(Boolean).join(' ');
-      if(modal.open)modalNotice.textContent=text||(!enabled?'Tracking is off. Enable and review before saving.':'Nothing changes until you save.');
+      settingsNotice.textContent=text;
+      if(modal.open)modalNotice.textContent=text||'Nothing changes until you save.';
       counts.textContent=`${new Set(records.filter(r=>r.subject.startsWith('OCF-')).map(r=>r.subject)).size} learned functions · ${flags.filter(f=>f.kind==='favorite').length} favorites · ${flags.filter(f=>f.kind==='todo').length} to do · ${store.readAffirmations().custom.length} custom affirmations · ${store.readAffirmations().favorites.length} My Morning favorites`;
       const focused=document.activeElement;
       renderRecords(settingsRecords,records);
@@ -653,7 +649,7 @@
     function showError(error){notice.hidden=false;notice.textContent=error.message+' '+store.warning;settingsNotice.textContent=notice.textContent;modalNotice.textContent=notice.textContent;}
     async function act(action){try{const message=await action();await refresh(message);}catch(error){showError(error);}}
     [modalNotice,settingsNotice].forEach(n=>n.tabIndex=-1);
-    window.addEventListener('storage',event=>{if(store.storage&&(event.key===null||event.key.startsWith(KEY))) {invalidateChangedImportEpoch();if(modal.open&&store.config()?.epoch!==pendingEpoch){pendingEpoch=null;close();}refresh('Private records changed in another tab.');}});
+    window.addEventListener('storage',event=>{if(store.storage&&(event.key===null||event.key.startsWith(KEY))) {invalidateChangedImportEpoch();if(modal.open&&(store.config()?.epoch??null)!==pendingEpoch){pendingEpoch=null;close();}refresh('Private records changed in another tab.');}});
     window.addEventListener('pageshow',()=>{if(modal.open)close();refresh();});
     window.ocfPrivateLibrary={store,refresh,openSettings};
     document.dispatchEvent(new Event('ocf-private-library-ready'));
@@ -663,5 +659,5 @@
       try{document.getElementById(decodeURIComponent(initialHash.slice(1)))?.scrollIntoView();}catch(_){}
     }
   }
-  start().catch(error=>{panel.hidden=false;node('p',`Private tracking unavailable: ${error.message}`,panel);});
+  start().catch(error=>{panel.hidden=false;node('p',`Saved items unavailable: ${error.message}`,panel);});
 })();

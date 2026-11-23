@@ -27,7 +27,7 @@ test('ranked reordering and hidden export panels preserve selection and active a
 });
 test('relevance outranks personal sorting while favorite filtering and selected files compose',async({page})=>{
  await page.goto('/functions/');await expect(page.locator('.personal-settings')).toBeAttached();await page.locator('#search').fill('Manifest');
- const options=page.locator(cards).filter({has:page.getByRole('heading',{name:'Options',exact:true})});await options.getByRole('button',{name:/^Favorite:/}).click();await page.locator('.personal-settings').getByRole('button',{name:'Enable private tracking'}).click();await page.locator('[data-preferences-close]').click();await options.getByRole('button',{name:/^Favorite:/}).click();
+ const options=page.locator(cards).filter({has:page.getByRole('heading',{name:'Options',exact:true})});await options.getByRole('button',{name:/^Favorite:/}).click();
  await options.locator('input[data-selected-asset-id]:visible').check();await page.getByLabel('Sort personal states',{exact:true}).selectOption('favorite');await first(page);await page.getByLabel('My library',{exact:true}).selectOption('favorite');await expect(page.locator(cards)).toHaveCount(1);await expect(options).toBeVisible();await page.getByLabel('My library',{exact:true}).selectOption('all');await first(page);
  await page.locator('#search').fill('');await expect(page.locator('#selection-count')).toContainText('1 file');await expect(options.getByRole('button',{name:/^Favorite:/})).toHaveAttribute('aria-pressed','true');
 });

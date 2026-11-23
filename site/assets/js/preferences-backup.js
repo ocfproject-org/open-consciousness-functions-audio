@@ -12,12 +12,62 @@
   if (typeof document === 'undefined') return;
   const preferences = document.getElementById('preferences');
   const edition = document.getElementById('edition-filter'), format = document.getElementById('format-filter'), theme = document.querySelector('[data-theme-toggle]');
-  if (!preferences || !edition || !format || !theme) return;
+  if (!preferences) return;
   const versions = () => [...edition.options].map(option => option.value);
   const node = (tag,text,parent) => {const n=document.createElement(tag);if(text!==undefined)n.textContent=text;parent?.append(n);return n;};
+  const smart=preferences.querySelector('[data-smart-preferences]');
+  if(smart){
+    const key='ocf.private-batch.smart-play-defaults.v1', prefix=key+'.session.';
+    const modes={standard:'Original recording',full:'Full guidance',experienced:'Shorter guidance',advanced:'Custom'};
+    const controls={preparation:'Transmutation Box',relaxation:'Relaxation','resonant-tuning':'Resonant Tuning','energy-ball':'Energy Ball',affirmation:'Affirmation',return:'Waking return'};
+    const values={off:'Off',reminder:'Reminder',short:'Short',full:'Full'};
+    const names=new Map(Object.entries(JSON.parse(smart.dataset.smartLabels||'{}')));
+    const summary=smart.querySelector('[data-smart-summary]'), list=smart.querySelector('[data-smart-saved]'), status=smart.querySelector('[data-smart-export-status]');
+    const exportButton=smart.querySelector('[data-smart-export]');
+    function sanitize(text){
+      try{
+        const item=JSON.parse(text), mode=item?.mode??item?.preset;
+        if(!Object.hasOwn(modes,mode))return null;
+        return {mode,choices:Object.fromEntries(Object.keys(controls).filter(k=>Object.hasOwn(values,item.choices?.[k])).map(k=>[k,item.choices[k]]))};
+      }catch{return null;}
+    }
+    function read(){
+      const results={schema:1,kind:'ocf-smart-play-preferences',default:null,sessions:{}};
+      try{
+        results.default=sanitize(localStorage.getItem(key));
+        for(const k of Object.keys(localStorage)){
+          if(!k.startsWith(prefix))continue;
+          const id=k.slice(prefix.length);
+          if(!/^[a-z0-9-]{1,120}$/.test(id))continue;
+          const item=sanitize(localStorage.getItem(k));
+          if(item)results.sessions[id]=item;
+        }
+      }catch{status.textContent='Browser storage is unavailable.';}
+      return results;
+    }
+    const describe=x=>x?modes[x.mode]+(x.mode==='advanced'&&Object.keys(x.choices).length?' · '+Object.entries(x.choices).map(([k,v])=>controls[k]+': '+values[v]).join('; '):''):'Original recording';
+    function refresh(){
+      const saved=read(), entries=Object.entries(saved.sessions);
+      summary.textContent='Default for all sessions: '+describe(saved.default);
+      list.replaceChildren();
+      for(const [id,choice] of entries)node('li',(names.get(id)||id)+': '+describe(choice),list);
+      if(!entries.length)node('li','No settings saved for individual sessions.',list);
+      exportButton.disabled=!saved.default&&!entries.length;
+    }
+    exportButton.addEventListener('click',()=>{
+      const saved=read();
+      const url=URL.createObjectURL(new Blob([JSON.stringify(saved,null,2)],{type:'application/json'}));
+      const a=node('a');a.href=url;a.download='ocf-smart-play-settings.json';a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);status.textContent='Smart Play settings downloaded.';
+    });
+    new MutationObserver(()=>{if(preferences.open)refresh();}).observe(preferences,{attributes:true,attributeFilter:['open']});
+    window.addEventListener('storage',()=>{if(preferences.open)refresh();});
+    refresh();
+  }
+  if (!edition || !format || !theme) return;
   const section=node('details',undefined,preferences);section.className='preferences-backup';
   node('summary','Site settings backup',section);
-  node('p','Export or restore theme, audio edition and preferred format. Private library marks and tracking consent are separate and remain unchanged. Search, playback and URLs are excluded. Files stay on your device; nothing is uploaded.',section);
+  node('p','Export or restore theme, audio edition and preferred format. Saved items are separate and remain unchanged. Search, playback and URLs are excluded. Files stay on your device; nothing is uploaded.',section);
   const notice=node('p','',section);notice.setAttribute('role','status');
   const button=(label,action)=>{const b=node('button',label,section);b.type='button';b.addEventListener('click',action);return b;};
   const current=()=>({schema:1,kind:'ocf-site-preferences',theme:theme.dataset.themePreference||'system',edition:edition.value,format:format.value});
@@ -35,7 +85,7 @@
       for(let i=0;i<4&&theme.dataset.themePreference!==value.theme;i++)theme.click();
       edition.value=value.edition;edition.dispatchEvent(new Event('change',{bubbles:true}));
       format.value=value.format;format.dispatchEvent(new Event('change',{bubbles:true}));
-      clear();input.focus();notice.textContent='Site settings applied. Private library and tracking consent unchanged. Browser storage availability determines whether settings persist.';
+      clear();input.focus();notice.textContent='Site settings applied. Saved items unchanged. Browser storage availability determines whether settings persist.';
     } catch(error) {clear();notice.textContent=error.message;}
   });
   const cancel=button('Cancel settings import',()=>{clear();notice.textContent='Settings import cancelled. No settings changed.';input.focus();});

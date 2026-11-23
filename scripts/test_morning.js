@@ -48,7 +48,7 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  await assert.rejects(parsePersonalBackup(JSON.stringify({...mixed,schema:4}),subjects));
  for(const bad of [{...originals[0],text:'Plus Clear'},{...originals[0],command:['hplus-off-loading-1988']},{...originals[0],source:'https://example.com'}])await assert.rejects(parsePersonalBackup(JSON.stringify({...mixed,routine:[bad]}),subjects));
  assert.equal((await model.merge(mixed.routine,mixed.routine,subjects,digest,canonical)).length,3);
- const storage=new Storage(),a=new Store(storage,subjects),b=new Store(storage,subjects);assert.deepEqual(a.readRoutine().rows,[]);assert.equal(storage.length,0);a.enable();const epoch=a.config().epoch;
+ const storage=new Storage(),a=new Store(storage,subjects),b=new Store(storage,subjects);assert.deepEqual(a.readRoutine().rows,[]);assert.equal(storage.length,0);a.writeConfig();const epoch=a.config().epoch;
  await a.saveRoutine(rows,a.readRoutine(),epoch);assert.deepEqual(b.readRoutine().rows,rows);
  const stale=a.readRoutine();await b.saveRoutine([...rows].reverse(),b.readRoutine(),epoch);await assert.rejects(a.saveRoutine(rows,stale,epoch),/changed/);
  const custom={id:crypto.randomUUID(),kind:'custom',text:'<img src=x onerror=alert(1)> javascript:alert(1)'};const backup={schema:4,records:[],flags:[],affirmations:{custom:[],favorites:[]},routine:[...rows,custom]};
@@ -61,11 +61,11 @@ class Storage{constructor(){this.map=new Map();this.writes=0;}get length(){retur
  const key=`${KEY}:routine:${epoch}`;storage.setItem(key,'{');const writes=storage.writes;
  await assert.rejects(a.mergePersonal({...parsed,flags:[{subject:'OCF-BOD-010',kind:'favorite'}]},epoch),/unreadable/);assert.equal(storage.writes,writes);assert.equal(storage.getItem(key),'{');
  await a.mergePersonal(await parsePersonalBackup(JSON.stringify({schema:2,records:[],flags:[{subject:'OCF-BOD-010',kind:'favorite'}]}),subjects),epoch);assert.equal(a.readFlags().length,1);assert.equal(storage.getItem(key),'{');
- a.reset();assert.equal(storage.getItem(key),null);a.enable();await assert.rejects(a.saveRoutine(rows,{revision:null,rows:[]},epoch),/changed/);
- const blocked=new Store({getItem(){throw Error('blocked');}},subjects);blocked.enable();await blocked.saveRoutine([custom],blocked.readRoutine(),blocked.config().epoch);assert.equal(blocked.readRoutine().rows.length,1);assert.match(blocked.warning,/only in memory/);
- const quotaStorage=new Storage(),quota=new Store(quotaStorage,subjects);quota.enable();await quota.saveRoutine(rows,quota.readRoutine(),quota.config().epoch);const old=quota.readRoutine();quotaStorage.setItem=()=>{throw Error('quota');};await quota.saveRoutine([...rows,custom],old,quota.config().epoch);assert.equal(quota.readRoutine().rows.length,3);assert.equal(new Store(quotaStorage,subjects).readRoutine().rows.length,2);assert.match(quota.warning,/only in memory/);
+ a.reset();assert.equal(storage.getItem(key),null);a.writeConfig();await assert.rejects(a.saveRoutine(rows,{revision:null,rows:[]},epoch),/changed/);
+ const blocked=new Store({getItem(){throw Error('blocked');}},subjects);blocked.writeConfig();await blocked.saveRoutine([custom],blocked.readRoutine(),blocked.config().epoch);assert.equal(blocked.readRoutine().rows.length,1);assert.match(blocked.warning,/only in memory/);
+ const quotaStorage=new Storage(),quota=new Store(quotaStorage,subjects);quota.writeConfig();await quota.saveRoutine(rows,quota.readRoutine(),quota.config().epoch);const old=quota.readRoutine();quotaStorage.setItem=()=>{throw Error('quota');};await quota.saveRoutine([...rows,custom],old,quota.config().epoch);assert.equal(quota.readRoutine().rows.length,3);assert.equal(new Store(quotaStorage,subjects).readRoutine().rows.length,2);assert.match(quota.warning,/only in memory/);
  // A cross-tab interruption after unrelated additions is explicit, never reported as full success.
- const partialStore=new Store(new Storage(),subjects);partialStore.enable();const partialEpoch=partialStore.config().epoch;
+ const partialStore=new Store(new Storage(),subjects);partialStore.writeConfig();const partialEpoch=partialStore.config().epoch;
  const realSave=partialStore.saveRoutine.bind(partialStore);partialStore.saveRoutine=async()=>{throw Error('Concurrent routine changed');};
  await assert.rejects(partialStore.mergePersonal({...parsed,flags:[{subject:'OCF-BOD-010',kind:'favorite'}]},partialEpoch),/Import interrupted after adding 0 learned versions, 1 personal marks/);
  assert.equal(partialStore.lastImportResult.flags,1);assert.equal(partialStore.readFlags().length,1);assert.equal(partialStore.readRoutine().rows.length,0);partialStore.saveRoutine=realSave;
