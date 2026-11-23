@@ -400,7 +400,7 @@
       card.hidden = false;
       present();
       window.ocfRegisterMediaPlayer?.(player);
-      player.focus();
+      if (window.ocfFocusPlaybackControl) window.ocfFocusPlaybackControl(player); else player.focus();
     };
     choose.addEventListener('click', async () => {
       choose.disabled = true;

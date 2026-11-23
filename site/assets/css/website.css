@@ -494,3 +494,12 @@ html:has(:target) { scroll-behavior: auto; }
 .browse-search-active #release-extras { display: none !important; }
 .browse-search-active .page-intro { margin-bottom: .5rem; }
 .session-cues { margin: .25rem 0; font-size: .9rem; }
+
+/* Match the compact Original / Smart Play controls on recording cards. */
+.ocf-local-player{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:.45rem;padding:.45rem;border-radius:1.5rem;background:color-mix(in srgb,currentColor 9%,transparent)}
+.ocf-local-player button{min-width:44px;min-height:44px;padding:.25rem;border-radius:50%;font-size:1.1rem}
+.ocf-local-player input{width:100%;min-width:0;margin:0;min-height:32px;cursor:pointer}
+.ocf-local-position{min-width:0}
+.ocf-local-player output{display:block;font-size:.78rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ocf-key-help{margin-block:.6rem}
+.ocf-compact-audio,.ocf-local-player[hidden],.ocf-recording-controls[hidden]{display:none!important}
