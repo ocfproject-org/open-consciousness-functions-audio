@@ -81,9 +81,23 @@
       });
       update();
     });
-    seek.addEventListener('input', () => { scrubbing = true; update(); });
-    seek.addEventListener('change', () => moveTo(seek.valueAsNumber));
-    seek.addEventListener('blur', () => { scrubbing = false; update(); });
+    let pointerScrub = false, sliderInputHandled = false;
+    seek.addEventListener('pointerdown', () => { pointerScrub = true; sliderInputHandled = false; });
+    seek.addEventListener('pointerup', () => { pointerScrub = false; });
+    seek.addEventListener('lostpointercapture', () => { pointerScrub = false; });
+    seek.addEventListener('pointercancel', () => { pointerScrub = false; scrubbing = false; update(); });
+    seek.addEventListener('input', () => {
+      if (pointerScrub) { scrubbing = true; update(); return; }
+      // Screen readers may set the value directly without pointer or key events.
+      sliderInputHandled = true;
+      setTimeout(() => { sliderInputHandled = false; }, 0);
+      moveTo(seek.valueAsNumber);
+    });
+    seek.addEventListener('change', () => {
+      if (!sliderInputHandled) moveTo(seek.valueAsNumber);
+      sliderInputHandled = false;
+    });
+    seek.addEventListener('blur', () => { pointerScrub = false; scrubbing = false; update(); });
     seek.addEventListener('keydown', event => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const jump = {ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5, PageUp: 30, PageDown: -30}[event.key];
