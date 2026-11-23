@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_public_site import _discovery_section
-from site_references import REFERENCES, chain_references, use_references
+from site_references import REFERENCES, chain_references, function_background, use_references
 
 
 class ReferenceTests(unittest.TestCase):
@@ -39,6 +39,16 @@ class ReferenceTests(unittest.TestCase):
                          REFERENCES['sources']['A-ODYS2']['title'])
         self.assertEqual('High Performance-Ten (HP-10), © 1987',
                          REFERENCES['sources']['A-HP10']['title'])
+
+    def test_rebal_background_is_separate_and_scoped_to_energy_ball(self):
+        result = function_background('OCF-EXP-007')
+        self.assertIn('REBAL', result)
+        self.assertIn('are OCF’s cues, not Monroe Institute instructions', result)
+        self.assertIn('not claims of physical protection or health benefits', result)
+        self.assertIn('https://archive.org/details/ram-typed-transcripts', result)
+        self.assertIn('https://archive.org/details/explorer-coll-86', result)
+        self.assertIn('https://www.monroeinstitute.org/pages/resources', result)
+        self.assertEqual('', function_background('OCF-FND-002'))
 
     def test_curated_subset_has_no_unverified_or_private_links(self):
         self.assertEqual(20, len(REFERENCES['uses']))

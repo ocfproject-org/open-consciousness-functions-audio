@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 from catalog import validate_catalog
 from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
-from site_references import chain_references, use_references
+from site_references import chain_references, function_background, use_references
 from affirmations_site import page as affirmations_page
 from morning_routine_site import install as install_morning_routine
 
@@ -1844,7 +1844,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="intent-note">This describes what the practice intends to teach, not a guaranteed result or medical treatment. <a href="#safety">Read the function-specific precautions</a>.</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="intent-note">This describes what the practice intends to teach, not a guaranteed result or medical treatment. <a href="#safety">Read the function-specific precautions</a>.</p>{audio_actions}</header>{terms}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 
