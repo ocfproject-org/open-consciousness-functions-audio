@@ -744,9 +744,9 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertLess(history_page.index('bad&lt;'), history_page.index('Ancestor revision'))
         self.assertNotIn('No source revision records are available', history_page)
 
-        self.assertIn("Documented practice intent:", html)
-        self.assertIn("not a guaranteed result or medical treatment", html)
-        self.assertIn("not evidence of lasting biological change", html)
+        self.assertNotIn("Documented practice intent:", html)
+        self.assertNotIn("not a guaranteed result or medical treatment", html)
+        self.assertNotIn("not evidence of lasting biological change", html)
         self.assertIn("Persistence described by the practice: temporary", html)
         permanent = copy.deepcopy(function)
         permanent["lifecycle"]["persistence"] = "permanent"
@@ -758,7 +758,8 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn("Documented command scope: permanent", permanent_page)
         self.assertIn("Persistence described by the practice: permanent", permanent_page)
         self.assertIn("Existing function-specific precaution.", permanent_page)
-        self.assertLess(permanent_page.index("not evidence of lasting biological change"), permanent_page.index("<strong>Reinforcement</strong>"))
+        self.assertIn("<strong>Reinforcement</strong>", permanent_page)
+        self.assertNotIn("not evidence of lasting biological change", permanent_page)
         self.assertEqual(permanent, snapshot)
         self.assertEqual(function, original)
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
