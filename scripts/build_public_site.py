@@ -315,6 +315,21 @@ def fetch_transcript(asset, *, fetcher=None):
     return body
 
 
+def published_transcript_mirror(directory):
+    """Use a local published transcript cache; the caller still validates every byte."""
+    root = directory.resolve(strict=True)
+    _require(root.is_dir(), "published transcript mirror is not a directory")
+
+    def from_mirror(asset):
+        # fetch_transcript validates the asset ID, format, size and SHA before use.
+        path = root / f'{asset["asset_id"]}.{asset["format"]}'
+        _require(path.is_file() and not path.is_symlink(), "published transcript missing from mirror")
+        with path.open("rb") as fp:
+            return fp.read(asset["size_bytes"] + 1)
+
+    return from_mirror
+
+
 def _copy_static_site(site_root: Path, output: Path):
     _require(site_root.is_dir(), "source site directory is missing")
     _require(
@@ -2360,6 +2375,10 @@ def _validate_build(args):
         source_pin=source_pin,
         content_dir=args.content_dir,
         historical_reference=args.historical_reference,
+        transcript_fetcher=(
+            published_transcript_mirror(args.published_transcript_mirror)
+            if args.published_transcript_mirror is not None else None
+        ),
         smart_playback_media=args.smart_playback_media,
     )
 
@@ -2374,6 +2393,8 @@ def main(argv=None):
     parser.add_argument("--historical-reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--smart-playback-media", type=Path, help="Exact approved public Comfort MP3; verified and inventoried in the isolated experiment")
+    parser.add_argument("--published-transcript-mirror", type=Path,
+                        help="Offline folder of published transcript sidecars; every file is still verified")
     args = parser.parse_args(argv)
     try:
         result = _validate_build(args)
