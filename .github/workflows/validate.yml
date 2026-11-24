@@ -64,10 +64,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PYTHONPATH: ocf-source/scripts
         run: |
+          command -v ffmpeg >/dev/null || (sudo apt-get update && sudo apt-get install -y ffmpeg)
           python scripts/refresh_catalog.py --output verified-catalog.json
           python scripts/smart_playback_media.py --output experiment-media
           python -m ocf_tools.public_site_export --source-commit "${{ steps.source.outputs.commit }}" --output public-guide-export.json
-          python scripts/build_public_site.py --site-root site --content-dir docs/website --source-pin site/source.json --guide-export public-guide-export.json --catalog verified-catalog.json --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --output verified-site
+          python scripts/build_public_site.py --site-root site --content-dir docs/website --source-pin site/source.json --guide-export public-guide-export.json --catalog verified-catalog.json --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --continuous-smart-play --output verified-site
           python scripts/validate_site.py verified-site
       - name: Install pinned browser test dependencies
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
@@ -85,7 +86,9 @@ jobs:
         run: npm run test:browser
       - name: Verify isolated streaming experiment
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
-        run: node scripts/test_smart_playback_browser.cjs
+        run: |
+          node scripts/test_smart_playback_browser.cjs
+          node scripts/test_continuous_smart_play.cjs
       - name: Retain public-safe browser acceptance evidence
         if: always() && matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         uses: actions/upload-artifact@v4
