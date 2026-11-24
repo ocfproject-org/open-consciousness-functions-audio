@@ -38,7 +38,7 @@
     const recording = record.recording;
     if (recording !== null) {
       object(recording, ['tag', 'edition', 'locale', 'voice', 'source_commit', 'master_sha256', 'render_source', 'assets']);
-      if (typeof recording.tag !== 'string' || typeof recording.edition !== 'string' || !/^audio-\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(recording.tag) || (!/^\d+\.\d+\.\d+$/.test(recording.edition) || !(recording.tag === `audio-${recording.edition}` || recording.tag.startsWith(`audio-${recording.edition}-`)))) fail();
+      if (typeof recording.tag !== 'string' || typeof recording.edition !== 'string' || !/^audio-\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(recording.tag) || !/^\d+\.\d+\.\d+$/.test(recording.edition)) fail();
       string(recording.locale, 32); string(recording.voice, 100);
       nullableHex(recording.source_commit, 40); nullableHex(recording.master_sha256, 64);
       if (recording.render_source !== null) {
@@ -396,7 +396,7 @@
   const node = (tag, text, parent) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; parent?.append(n); return n; };
   const button = (text, parent, action) => { const b = node('button', text, parent); b.type = 'button'; b.addEventListener('click', action); return b; };
   const sourceLink = (parent, label, commit) => { const a = node('a', label, parent); a.href = `https://github.com/ocfproject-org/open-consciousness-functions/tree/${commit}`; };
-  const audioLabel = r => r ? `${r.tag}, ${r.locale}, voice ${r.voice}` : 'Guide only — no recording claim';
+  const audioLabel = r => r ? `${r.tag}${r.tag === `audio-${r.edition}` || r.tag.startsWith(`audio-${r.edition}-`) ? '' : ` (recording edition ${r.edition})`}, ${r.locale}, voice ${r.voice}` : 'Guide only — no recording claim';
   async function start() {
     const initialHash = location.hash; let interacted = false;
     const interaction = () => { interacted = true; };
@@ -433,11 +433,12 @@
     const externalDate = node('input',undefined,dateLabel); externalDate.type='date';
     node('p','Self-report only. Guide and recording sources are separate; teaching changes are not verified. Your global audio edition stays unchanged.',modal);
     const actions = node('div',undefined,modal); actions.className='personal-dialog-actions';
-    let activeSubject = '', opener = null, pendingEpoch = null, explicitChoice = false;
+    let activeSubject = '', opener = null, pendingEpoch = null, explicitChoice = false, previewChoice = false;
     const close = () => { if (modal.open) modal.close(); if (opener?.isConnected && !opener.closest('[hidden]')) opener.focus(); };
     button('Cancel',actions,close);
     const save = button('Save learned version',actions,()=>act(async()=>{
       if ((store.config()?.epoch ?? null) !== pendingEpoch) throw Error('Saved items changed. Review this choice before saving.');
+      if (selection.value === '') throw Error('Choose a learning target before saving.');
       const current = data.subjects[activeSubject]; const isExternal = selection.value === 'external';
       const record = {id:crypto.randomUUID(),subject:isExternal?'preparation:human-plus':activeSubject,markedAt:new Date().toISOString(),guide:isExternal?null:current.guide,recording:isExternal||selection.value==='guide'?null:current.recordings[Number(selection.value)],external:isExternal?{edition:externalEdition.value.trim()||null,date:externalDate.value||null}:null};
       const added=await store.merge([record],pendingEpoch); close(); return added?'Learned version saved; previous versions retained.':'That learned version is already saved.';
@@ -450,6 +451,12 @@
     function updateTarget() {
       const current=data.subjects[activeSubject]; if(!current)return;
       external.hidden=selection.value!=='external';
+      save.disabled=store.blocked||selection.value==='';
+      if(selection.value===''){
+        target.replaceChildren();
+        node('span','Choose a published recording or official Human Plus preparation.',target);
+        return;
+      }
       const recording=selection.value==='guide'||selection.value==='external'?null:current.recordings[Number(selection.value)];
       target.replaceChildren();
       if(selection.value==='external') node('span','Official Human Plus preparation; external edition/date unknown unless supplied. No OCF recording claim.',target);
@@ -463,21 +470,27 @@
     selection.addEventListener('change',()=>{explicitChoice=true;updateTarget();});
     function defaultChoice(edition) {
       const current=data.subjects[activeSubject];
+      if(previewChoice){selection.value=activeSubject.startsWith('OCF-')?'guide':'';return;}
       const preferred=edition||window.ocfEditions?.current();
       const index=current.recordings.findIndex(r=>r.edition===preferred);
       selection.value=index>=0?String(index):current.recordings.length?'0':'guide';
     }
+    const savePrompt=()=>previewChoice?'Preview recordings aren’t listed here.':'Nothing changes until you save.';
     function openLearned(id, trigger, edition='') {
       if(!Object.hasOwn(data.subjects,id))return;
       activeSubject=id;opener=trigger;explicitChoice=Boolean(edition);pendingEpoch=store.config()?.epoch||null;
       selection.replaceChildren(); const current=data.subjects[id];
-      current.recordings.forEach((r,i)=>{node('option',audioLabel(r),selection).value=String(i);});
+      previewChoice=!edition&&Boolean(document.querySelector('[data-local-release-review][data-review-track]'));
+      if(previewChoice&&!id.startsWith('OCF-')){
+        const placeholder=node('option','Choose a learning target',selection);
+        placeholder.value='';placeholder.disabled=true;
+      }
+      current.recordings.forEach((r,i)=>{node('option',(previewChoice?'Published recording: ':'')+audioLabel(r),selection).value=String(i);});
       if(id.startsWith('OCF-'))node('option','Website guide only — no recording claim',selection).value='guide';
       if(id==='preparation:ocf')node('option','Already learned official Human Plus preparation',selection).value='external';
       defaultChoice(edition);externalEdition.value='';externalDate.value='';external.open=false;versions.open=false;
       heading.textContent=`Mark learned: ${current.title}`;updateTarget();renderRecords(saved,records.filter(r=>r.subject===id||(id==='preparation:ocf'&&r.subject==='preparation:human-plus')));
-      modalNotice.textContent='Nothing changes until you save.';
-      save.disabled=store.blocked;
+      modalNotice.textContent=savePrompt();
       if(!modal.open)modal.showModal();selection.focus();
     }
     document.addEventListener('ocf-edition-change',()=>{if(modal.open&&!explicitChoice){defaultChoice();updateTarget();}});
@@ -633,11 +646,11 @@
     async function refresh(message='') {
       invalidateChangedImportEpoch();
       const turn=++generation;const loaded=await store.read();if(turn!==generation)return;
-      records=loaded;flags=store.readFlags();save.disabled=store.blocked;
+      records=loaded;flags=store.readFlags();save.disabled=store.blocked||selection.value==='';
       const text=[message,store.warning].filter(Boolean).join(' ');
       notice.textContent=text;notice.hidden=!text;
       settingsNotice.textContent=text;
-      if(modal.open)modalNotice.textContent=text||'Nothing changes until you save.';
+      if(modal.open)modalNotice.textContent=text||savePrompt();
       counts.textContent=`${new Set(records.filter(r=>r.subject.startsWith('OCF-')).map(r=>r.subject)).size} learned functions · ${flags.filter(f=>f.kind==='favorite').length} favorites · ${flags.filter(f=>f.kind==='todo').length} to do · ${store.readAffirmations().custom.length} custom affirmations · ${store.readAffirmations().favorites.length} My Morning favorites`;
       const focused=document.activeElement;
       renderRecords(settingsRecords,records);

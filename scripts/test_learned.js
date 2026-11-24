@@ -20,6 +20,16 @@ class MemoryStorage {
   const subjects = {'OCF-TST-001': {guide, recordings: [audio]}, 'preparation:ocf': {guide: null, recordings: [audio]}, 'preparation:human-plus': {guide: null, recordings: []}};
   const record = {id: crypto.randomUUID(), subject: 'OCF-TST-001', markedAt: new Date().toISOString(), guide, recording: audio, external: null};
   await validateRecord(record, subjects);
+  const retained={...record,recording:{...audio,tag:'audio-0.3.0',edition:'0.2.1'}};
+  const mixedStore=new Store(new MemoryStorage(),subjects);
+  assert.equal(await mixedStore.merge([retained],null),1);
+  const exact=await mixedStore.read();
+  const transport=await parsePersonalBackup(JSON.stringify({schema:2,records:exact,flags:[]}),subjects);
+  const returned=new Store(new MemoryStorage(),subjects);
+  assert.equal(await returned.mergePersonal(transport,null),1);
+  assert.deepEqual((await returned.read())[0].recording,retained.recording);
+  await assert.rejects(validateRecord({...retained,recording:{...retained.recording,tag:'https://untrusted.invalid/audio-0.3.0'}},subjects));
+
   const storage = new MemoryStorage(), first = new Store(storage, subjects), second = new Store(storage, subjects);
   assert.deepEqual(await first.read(), []); assert.equal(storage.length, 0);
   assert.equal(await first.merge([record],null),1);
