@@ -5,6 +5,8 @@ const path = require('node:path');
 const { createHash } = require('node:crypto');
 let latestEdition;
 let publishedCatalog;
+const sessionCount = release => [...release.functions, ...release.preparations].flatMap(row=>row.sessions).length;
+const latestCount = () => sessionCount(publishedCatalog.releases[0]);
 test.beforeEach(async ({ request }) => {
   publishedCatalog = await request.get('/catalog.json').then(response => response.json());
   latestEdition = publishedCatalog.releases[0]?.version;
@@ -650,7 +652,7 @@ test('current-cue search normalizes separators, offers clear/no-results, and kee
   await expect(page.locator('#clear-library-filters')).toBeVisible();
   await page.locator('#clear-library-filters').click();
   await expect(search).toHaveValue('');
-  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(latestCount());
 
   await search.fill('PLUS-STRONG');
   await expect(page.locator('.session-card:visible')).toHaveCount(1);
@@ -1359,7 +1361,8 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
     await expect(page.locator(`[id="${id}"]`)).toHaveCount(1);
   }
 
-  expect(guideText).toContain('58 of 59 canonical function guides have at least one published recording');
+  const recordedFunctions=new Set(publishedCatalog.releases.flatMap(row=>row.functions.map(item=>item.function_id)));
+  expect(guideText).toContain(`${recordedFunctions.size} of 59 canonical function guides have at least one published recording`);
   expect(guideText).toContain('audio-0.1.0-a6-20261111 (edition 0.1.0)');
   await noAxeViolations(page);
   await page.goto('/preparation-learning/');
@@ -1760,8 +1763,8 @@ test('quality metadata, slim catalog, static fallback and narrow print stay trut
 
 test('browse constructs only requested players and preserves selection and identity', async ({ page }) => {
   await page.goto('/functions/');
-  await expect(page.locator('.session-card:not([data-edition=""])')).toHaveCount(59 * publishedCatalog.releases.length);
-  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""])')).toHaveCount(publishedCatalog.releases.reduce((sum, release)=>sum+sessionCount(release),0));
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(latestCount());
   await expect(page.locator('.session-card audio')).toHaveCount(0);
   const card = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`);
   const checkbox = card.getByRole('checkbox', {name:/^Select MP3/});
@@ -1961,7 +1964,7 @@ test('both published editions retain exact provenance, downloads and accessible 
   await page.goto('/functions/');
   const selector = page.getByLabel('Audio edition', {exact: true});
   await expect(selector).toHaveValue('latest');
-  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(latestCount());
   for (const [, version] of contracts) {
     await selectPreference(page,'Audio edition',version);
     await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
@@ -1976,11 +1979,11 @@ test('both published editions retain exact provenance, downloads and accessible 
   await expect(selector).toHaveValue('0.1.0');
   await selectPreference(page,'Audio edition','latest');
   await expect(selector).toHaveValue('latest');
-  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(latestCount());
   await page.goto('/downloads/');
   await expect(page.locator('.download-card[data-edition="0.2.0"]')).toHaveCount(59);
   await expect(page.locator('.download-card[data-edition="0.1.0"]')).toHaveCount(59);
-  const current = publishedCatalog.releases.find(row => row.tag === 'audio-0.2.0');
+  const current = publishedCatalog.releases[0];
   for (const entry of current.changelog) {
     // The safe renderer turns Markdown links into their visible labels.
     const visible = entry.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
@@ -1991,7 +1994,7 @@ test('both published editions retain exact provenance, downloads and accessible 
 test('edition changes retain selected-file provenance and an active historical player', async ({ page }) => {
   await useSilentWavFixture(page);
   await page.goto('/functions/');
-  const latest = page.locator('.session-card[data-function-id="OCF-FND-004"][data-edition="0.2.0"]');
+  const latest = page.locator('.session-card[data-function-id="OCF-FND-004"][data-edition="'+latestEdition+'"]');
   const historical = page.locator('.session-card[data-function-id="OCF-FND-004"][data-edition="0.1.0"]');
   const checkbox = latest.getByRole('checkbox', {name: /^Select MP3/});
   await checkbox.check();
@@ -2006,7 +2009,7 @@ test('edition changes retain selected-file provenance and an active historical p
   await expect(historical.locator('audio[controls]')).toHaveCount(0);
   await expect(historical.getByRole('button', {name:'Use browser controls'})).toHaveCount(0);
   await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
-  await selectPreference(page,'Audio edition','0.2.0');
+  await selectPreference(page,'Audio edition',latestEdition);
   await expect(historical).toBeVisible();
   await expect(historical).toHaveAttribute('data-filtered-out', 'true');
   await expect(player).toHaveAttribute('data-edition-identity', 'historical');
