@@ -1,0 +1,16 @@
+:root{color-scheme:dark light;font:1.05rem/1.55 system-ui,sans-serif}
+body{margin:0;padding:1rem}
+main{max-width:42rem;margin:auto}
+section,dialog{border:1px solid currentColor;border-radius:.6rem;padding:1rem}
+dialog{width:min(29rem,calc(100% - 4rem))}
+p{max-width:62ch}
+button,select,summary{font:inherit}
+button,select{padding:.45rem .65rem;min-height:44px;margin:.2rem .3rem .2rem 0}
+summary{cursor:pointer}
+.ocf-local-player{display:flex;gap:.7rem;align-items:center}
+.ocf-local-position{display:grid;flex:1;min-width:0}
+.ocf-local-position input{width:100%;margin:0}
+.ocf-local-position output{font-variant-numeric:tabular-nums}
+.ocf-key-help,#bookmarks{margin:.7rem 0}
+audio:not([controls]){display:none}
+button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid Highlight;outline-offset:3px}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Energy Ball | Smart Play test</title>
+<link rel="stylesheet" href="preview.css">
+<script type="application/json" id="audio-editions">[{"version":"0.3.0","sessions":1}]</script>
+<script src="../../assets/js/editions.js" defer></script>
+<script src="../../assets/js/playback-controls.js" defer></script>
+<script src="preview.js" defer></script>
+</head>
+<body>
+<main>
+<h1>Energy Ball: Smart Play test</h1>
+<p>Energy Ball 0.3.0 · Waking return</p>
+<section aria-label="Energy Ball playback">
+<button type="button" id="settings" aria-haspopup="dialog" hidden>⚙ Smart Play settings</button>
+<p id="media-status" role="status">Original recording.</p>
+<audio preload="none" data-surprise-player="true" aria-label="Energy Ball audio"><source type="audio/mpeg" src="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/audio-0.3.0/OCF-EXP-007---Energy-Ball---en-US---Mike---Original-Voice---v0.3.0-615be1781932.mp3"></audio>
+<details id="bookmarks" hidden><summary>Smart Play bookmarks</summary><ul><li><button id="before-edit" type="button">Just before the Resonant Tuning transition</button></li></ul></details>
+<a href="https://ocfproject.org/functions/OCF-EXP-007/">Original Energy Ball session and downloads</a>
+</section>
+<p id="test-description">To test background playback, turn Resonant Tuning off, press Play, then use the bookmark to get near the edit before locking your screen. The audio should continue into the Energy Ball guidance.</p>
+<dialog id="choices" aria-labelledby="settings-title">
+<form method="dialog">
+<h2 id="settings-title">Smart Play settings</h2>
+<label for="tuning">Resonant Tuning</label>
+<select id="tuning" autofocus><option value="original">Original guidance</option><option value="off">Off</option></select>
+<p>The Off version is a single MP3 stream. It removes only Resonant Tuning. It does not change your saved audio format.</p>
+<button value="apply">Apply</button>
+<button value="cancel">Cancel</button>
+</form>
+</dialog>
+<noscript><p>JavaScript is needed to test Smart Play. The original session is linked above.</p></noscript>
+</main>
+</body>
+</html>

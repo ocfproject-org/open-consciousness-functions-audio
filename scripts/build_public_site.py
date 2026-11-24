@@ -750,6 +750,7 @@ def build_public_site(
     historical_reference: Path,
     transcript_fetcher=None,
     smart_playback_media: Path | None = None,
+    continuous_smart_play: bool = False,
 ):
     """Build all local pages from one pinned OCF export and verified release catalog."""
     validate_guide_export(guide_export, source_pin)
@@ -1088,6 +1089,11 @@ def build_public_site(
             # Owner-authorized exact public Comfort mirror, inventoried before validation.
             with Path(smart_playback_media).open("rb") as media:
                 stage(media, staging / "experiments" / "smart-playback")
+        if continuous_smart_play:
+            from continuous_smart_play import stage as stage_continuous
+
+            # Only the separately authorized, isolated edit; no version or catalog changes.
+            stage_continuous(staging / "experiments" / "continuous-smart-play")
         _write_site_receipt(
             staging,
             guide_export=guide_export,
@@ -2383,6 +2389,7 @@ def _validate_build(args):
             if args.published_transcript_mirror is not None else None
         ),
         smart_playback_media=args.smart_playback_media,
+        continuous_smart_play=args.continuous_smart_play,
     )
 
 
@@ -2396,6 +2403,8 @@ def main(argv=None):
     parser.add_argument("--historical-reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--smart-playback-media", type=Path, help="Exact approved public Comfort MP3; verified and inventoried in the isolated experiment")
+    parser.add_argument("--continuous-smart-play", action="store_true",
+                        help="Build the isolated, verified public-source Energy Ball experiment")
     parser.add_argument("--published-transcript-mirror", type=Path,
                         help="Offline folder of published transcript sidecars; every file is still verified")
     args = parser.parse_args(argv)
