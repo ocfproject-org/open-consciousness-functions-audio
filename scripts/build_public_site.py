@@ -528,6 +528,7 @@ def _function_audio_availability(functions, catalog, sessions_by_function):
 
 def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_function):
     markdown = markdown.replace(STALE_CUE_DISTINCTION_NOTE, "")
+    markdown = markdown.replace("Read function-specific safety notes and seek", "Seek")
     markdown = markdown.replace("current display and spoken cues", "current cues")
     markdown = _replace_markdown_section(markdown, "Focus 10 and Focus 11: design labels", "")
     markdown = _replace_markdown_once(markdown, "# Welcome to OCF", "# Listening Guide", "page title")
@@ -1351,7 +1352,6 @@ def _function_toc_items():
             ("overview", "Purpose"),
             ("cues", "How to use this function"),
             ("behavior", "Use and duration"),
-            ("safety", "Precautions"),
             ("listening", "Listen and download"),
             ("related", "Explore related practices"),
         )
@@ -1800,23 +1800,14 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
         f'Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p>'
     )
     lifecycle_html = f"""<section class="guide-section"><div class="technical-heading"><h2 id="behavior">Use and duration</h2>{lifecycle_info}</div>{scopes_html}{trigger_html}{release_html}</section>"""
-    safety_html = "".join(
-        f"<li>{_html(note)}</li>" for note in function["safety_notes"]
-    )
-    general_safety = (
-        "<p>For general comfort and safety guidance, see the "
-        '<a href="../../listening/">Listening Guide</a>.</p>'
-    )
-    specific_safety = (
-        "<p>Function-specific notes:</p><ul>" + safety_html + "</ul>"
-        if safety_html
-        else "<p>No additional function-specific precautions are recorded.</p>"
-    )
-    safety = (
-        '<section class="guide-section"><h2 id="safety">Precautions</h2>'
-        + specific_safety
-        + general_safety
-        + "</section>"
+    # Safety metadata is not website editorial copy. Retain only this direct
+    # instruction on emergency functions, where it tells the listener what to do first.
+    emergency_instruction = "If you believe you have an emergency or poisoning, call your local emergency number first."
+    emergency_html = (
+        f'<p>{_html(emergency_instruction)}</p>'
+        if function["function_id"].startswith("OCF-EMG-")
+        and emergency_instruction in function.get("safety_notes", [])
+        else ""
     )
     session_html = "".join(
         _session_card(row, transcript_paths, site_root_prefix="../../")
@@ -1869,7 +1860,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{emergency_html}{"".join(command_sections)}</section>{lifecycle_html}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 

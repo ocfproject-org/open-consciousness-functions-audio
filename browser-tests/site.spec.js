@@ -163,7 +163,7 @@ test('Sleep has no duplicate step or generic command filler, while distinct guid
   expect(sleepText.match(/Close your eyes\./g)).toHaveLength(1);
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).toContain('temporary');
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).not.toContain('No additional lifecycle scopes are declared.');
-  expect(await page.locator('#safety').evaluate(element => element.parentElement.textContent)).not.toBe('');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
 });
 
 test('Insulate hold guidance uses the spoken Cancel cue without cue copy controls', async ({ page }) => {
@@ -2061,14 +2061,15 @@ test('function source history works without JavaScript', async ({ browser }) => 
 });
 
 // Presentation only: source values and exact-edition assets remain untouched.
-test('function intent and duration qualifications remain visible without opening details', async ({ page }) => {
-  await page.goto('/functions/OCF-BOD-008/');
-  await expect(page.locator('#overview')).toContainText('Documented practice intent:');
-  await expect(page.locator('.intent-note')).toBeVisible();
-  await expect(page.locator('.intent-note')).toContainText('not a guaranteed result or medical treatment');
-  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toBeVisible();
-  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toContainText('not evidence of lasting biological change');
-  await expect(page.locator('#safety')).toHaveCount(1);
-  await expect(page.locator('main')).toContainText('Persistence described by the practice: permanent');
+test('function guides show original copy without a Precautions section', async ({ page }) => {
+  await page.goto('/functions/OCF-EXP-007/');
+  await expect(page.locator('#overview')).not.toContainText('Documented practice intent:');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText('no physical field, protection or guaranteed effect is claimed');
+  await expect(page.locator('main')).not.toContainText('Function-specific notes:');
+  await expect(page.locator('#listening')).toBeVisible();
   await noAxeViolations(page);
+  await page.goto('/functions/OCF-EMG-001/');
+  await expect(page.locator('main')).toContainText('call your local emergency number first.');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
 });

@@ -23,6 +23,8 @@ from build_public_site import (
     _downloads_page,
     _function_audio_actions,
     _function_page,
+    _function_toc_items,
+    _render_toc,
     _function_audio_availability,
     _functions_index,
     _home_page,
@@ -759,7 +761,18 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertIn('class="technical-popover"', permanent_page)
         self.assertEqual(permanent_page.count('class="technical-info"'), 2)
         self.assertIn("Persistence described by the practice: permanent", permanent_page)
-        self.assertIn("Existing function-specific precaution.", permanent_page)
+        self.assertNotIn("Existing function-specific precaution.", permanent_page)
+        self.assertNotIn('id="safety"', permanent_page)
+        self.assertNotIn("Function-specific notes:", permanent_page)
+        self.assertNotIn("#safety", _render_toc(_function_toc_items()))
+        emergency = copy.deepcopy(permanent)
+        emergency["function_id"] = "OCF-EMG-001"
+        action = "If you believe you have an emergency or poisoning, call your local emergency number first."
+        emergency["safety_notes"].append(action)
+        emergency_page = _function_page(emergency, [], {}, "a" * 40)
+        self.assertIn(action, emergency_page)
+        self.assertNotIn("Existing function-specific precaution.", emergency_page)
+        self.assertNotIn('id="safety"', emergency_page)
         self.assertIn("<strong>Reinforcement</strong>", permanent_page)
         self.assertNotIn("not evidence of lasting biological change", permanent_page)
         self.assertEqual(permanent, snapshot)
