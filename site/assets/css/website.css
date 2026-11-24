@@ -502,7 +502,8 @@ html:has(:target) { scroll-behavior: auto; }
 .ocf-local-position{min-width:0}
 .ocf-local-player output{display:block;font-size:.78rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ocf-key-help{margin-block:.6rem}
-.ocf-compact-audio,.ocf-local-player[hidden],.ocf-recording-controls[hidden]{display:none!important}
+.ocf-recording-captions{white-space:pre-line}
+.ocf-recording-captions:empty,.ocf-compact-audio,.ocf-local-player[hidden],.ocf-recording-controls[hidden]{display:none!important}
 
 /* Technical notes stay beside their heading and open without shifting the guide. */
 .technical-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;position:relative}

@@ -325,7 +325,8 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
   await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
   await page.goto('/preparation-learning/');
-  for (const player of await page.locator('.edition-card:visible audio').all()) await expect(player).toBeVisible();
+  await expect(page.locator('.edition-card:visible .ocf-local-player')).toBeVisible();
+  await expect(page.locator('audio[controls]')).toHaveCount(0);
   await expect(page.locator('.edition-card:visible audio')).toHaveCount(1);
 });
 
@@ -711,9 +712,9 @@ test('filtered-out synthetic media remains focused, understandable, seekable and
   await player.evaluate(audio => { audio.currentTime = 0.6; });
   await player.evaluate(audio => audio.dispatchEvent(new Event('timeupdate')));
   const positionBeforeFilter = await player.evaluate(audio => audio.currentTime);
-  await player.focus();
-  const focusedBeforeFilter = await player.evaluate(audio => document.activeElement === audio);
-  expect(focusedBeforeFilter).toBe(true);
+  const compactPause = relax.getByRole('button', {name: 'Pause', exact: true});
+  await compactPause.focus();
+  await expect(compactPause).toBeFocused();
   await page.locator('#search').evaluate(input => {
     input.value = 'OCF-BOD-001';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -722,7 +723,7 @@ test('filtered-out synthetic media remains focused, understandable, seekable and
   await expect(relax).toBeVisible();
   await expect(relax.locator('[data-filter-pinned]')).toContainText('Playing Relax');
   expect(await player.evaluate(audio => audio.isSameNode(document.querySelector('.session-card[data-function-id="OCF-FND-004"] audio')))).toBe(true);
-  expect(await player.evaluate(audio => document.activeElement === audio)).toBe(true);
+  await expect(compactPause).toBeFocused();
   await fixtureButton.focus();
   await page.keyboard.press('Enter');
   await expect.poll(() => player.evaluate(audio => audio.paused)).toBe(true);
@@ -1767,7 +1768,7 @@ test('browse constructs only requested players and preserves selection and ident
   await card.getByRole('button', {name: /^Show player for/}).focus();
   await page.keyboard.press('Enter');
   const player = card.locator('audio');
-  await expect(player).toBeFocused();
+  await expect(card.getByRole('button', {name: 'Play', exact: true})).toBeFocused();
   await expect(page.locator('.session-card audio')).toHaveCount(1);
   expect(await player.evaluate(audio => audio.paused)).toBe(true);
   await player.evaluate(audio => { audio.dataset.identity = 'original'; });
@@ -2000,6 +2001,9 @@ test('edition changes retain selected-file provenance and an active historical p
   await expect(page.locator('#selected-files-review').getByRole('link')).toHaveAttribute('href', expectedURL);
   await historical.getByRole('button', {name: /^Show player/}).click();
   const player = historical.locator('audio');
+  await expect(historical.getByRole('button', {name:'Play', exact:true})).toBeVisible();
+  await expect(historical.locator('audio[controls]')).toHaveCount(0);
+  await expect(historical.getByRole('button', {name:'Use browser controls'})).toHaveCount(0);
   await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
   await selectPreference(page,'Audio edition','0.2.0');
   await expect(historical).toBeVisible();

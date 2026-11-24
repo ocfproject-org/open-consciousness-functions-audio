@@ -1933,7 +1933,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
             else ""
         )
         audio.append(
-            f'<audio controls preload="none" data-format-sources="{_html(json.dumps(sources))}" data-session-format="{_html(playable["format"])}" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
+            f'<audio class="ocf-compact-audio" preload="none" data-format-sources="{_html(json.dumps(sources))}" data-session-format="{_html(playable["format"])}" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
         )
     for asset in row["audio_assets"]:
         fmt = asset["format"].upper()

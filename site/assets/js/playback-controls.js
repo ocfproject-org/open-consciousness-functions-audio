@@ -22,32 +22,49 @@
     const seek = add('input', {type: 'range', 'aria-label': 'Seek', min: '0', max: '1', step: '0.1', value: '0'});
     const time = add('output', {'aria-live': 'off'});
     const extra = add('details', {class: 'ocf-key-help'});
-    const system = add('button', {type: 'button', 'aria-pressed': 'false'}, 'Use browser controls');
     const error = add('p', {role: 'status'});
     error.hidden = true;
-    extra.append(add('summary', {}, 'Keyboard and playback options'), add('p', {}, 'Tab to Play/Pause and press Space or Enter. On Seek, use the arrows for 5 seconds, Page Up/Down for 30 seconds, or Home/End to jump. Browser controls are available for captions and other device options.'), system);
-    seekArea.append(seek, time); play.append(glyph); player.append(play, seekArea); ui.append(player, extra, error);
-    audio.before(ui);
-    let fallback = false, scrubbing = false;
-    const originalTab = audio.getAttribute('tabindex');
-    const focus = () => (fallback ? audio : play).focus();
-    players.set(audio, {focus});
-    function refreshMode() {
-      ui.hidden = audio.hidden;
-      audio.controls = fallback;
-      audio.classList.toggle('ocf-compact-audio', !fallback);
-      player.hidden = fallback;
-      system.setAttribute('aria-pressed', String(fallback));
-      system.textContent = fallback ? 'Use compact controls' : 'Use browser controls';
-      if (fallback) {
-        audio.removeAttribute('aria-hidden');
-        if (originalTab === null) audio.setAttribute('tabindex', '0');
-        else audio.setAttribute('tabindex', originalTab);
-      } else {
-        audio.setAttribute('aria-hidden', 'true');
-        audio.tabIndex = -1;
-      }
+    extra.append(add('summary', {}, 'Keyboard shortcuts'), add('p', {}, 'Tab to Play/Pause and press Space or Enter. On Seek, use the arrows for 5 seconds, Page Up/Down for 30 seconds, or Home/End to jump.'));
+    seekArea.append(seek, time); play.append(glyph); player.append(play, seekArea);
+    ui.append(player);
+    // Edition-matched timed text remains available without a second player.
+    const track = audio.querySelector('track[kind="subtitles"], track[kind="captions"]');
+    if (track) {
+      const captions = add('button', {type: 'button', 'aria-pressed': 'false'}, 'Captions');
+      const text = add('p', {class: 'ocf-recording-captions', 'aria-live': 'off'});
+      text.hidden = true;
+      const paint = () => {
+        if (text.hidden) return;
+        text.textContent = Array.from(track.track.activeCues || [], cue =>
+          cue.getCueAsHTML().textContent
+        ).join('\n');
+      };
+      captions.addEventListener('click', () => {
+        const enabled = captions.getAttribute('aria-pressed') !== 'true';
+        captions.setAttribute('aria-pressed', String(enabled));
+        text.hidden = !enabled;
+        text.textContent = '';
+        track.track.mode = enabled ? 'hidden' : 'disabled';
+        paint();
+      });
+      track.track.addEventListener('cuechange', paint);
+      track.addEventListener('error', () => {
+        if (text.hidden) return;
+        error.textContent = 'Captions could not load. Use the timed transcript download.';
+        error.hidden = false;
+      });
+      ui.append(captions, text);
     }
+    ui.append(extra, error);
+    audio.before(ui);
+    let scrubbing = false;
+    const focus = () => play.focus();
+    players.set(audio, {focus});
+    audio.controls = false;
+    audio.classList.add('ocf-compact-audio');
+    audio.setAttribute('aria-hidden', 'true');
+    audio.tabIndex = -1;
+    ui.hidden = audio.hidden;
     function update() {
       const active = !audio.paused && !audio.ended;
       const label = active ? 'Pause' : 'Play';
@@ -105,13 +122,12 @@
       event.preventDefault();
       moveTo(event.key === 'Home' ? 0 : event.key === 'End' ? audio.duration : audio.currentTime + jump);
     });
-    system.addEventListener('click', () => { fallback = !fallback; refreshMode(); focus(); });
     for (const event of ['play', 'pause', 'ended', 'loadedmetadata', 'durationchange', 'timeupdate', 'seeking', 'emptied', 'ocf-format-switched']) audio.addEventListener(event, update);
     new MutationObserver(records => {
       if (records.some(record => record.attributeName === 'hidden')) ui.hidden = audio.hidden;
       update();
     }).observe(audio, {attributes: true, attributeFilter: ['hidden', 'aria-label']});
-    refreshMode(); update();
+    update();
     return players.get(audio);
   }
   window.ocfFocusPlaybackControl = audio => register(audio).focus();
