@@ -87,6 +87,11 @@ jobs:
             --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 \
             --output verified-site
       - run: python scripts/validate_site.py verified-site
+      # Package this exact build before browser acceptance so the artifact is
+      # visible when the gated deploy job lists the run's artifacts.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: verified-site/
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Verify Playwright rejects a preoccupied server port
@@ -122,14 +127,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: verified-site
-          path: site/
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
