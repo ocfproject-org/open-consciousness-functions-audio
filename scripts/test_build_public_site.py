@@ -755,7 +755,9 @@ class PublicSiteBuildTests(unittest.TestCase):
         permanent["safety_notes"] = ["Existing function-specific precaution."]
         snapshot = copy.deepcopy(permanent)
         permanent_page = _function_page(permanent, [], {}, "a" * 40)
-        self.assertIn("Documented command scope: permanent", permanent_page)
+        self.assertIn("Command scope: permanent", permanent_page)
+        self.assertIn('class="technical-popover"', permanent_page)
+        self.assertEqual(permanent_page.count('class="technical-info"'), 2)
         self.assertIn("Persistence described by the practice: permanent", permanent_page)
         self.assertIn("Existing function-specific precaution.", permanent_page)
         self.assertIn("<strong>Reinforcement</strong>", permanent_page)

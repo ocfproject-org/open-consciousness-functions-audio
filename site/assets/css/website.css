@@ -503,3 +503,12 @@ html:has(:target) { scroll-behavior: auto; }
 .ocf-local-player output{display:block;font-size:.78rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ocf-key-help{margin-block:.6rem}
 .ocf-compact-audio,.ocf-local-player[hidden],.ocf-recording-controls[hidden]{display:none!important}
+
+/* Technical notes stay beside their heading and open without shifting the guide. */
+.technical-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.25rem;position:relative}
+.technical-heading>.technical-info{margin:0;padding:0;border:0;background:none}
+.technical-info>summary{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;cursor:pointer;list-style:none;font-size:1.2rem}
+.technical-info>summary::-webkit-details-marker{display:none}
+.technical-info>summary:focus-visible{outline:2px solid currentColor;outline-offset:-4px;border-radius:.35rem}
+.technical-info>.technical-popover{position:absolute;z-index:12;inset-block-start:100%;inset-inline-start:0;box-sizing:border-box;max-width:100%;width:max-content;max-inline-size:min(24rem,100%);padding:.65rem .85rem;border-radius:.5rem;border:1px solid currentColor;background:Canvas;color:CanvasText;box-shadow:0 .35rem .9rem #0004;overflow-wrap:anywhere}
+.technical-popover p{margin:0}

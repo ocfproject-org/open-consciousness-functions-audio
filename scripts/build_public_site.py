@@ -1698,6 +1698,14 @@ def _normalized_public_paragraph(text):
     return " ".join(unicodedata.normalize("NFKC", text).split()).casefold()
 
 
+def _technical_info(content):
+    return (
+        '<details class="technical-info"><summary><span aria-hidden="true">ⓘ</span>'
+        '<span class="sr-only">Technical details</span></summary>'
+        f'<div class="technical-popover">{content}</div></details>'
+    )
+
+
 def _function_page(function, sessions, transcript_paths, source_commit, history_records=()):
     categories = " · ".join(
         _html(category["label"]) for category in function["categories"]
@@ -1751,14 +1759,12 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
             else ""
         )
         scope_html = (
-            '<details class="technical-details"><summary>Technical details</summary><p class="scope-note">Documented command scope: '
-            + _html(command["effect_scope"])
-            + "</p></details>"
+            _technical_info('<p class="scope-note">Command scope: ' + _html(command["effect_scope"]) + "</p>")
             if command.get("effect_scope")
             else ""
         )
         command_sections.append(
-            f'''<section class="command-block"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{spoken_html}{usage_html}{explanation_html}<h4>Activation steps</h4>{procedure_html}{scope_html}</section>'''
+            f'''<section class="command-block"><div class="technical-heading"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{scope_html}</div>{spoken_html}{usage_html}{explanation_html}<h4>Activation steps</h4>{procedure_html}</section>'''
         )
     scope_rows = []
     for scope in function["lifecycle"]["scopes"]:
@@ -1789,7 +1795,11 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
         if release_command
         else ""
     )
-    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Use and duration</h2>{scopes_html}{trigger_html}{release_html}<details class="technical-details"><summary>Technical details</summary><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p></details></section>"""
+    lifecycle_info = _technical_info(
+        f'<p>Activation: {_html(lifecycle["activation"] or "not specified")}. '
+        f'Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p>'
+    )
+    lifecycle_html = f"""<section class="guide-section"><div class="technical-heading"><h2 id="behavior">Use and duration</h2>{lifecycle_info}</div>{scopes_html}{trigger_html}{release_html}</section>"""
     safety_html = "".join(
         f"<li>{_html(note)}</li>" for note in function["safety_notes"]
     )
