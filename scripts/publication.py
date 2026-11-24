@@ -311,6 +311,15 @@ def validate_manifest(manifest):
             )
 
 
+def is_wave_header(header):
+    """Identify WAVE-family containers independently of the file extension."""
+    return (
+        len(header) >= 12
+        and header[:4] in {b"RIFF", b"RIFX", b"RF64", b"BW64"}
+        and header[8:12] == b"WAVE"
+    )
+
+
 def verify_files(manifest, root):
     """Read only explicitly named regular files; reject symlinks, including parents."""
     validate_manifest(manifest)
@@ -329,6 +338,9 @@ def verify_files(manifest, root):
             "asset size mismatch: " + asset["filename"],
         )
         with path.open("rb") as stream:
+            require(not is_wave_header(stream.read(12)),
+                    "WAV masters are private and cannot be published: " + asset["filename"])
+            stream.seek(0)
             actual = hashlib.file_digest(stream, "sha256").hexdigest()
         require(
             actual == asset["sha256"], "asset checksum mismatch: " + asset["filename"]

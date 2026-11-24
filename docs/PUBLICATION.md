@@ -59,6 +59,15 @@ permissions must be true even for draft upload. `publish` must also be true for
 finalization. Do not infer these decisions from tests or fabricate an affirmative
 record. Keep the approval record private; the publisher does not upload it.
 
+## Public audio formats
+
+Distribute listening audio as FLAC or MP3. Raw WAV masters are private build
+inputs: do not add them to GitHub Releases, link them from Pages, or expose an
+original WAV through a public Smart Play route. A production Smart Play endpoint
+must serve public playback encodings, not the home preview's WAV assets.
+The public site and asset validators also reject WAVE containers renamed to
+another extension.
+
 ## Offline and remote execution
 
 Start with offline verification (no GitHub calls):

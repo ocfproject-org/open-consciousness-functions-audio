@@ -9,6 +9,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from publication import is_wave_header
+
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
 SHA256 = re.compile(r"^[a-fA-F0-9]{64}$")
@@ -62,6 +64,23 @@ class SiteLinks(HTMLParser):
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def _reject_wave_reference(reference):
+    path = unquote(urlparse(reference).path).replace("\\", "/").lower()
+    require(not path.endswith((".wav", ".wave")),
+            f"WAV masters are private and cannot appear on the public site: {reference}")
+
+
+def _reject_public_wave_files(site_root):
+    for path in sorted(site_root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(site_root).as_posix()
+        _reject_wave_reference(relative)
+        with path.open("rb") as stream:
+            require(not is_wave_header(stream.read(12)),
+                    f"WAV masters are private and cannot appear on the public site: {relative}")
 
 
 def validate_catalog(catalog, *, registry=None):
@@ -206,6 +225,10 @@ def validate_catalog(catalog, *, registry=None):
                         parsed and parsed.scheme == "https" and parsed.netloc,
                         "download_url must be an absolute HTTPS URL",
                     )
+                    for ref in (asset["filename"], asset["download_url"]):
+                        _reject_wave_reference(ref)
+                    require(asset["format"].casefold() not in {"wav", "wave"},
+                            "WAV masters are private and cannot appear in the public catalog")
                     require(
                         isinstance(asset["sha256"], str)
                         and SHA256.fullmatch(asset["sha256"]),
@@ -234,6 +257,7 @@ def validate_catalog(catalog, *, registry=None):
                             parsed and parsed.scheme == "https" and parsed.netloc,
                             "mirror URLs must be absolute HTTPS URLs",
                         )
+                        _reject_wave_reference(mirror)
                     require(
                         isinstance(asset.get("companion_files", []), list),
                         "companion_files must be an array",
@@ -258,6 +282,7 @@ def validate_catalog(catalog, *, registry=None):
 
 
 def _resolve_local_reference(site_root: Path, page: Path, reference: str):
+    _reject_wave_reference(reference)
     url = urlparse(reference)
     if url.scheme or url.netloc:
         require(url.scheme in {"https", "mailto"}, f"unsafe external URL: {reference}")
@@ -448,6 +473,7 @@ def _validate_documentation_site(site_root: Path):
 
 def validate_site(site_root: Path | None = None):
     site_root = Path(site_root or SITE)
+    _reject_public_wave_files(site_root)
     for relative in REQUIRED:
         require(
             (site_root / relative).is_file(), f"required site file missing: {relative}"
@@ -463,6 +489,7 @@ def validate_site(site_root: Path | None = None):
         parser = SiteLinks()
         parser.feed((site_root / "index.html").read_text(encoding="utf-8"))
         for key, ref in parser.refs:
+            _reject_wave_reference(ref)
             url = urlparse(ref)
             if url.scheme or url.netloc or ref.startswith("mailto:"):
                 continue
