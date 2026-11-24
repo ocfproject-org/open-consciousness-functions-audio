@@ -116,7 +116,7 @@
         note.append(document.createTextNode(`This player remains ${String(current).toUpperCase()}; its playback has not changed. `));
         if (target) {
           const button = document.createElement('button'); button.type = 'button'; button.textContent = `Switch player to ${format.toUpperCase()}`;
-          button.addEventListener('click', () => { switchSource(); player.focus(); }); note.append(button);
+          button.addEventListener('click', () => { switchSource(); window.ocfFocusPlaybackControl?.(player); }); note.append(button);
         }
       }
     });

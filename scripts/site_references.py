@@ -35,6 +35,21 @@ def use_references(function_id, public_values):
     return _disclosure(records)
 
 
+def function_background(function_id):
+    """Render attributed background separately from OCF function instructions."""
+    item = REFERENCES.get('function_background', {}).get(function_id)
+    if item is None:
+        return ''
+    rows = ''.join(
+        f'<li><a href="{html.escape(link["url"], quote=True)}">'
+        f'{html.escape(link["title"])}</a>: {html.escape(link["scope"])}</li>'
+        for link in item['links']
+    )
+    return ('<section class="guide-section" aria-labelledby="rebal-background">'
+            '<h2 id="rebal-background">Monroe Institute background and references</h2>'
+            f'<p>{html.escape(item["context"])}</p><ul>{rows}</ul></section>')
+
+
 def chain_references(title, markdown):
     # Changed chain text needs a new evidence review; a title match is insufficient.
     if hashlib.sha256(markdown.encode()).hexdigest() != REFERENCES['chain_document_sha256']:

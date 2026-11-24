@@ -65,7 +65,7 @@ def validate_lyrics_receipt(technical, assets):
     digest(operation["implementation_sha256"])
 
 
-def import_candidates(paths, destination, *, tag, edition):
+def import_candidates(paths, destination, *, tag, edition, release_source_commit=None):
     destination = Path(destination).absolute()
     require(not destination.exists(), "destination already exists")
     require(
@@ -78,7 +78,7 @@ def import_candidates(paths, destination, *, tag, edition):
         "repository": REPOSITORY,
         "tag": tag,
         "edition": edition,
-        "source_commit": None,
+        "source_commit": release_source_commit,
         "source_version": None,
         "assets": [],
     }
@@ -116,13 +116,19 @@ def import_candidates(paths, destination, *, tag, edition):
         require(
             document["session"].get("edition") == edition, "candidate edition mismatch"
         )
-        for key in ("source_commit", "source_version"):
-            if manifest[key] is None:
-                manifest[key] = document[key]
+        if manifest["source_commit"] is None:
+            manifest["source_commit"] = document["source_commit"]
+        if release_source_commit is None:
             require(
-                manifest[key] == document[key],
-                "mixed source revisions require separate releases",
+                manifest["source_commit"] == document["source_commit"],
+                "mixed render commits require an explicit release source commit",
             )
+        if manifest["source_version"] is None:
+            manifest["source_version"] = document["source_version"]
+        require(
+            manifest["source_version"] == document["source_version"],
+            "mixed source versions require separate releases",
+        )
         provenance = {
             k: document[k]
             for k in (
@@ -134,6 +140,8 @@ def import_candidates(paths, destination, *, tag, edition):
             )
             if k in document
         }
+        if release_source_commit is not None:
+            provenance["render_source_commit"] = document["source_commit"]
         require(
             type(document["artifacts"]) is list and document["artifacts"],
             "no candidate artifacts",
@@ -293,9 +301,10 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--edition", required=True)
+    parser.add_argument("--release-source-commit", help="explicit umbrella source commit for candidates rendered at different revisions")
     args = parser.parse_args(argv)
     manifest = import_candidates(
-        args.candidates, args.output, tag=args.tag, edition=args.edition
+        args.candidates, args.output, tag=args.tag, edition=args.edition, release_source_commit=args.release_source_commit
     )
     print(
         json.dumps({"assets": len(manifest["assets"]), "publication_approved": False})

@@ -76,7 +76,7 @@ def projection(export, catalog):
                 subject["recordings"].append({
                     "tag": release["tag"], "edition": session.get("edition", release["version"]),
                     "locale": session["locale"], "voice": session["voice_id"],
-                    "source_commit": provenance.get("source_ocf_commit"),
+                    "source_commit": provenance.get("render_source_commit", provenance.get("source_ocf_commit")),
                     "master_sha256": provenance.get("master_sha256"),
                     "render_source": {key: render.get(key) for key in ("base_commit", "state", "snapshot_sha256")} if render else None,
                     "assets": sorted([{"id": a["asset_id"], "format": a["format"], "sha256": a["sha256"]} for a in assets], key=lambda a: a["id"]),

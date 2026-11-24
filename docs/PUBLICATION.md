@@ -25,7 +25,13 @@ records the later packaging implementation separately. Optional `render_source`
 records `state` (`committed` or `frozen-working-tree`), `base_commit`,
 `snapshot_sha256`, `snapshot_scope: public-repository-files`, and an optional
 `audio_code_equivalent_commit`. A later equivalent commit is not misrepresented
-as the HEAD used during rendering. Unknown fields are rejected.
+as the HEAD used during rendering. When a release deliberately collects candidates
+from multiple renderer revisions, its umbrella source commit is distinct from
+the exact per-asset `render_source_commit`. Pass the explicit umbrella to
+`prepare_review.py --release-source-commit` after checking that each contributing
+commit is reachable from it. The per-asset value remains bound to the verified
+candidate and technical receipt. Historical manifests without this field remain
+byte-identical. Unknown fields are rejected.
 
 Audio has a `session` object: `kind`, nullable `function_id`, `title`, `locale`,
 `voice_id`, `voice_name`, `edition`, measured `duration_seconds`, `sample_rate_hz`,
@@ -52,6 +58,15 @@ a timezone-aware `approved_at`, and Boolean `public_assets`,
 permissions must be true even for draft upload. `publish` must also be true for
 finalization. Do not infer these decisions from tests or fabricate an affirmative
 record. Keep the approval record private; the publisher does not upload it.
+
+## Public audio formats
+
+Distribute listening audio as FLAC or MP3. Raw WAV masters are private build
+inputs: do not add them to GitHub Releases, link them from Pages, or expose an
+original WAV through a public Smart Play route. A production Smart Play endpoint
+must serve public playback encodings, not the home preview's WAV assets.
+The public site and asset validators also reject WAVE containers renamed to
+another extension.
 
 ## Offline and remote execution
 

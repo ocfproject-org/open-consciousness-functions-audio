@@ -575,6 +575,23 @@
     });
   }
 
+  const technicalNotes = [...document.querySelectorAll('.technical-info')];
+  if (technicalNotes.length) {
+    document.addEventListener('pointerdown', event => {
+      technicalNotes.forEach(note => {
+        if (note.open && !note.contains(event.target)) note.open = false;
+      });
+    });
+    document.addEventListener('keydown', event => {
+      const note = technicalNotes.find(note => note.open && note.contains(document.activeElement));
+      if (event.key === 'Escape' && note) {
+        event.preventDefault();
+        note.open = false;
+        note.querySelector('summary').focus();
+      }
+    });
+  }
+
   const nav = document.querySelector('.mobile-nav');
   if (nav) {
     const summary = nav.querySelector('summary');

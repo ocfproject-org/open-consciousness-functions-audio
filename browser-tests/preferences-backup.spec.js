@@ -6,7 +6,7 @@ async function openBackup(page){await openPreferences(page);const panel=page.loc
 async function load(page,value){const panel=await openBackup(page);await panel.getByLabel('Import site settings',{exact:false}).setInputFiles({name:'settings.json',mimeType:'application/json',buffer:Buffer.from(typeof value==='string'?value:JSON.stringify(value))});return panel;}
 test('settings backup previews and confirms three preferences without progress, URLs or transient state',async({page})=>{
  const writes=[];page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
- await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings').filter({hasText:'Private library'})).toBeAttached();
+ await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings').filter({hasText:'Saved items'})).toBeAttached();
  await page.evaluate(key=>localStorage.setItem('synthetic-private','private URL and playback values'),KEY);
  let panel=await load(page,settings);await expect(panel).toContainText('Preview: theme black');await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('latest');
  await panel.getByRole('button',{name:'Cancel settings import'}).click();await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('latest');
@@ -25,7 +25,7 @@ test('mobile settings backup stays in Preferences and never appears in the learn
  await page.locator('.learned-panel').getByRole('button',{name:/^Learned:/}).click();await expect(page.locator('#mark-learned-dialog')).not.toContainText(/Import|Export|backup/);await page.keyboard.press('Escape');await expect(page.locator('.learned-panel').getByRole('button',{name:/^Learned:/})).toBeFocused();
 });
 test('settings import preserves existing private marks and works with unavailable local storage',async({page,context})=>{
- await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings')).toBeAttached();await openPreferences(page);await page.locator('.personal-settings').getByRole('button',{name:'Enable private tracking'}).click();await closePreferences(page);
+ await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings')).toBeAttached();
  await page.locator('.learned-panel').getByRole('button',{name:/^Favorite:/}).click();await page.locator('.learned-panel').getByRole('button',{name:/^Learned:/}).click();await page.getByRole('button',{name:'Save learned version'}).click();
  const read=()=>page.evaluate(key=>Object.fromEntries(Object.keys(localStorage).filter(k=>k.startsWith(key)).map(k=>[k,localStorage[k]])),KEY);const before=await read();const panel=await load(page,settings);await panel.getByRole('button',{name:'Confirm settings import'}).click();expect(await read()).toEqual(before);
  const other=await context.newPage();await other.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw Error('blocked');}}));await other.goto('/');const blocked=await load(other,{...settings,edition:'latest'});await blocked.getByRole('button',{name:'Confirm settings import'}).click();await expect(other.locator('html')).toHaveAttribute('data-theme','black');await expect(other.getByLabel('Audio format',{exact:true})).toHaveValue('flac');await expect(blocked).toContainText('Browser storage availability');await other.close();

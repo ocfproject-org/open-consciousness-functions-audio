@@ -16,7 +16,7 @@ test('375px first session explains four steps and duration before one short scro
  await fs.mkdir('browser-artifacts',{recursive:true});
  for(const theme of ['light','dark']){await page.evaluate(t=>localStorage.setItem('ocf-theme',t),theme);await page.reload();await page.screenshot({path:`browser-artifacts/start-375-${theme}.png`});expect(await cta.evaluate(a=>getComputedStyle(a).color)).not.toBe(await cta.evaluate(a=>getComputedStyle(a).backgroundColor));await axe(page);}
  await cta.click();await expect(page).toHaveURL(/preparation-learning\/#listen$/);
- await expect(page.locator('#listen audio:visible')).toHaveCount(1);
+ await expect(page.locator('#listen .ocf-local-player:visible')).toHaveCount(1);
  await expect(page.locator('main')).toContainText('about 28 minutes');
  expect(media).toEqual([]);await axe(page);
 });

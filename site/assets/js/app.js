@@ -314,18 +314,8 @@
     const card = el('div', undefined, 'edition-card'); card.hidden = true;
     const title = el('h4', 'Your surprise session');
     const status = el('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); status.setAttribute('data-playback-status', '');
-    const player = el('audio'); player.controls = true; player.preload = 'none'; player.tabIndex = 0;
+    const player = el('audio', undefined, 'ocf-compact-audio'); player.preload = 'none';
     player.dataset.surprisePlayer = 'true';
-    // A focused native media element does not implement Space consistently across engines.
-    player.addEventListener('keydown', event => {
-      if (event.code !== 'Space' || event.altKey || event.ctrlKey || event.metaKey) return;
-      event.preventDefault();
-      if (event.repeat) return;
-      if (player.paused) player.play().catch(error => {
-        if (error.name !== 'AbortError') player.dispatchEvent(new Event('error'));
-      });
-      else player.pause();
-    });
     const more = el('button', 'Show more'); more.type = 'button'; more.setAttribute('aria-controls', 'surprise-details');
     const details = el('div'); details.id = 'surprise-details'; details.tabIndex = -1;
     const formatLabel = el('p'); formatLabel.id = 'surprise-format'; player.setAttribute('aria-describedby', formatLabel.id);
@@ -341,7 +331,7 @@
       if (!('mediaSession' in navigator)) return;
       try {
         navigator.mediaSession.metadata = new MediaMetadata({title: concealed ? 'Your surprise session' : current.title, artist: 'OCF'});
-      } catch (_) { /* Native audio controls remain available without Media Session. */ }
+      } catch (_) { /* The compact player works without Media Session. */ }
     };
     const present = () => {
       title.textContent = concealed ? 'Your surprise session' : current.title;
@@ -355,7 +345,7 @@
       more.hidden = !concealed; more.setAttribute('aria-expanded', String(!concealed));
       if (!concealed) {
         const link = el('a', 'Read the function guide'); link.href = current.href;
-        details.append(el('p', `Documented practice intent: ${current.description}`), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
+        details.append(el('p', current.description), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
       }
       if (ownsMetadata) metadata();
       window.ocfUpdateMediaPlayerStatus?.(player);
@@ -400,7 +390,7 @@
       card.hidden = false;
       present();
       window.ocfRegisterMediaPlayer?.(player);
-      player.focus();
+      window.ocfFocusPlaybackControl?.(player);
     };
     choose.addEventListener('click', async () => {
       choose.disabled = true;
@@ -444,7 +434,7 @@
     const pinned = el('p', undefined, 'playback-status');
     pinned.hidden = true; pinned.setAttribute('data-playback-status', ''); pinned.setAttribute('role', 'status'); pinned.setAttribute('aria-live', 'polite');
     card.append(pinned);
-    if (item.description) card.append(el('p', `Documented practice intent: ${item.description}`));
+    if (item.description) card.append(el('p', item.description));
     card.append(el('p', item.assets.length ? 'Published recording available' : 'No recording in the verified catalog', 'function-status'));
     if (item.assets.some(a => ['mp3', 'flac'].includes(a.format))) {
       const launch = el('button', 'Show player', 'show-player');
@@ -458,7 +448,7 @@
         if (!asset) return null;
         const existing = card.querySelector('audio');
         if (existing) return existing;
-      const player = el('audio'); player.controls = true; player.preload = 'none'; player.src = asset.download_url;
+      const player = el('audio', undefined, 'ocf-compact-audio'); player.preload = 'none'; player.src = asset.download_url;
       player.dataset.sessionFormat = asset.format;
       player.dataset.formatSources = JSON.stringify(Object.fromEntries(item.assets.map(a => [a.format, a.download_url])));
       player.setAttribute('aria-label', `Listen to ${item.title}, ${item.locale}, ${item.voice}, edition ${item.edition}`);
@@ -490,12 +480,11 @@
         savePlaybackState(item, player, {liveSeek});
         if (liveSeek) delete player.dataset.ocfLiveSeek;
       });
-        player.tabIndex = 0;
         return player;
       };
       launch.addEventListener('click', () => {
         const player = card.ocfEnsurePlayer();
-        player?.focus();
+        if (player) window.ocfFocusPlaybackControl?.(player);
         window.ocfFormats?.refresh();
         render();
       });

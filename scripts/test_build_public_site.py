@@ -23,6 +23,8 @@ from build_public_site import (
     _downloads_page,
     _function_audio_actions,
     _function_page,
+    _function_toc_items,
+    _render_toc,
     _function_audio_availability,
     _functions_index,
     _home_page,
@@ -744,9 +746,9 @@ class PublicSiteBuildTests(unittest.TestCase):
         self.assertLess(history_page.index('bad&lt;'), history_page.index('Ancestor revision'))
         self.assertNotIn('No source revision records are available', history_page)
 
-        self.assertIn("Documented practice intent:", html)
-        self.assertIn("not a guaranteed result or medical treatment", html)
-        self.assertIn("not evidence of lasting biological change", html)
+        self.assertNotIn("Documented practice intent:", html)
+        self.assertNotIn("not a guaranteed result or medical treatment", html)
+        self.assertNotIn("not evidence of lasting biological change", html)
         self.assertIn("Persistence described by the practice: temporary", html)
         permanent = copy.deepcopy(function)
         permanent["lifecycle"]["persistence"] = "permanent"
@@ -755,10 +757,24 @@ class PublicSiteBuildTests(unittest.TestCase):
         permanent["safety_notes"] = ["Existing function-specific precaution."]
         snapshot = copy.deepcopy(permanent)
         permanent_page = _function_page(permanent, [], {}, "a" * 40)
-        self.assertIn("Documented command scope: permanent", permanent_page)
+        self.assertIn("Command scope: permanent", permanent_page)
+        self.assertIn('class="technical-popover"', permanent_page)
+        self.assertEqual(permanent_page.count('class="technical-info"'), 2)
         self.assertIn("Persistence described by the practice: permanent", permanent_page)
-        self.assertIn("Existing function-specific precaution.", permanent_page)
-        self.assertLess(permanent_page.index("not evidence of lasting biological change"), permanent_page.index("<strong>Reinforcement</strong>"))
+        self.assertNotIn("Existing function-specific precaution.", permanent_page)
+        self.assertNotIn('id="safety"', permanent_page)
+        self.assertNotIn("Function-specific notes:", permanent_page)
+        self.assertNotIn("#safety", _render_toc(_function_toc_items()))
+        emergency = copy.deepcopy(permanent)
+        emergency["function_id"] = "OCF-EMG-001"
+        action = "If you believe you have an emergency or poisoning, call your local emergency number first."
+        emergency["safety_notes"].append(action)
+        emergency_page = _function_page(emergency, [], {}, "a" * 40)
+        self.assertIn(action, emergency_page)
+        self.assertNotIn("Existing function-specific precaution.", emergency_page)
+        self.assertNotIn('id="safety"', emergency_page)
+        self.assertIn("<strong>Reinforcement</strong>", permanent_page)
+        self.assertNotIn("not evidence of lasting biological change", permanent_page)
         self.assertEqual(permanent, snapshot)
         self.assertEqual(function, original)
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}

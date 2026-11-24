@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 from catalog import validate_catalog
 from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
-from site_references import chain_references, use_references
+from site_references import chain_references, function_background, use_references
 from affirmations_site import page as affirmations_page
 from morning_routine_site import install as install_morning_routine
 
@@ -315,6 +315,21 @@ def fetch_transcript(asset, *, fetcher=None):
     return body
 
 
+def published_transcript_mirror(directory):
+    """Use a local published transcript cache; the caller still validates every byte."""
+    root = directory.resolve(strict=True)
+    _require(root.is_dir(), "published transcript mirror is not a directory")
+
+    def from_mirror(asset):
+        # fetch_transcript validates the asset ID, format, size and SHA before use.
+        path = root / f'{asset["asset_id"]}.{asset["format"]}'
+        _require(path.is_file() and not path.is_symlink(), "published transcript missing from mirror")
+        with path.open("rb") as fp:
+            return fp.read(asset["size_bytes"] + 1)
+
+    return from_mirror
+
+
 def _copy_static_site(site_root: Path, output: Path):
     _require(site_root.is_dir(), "source site directory is missing")
     _require(
@@ -513,6 +528,7 @@ def _function_audio_availability(functions, catalog, sessions_by_function):
 
 def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_function):
     markdown = markdown.replace(STALE_CUE_DISTINCTION_NOTE, "")
+    markdown = markdown.replace("Read function-specific safety notes and seek", "Seek")
     markdown = markdown.replace("current display and spoken cues", "current cues")
     markdown = _replace_markdown_section(markdown, "Focus 10 and Focus 11: design labels", "")
     markdown = _replace_markdown_once(markdown, "# Welcome to OCF", "# Listening Guide", "page title")
@@ -824,7 +840,7 @@ def build_public_site(
                     source_commit,
                     toc=True,
                     toc_items=_function_toc_items(),
-                    description="Documented practice intent: " + _public_description(function),
+                    description=_public_description(function),
                 ),
             )
 
@@ -1319,7 +1335,7 @@ def _shell(
 <meta name="theme-color" content="#101a22"><meta name="description" content="{_html(description)}">
 <link rel="canonical" href="{_html(canonical)}"><meta property="og:type" content="website"><meta property="og:title" content="{_html(title)}"><meta property="og:description" content="{_html(description)}"><meta property="og:url" content="{_html(canonical)}"><meta name="twitter:card" content="summary">
 <title>{_html(title)}</title><link rel="icon" href="{base}assets/branding/ocf-app-icon-32.png" type="image/png" sizes="32x32"><link rel="stylesheet" href="{base}assets/css/main.css"><link rel="stylesheet" href="{base}assets/css/website.css">
-<script src="{base}assets/js/editions.js" defer></script>{catalog_script}{docs_script}<noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
+<script src="{base}assets/js/editions.js" defer></script>{catalog_script}{docs_script}<script src="{base}assets/js/playback-controls.js" defer></script><noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-short" aria-hidden="true">OCF</span><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
 <nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_links}</nav></details>
@@ -1336,7 +1352,6 @@ def _function_toc_items():
             ("overview", "Purpose"),
             ("cues", "How to use this function"),
             ("behavior", "Use and duration"),
-            ("safety", "Precautions"),
             ("listening", "Listen and download"),
             ("related", "Explore related practices"),
         )
@@ -1521,7 +1536,7 @@ def _functions_index(functions, sessions_by_function, preparation_sessions):
             for row in sessions
         )
         cards_by_domain.setdefault(function["primary_category"], []).append(
-            f'''<article class="function-card" data-function-card data-learned-id="{_html(function["function_id"])}" data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
+            f'''<article class="function-card" data-function-card data-learned-id="{_html(function["function_id"])}" data-category="{_html(" ".join(sorted(categories)))}" data-audio="{"yes" if sessions else "no"}" data-language="{_html("|".join(function_languages))}" data-voice="{_html("|".join(function_voices))}" data-search="{_html(" ".join(search + [sessions_text]).casefold())}"><p class="eyebrow">{_html(function["primary_category"].title())} · {function["function_id"]}</p><h2><a href="{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a></h2><p>{_html(_public_description(function))}</p><p class="function-status">{"Published recording available" if sessions else "Function guide · no recording in the current release"}</p><div class="browse-editions">{"".join(editions) if editions else ""}</div><a class="text-link" href="{_html(function["function_id"])}/">Read instructions <span aria-hidden="true">→</span></a></article>'''
         )
     groups = "".join(
         f'<section class="domain-group" data-domain-group="{_html(category["id"])}"><h2>{_html(category["label"].title())}</h2><div class="function-grid" data-function-grid>{"".join(cards_by_domain.get(category["id"], []))}</div></section>'
@@ -1683,6 +1698,14 @@ def _normalized_public_paragraph(text):
     return " ".join(unicodedata.normalize("NFKC", text).split()).casefold()
 
 
+def _technical_info(content):
+    return (
+        '<details class="technical-info"><summary><span aria-hidden="true">ⓘ</span>'
+        '<span class="sr-only">Technical details</span></summary>'
+        f'<div class="technical-popover">{content}</div></details>'
+    )
+
+
 def _function_page(function, sessions, transcript_paths, source_commit, history_records=()):
     categories = " · ".join(
         _html(category["label"]) for category in function["categories"]
@@ -1736,14 +1759,12 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
             else ""
         )
         scope_html = (
-            '<details class="technical-details"><summary>Technical details</summary><p class="scope-note">Documented command scope: '
-            + _html(command["effect_scope"])
-            + "</p></details>"
+            _technical_info('<p class="scope-note">Command scope: ' + _html(command["effect_scope"]) + "</p>")
             if command.get("effect_scope")
             else ""
         )
         command_sections.append(
-            f'''<section class="command-block"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{spoken_html}{usage_html}{explanation_html}<h4>Activation steps</h4>{procedure_html}{scope_html}</section>'''
+            f'''<section class="command-block"><div class="technical-heading"><h3>{"Primary activation" if command["designation"] == "primary" else "Secondary command"}</h3>{scope_html}</div>{spoken_html}{usage_html}{explanation_html}<h4>Activation steps</h4>{procedure_html}</section>'''
         )
     scope_rows = []
     for scope in function["lifecycle"]["scopes"]:
@@ -1774,24 +1795,19 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
         if release_command
         else ""
     )
-    lifecycle_html = f"""<section class="guide-section"><h2 id="behavior">Use and duration</h2><p class="scope-note">Duration labels describe the pattern intended by the practice, not evidence of lasting biological change or a guaranteed outcome.</p>{scopes_html}{trigger_html}{release_html}<details class="technical-details"><summary>Technical details</summary><p>Activation: {_html(lifecycle["activation"] or "not specified")}. Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p></details></section>"""
-    safety_html = "".join(
-        f"<li>{_html(note)}</li>" for note in function["safety_notes"]
+    lifecycle_info = _technical_info(
+        f'<p>Activation: {_html(lifecycle["activation"] or "not specified")}. '
+        f'Persistence described by the practice: {_html(lifecycle["persistence"] or "not specified")}.</p>'
     )
-    general_safety = (
-        "<p>For general comfort and safety guidance, see the "
-        '<a href="../../listening/">Listening Guide</a>.</p>'
-    )
-    specific_safety = (
-        "<p>Function-specific notes:</p><ul>" + safety_html + "</ul>"
-        if safety_html
-        else "<p>No additional function-specific precautions are recorded.</p>"
-    )
-    safety = (
-        '<section class="guide-section"><h2 id="safety">Precautions</h2>'
-        + specific_safety
-        + general_safety
-        + "</section>"
+    lifecycle_html = f"""<section class="guide-section"><div class="technical-heading"><h2 id="behavior">Use and duration</h2>{lifecycle_info}</div>{scopes_html}{trigger_html}{release_html}</section>"""
+    # Safety metadata is not website editorial copy. Retain only this direct
+    # instruction on emergency functions, where it tells the listener what to do first.
+    emergency_instruction = "If you believe you have an emergency or poisoning, call your local emergency number first."
+    emergency_html = (
+        f'<p>{_html(emergency_instruction)}</p>'
+        if function["function_id"].startswith("OCF-EMG-")
+        and emergency_instruction in function.get("safety_notes", [])
+        else ""
     )
     session_html = "".join(
         _session_card(row, transcript_paths, site_root_prefix="../../")
@@ -1844,7 +1860,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</p><p class="intent-note">This describes what the practice intends to teach, not a guaranteed result or medical treatment. <a href="#safety">Read the function-specific precautions</a>.</p>{audio_actions}</header>{terms}<section class="guide-section"><h2 id="cues">How to use this function</h2>{"".join(command_sections)}</section>{lifecycle_html}{safety}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{emergency_html}{"".join(command_sections)}</section>{lifecycle_html}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 
@@ -1917,7 +1933,7 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
             else ""
         )
         audio.append(
-            f'<audio controls preload="none" data-format-sources="{_html(json.dumps(sources))}" data-session-format="{_html(playable["format"])}" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
+            f'<audio class="ocf-compact-audio" preload="none" data-format-sources="{_html(json.dumps(sources))}" data-session-format="{_html(playable["format"])}" aria-label="Listen to {_html(title)}, {_html(session["locale"])}, edition {_html(session["edition"])}" data-session-title="{_html(title)}" data-session-edition="{_html(session["edition"])}" data-session-locale="{_html(session["locale"])}"><source src="{_html(playable["download_url"])}" type="{media_type}">{track}Your browser may not support this audio format. Use an individual download link.</audio><p class="playback-status" data-playback-status role="status" aria-live="polite" hidden></p>'
         )
     for asset in row["audio_assets"]:
         fmt = asset["format"].upper()
@@ -1968,7 +1984,9 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     )
     audio_html = "".join(audio)
     transcript_html = "".join(transcript_controls)
-    source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(release["source_ocf_commit"])}</code></p></details>'
+    provenance = (playable or {}).get("provenance", {})
+    render_commit = provenance.get("render_source_commit", release["source_ocf_commit"])
+    source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(render_commit)}</code></p></details>'
     return f'''<article class="edition-card" data-format-session="{_html(json.dumps(list(sources)))}" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{transcript_html}{companion_html}</article>'''
 
 
@@ -2070,7 +2088,7 @@ def _quick_reference(functions, sessions_by_function):
             if sessions_by_function.get(function["function_id"]) else "Audio unavailable"
         )
         rows.append(
-            f'<tr role="row" data-reference-row data-learned-id="{_html(function["function_id"])}" data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description"><strong>Documented practice intent:</strong> {_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
+            f'<tr role="row" data-reference-row data-learned-id="{_html(function["function_id"])}" data-search="{_html(" ".join(searchable).casefold())}" data-category="{_html(" ".join(category["id"] for category in function["categories"]))}"><th role="rowheader" scope="row"><a href="../functions/{_html(function["function_id"])}/">{_html(function["title"]["text"])}</a><span class="stable-id">{_html(function["function_id"])}</span><span class="category-chip">{_html(category.title())}</span></th><td role="cell" data-label="Current cues"><ul>{"".join(cue_rows)}</ul></td><td role="cell" data-label="Description">{_html(_public_description(function))}</td><td role="cell" data-label="Audio">{audio_cell}</td></tr>'
         )
     options = "".join(
         f'<option value="{_html(item["id"])}">{_html(item["label"].title())}</option>'
@@ -2360,6 +2378,10 @@ def _validate_build(args):
         source_pin=source_pin,
         content_dir=args.content_dir,
         historical_reference=args.historical_reference,
+        transcript_fetcher=(
+            published_transcript_mirror(args.published_transcript_mirror)
+            if args.published_transcript_mirror is not None else None
+        ),
         smart_playback_media=args.smart_playback_media,
     )
 
@@ -2374,6 +2396,8 @@ def main(argv=None):
     parser.add_argument("--historical-reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--smart-playback-media", type=Path, help="Exact approved public Comfort MP3; verified and inventoried in the isolated experiment")
+    parser.add_argument("--published-transcript-mirror", type=Path,
+                        help="Offline folder of published transcript sidecars; every file is still verified")
     args = parser.parse_args(argv)
     try:
         result = _validate_build(args)

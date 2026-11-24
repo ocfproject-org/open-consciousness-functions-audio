@@ -28,7 +28,7 @@ async function pinnedGuide(page) {
   expect(guide.source_commit).toBe(pin.source_commit);
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
   expect(guide.build_receipt.export_content_sha256).toBe(receipt.guide_export_sha256);
-  expect(guide.functions).toHaveLength(58);
+  expect(guide.functions).toHaveLength(59);
   return guide;
 }
 
@@ -75,12 +75,12 @@ test('accessibility failure is detected by the same fail-closed gate', async ({ 
   await expect(noAxeViolations(page)).rejects.toThrow();
 });
 
-test('all 58 generated function pages expose spoken cues only and pass axe', async ({ page }) => {
-  test.setTimeout(120000); // Aggregate 58 page visits and axe scans; assertion timeouts are unchanged.
+test('all 59 generated function pages expose spoken cues only and pass axe', async ({ page }) => {
+  test.setTimeout(120000); // Aggregate 59 page visits and axe scans; assertion timeouts are unchanged.
   const guide = await pinnedGuide(page);
   const index = await page.request.get('/documentation-index.json').then(response => response.json());
   expect(index.source_commit).toBe(guide.source_commit);
-  expect(index.functions).toHaveLength(58);
+  expect(index.functions).toHaveLength(59);
   for (const row of index.functions) {
     const id = row.function_id;
     const source = guide.functions.find(item => item.function_id === id);
@@ -103,7 +103,8 @@ test('all 58 generated function pages expose spoken cues only and pass axe', asy
     expect(pageText).not.toContain('Draft metadata — not reviewed guidance');
     expect(pageText).not.toContain('description review status not recorded');
     expect(pageText).not.toContain('Procedure wording is not published while review is pending.');
-    await expect(page.locator('.function-intro .lead')).toHaveText(`Documented practice intent: ${row.description}`);
+    await expect(page.locator('.function-intro .lead')).toHaveText(row.description);
+    await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
     await expect(page.locator('.function-intro .lead')).toHaveCount(1);
     await expect(page.getByRole('heading', {name: 'Intended purpose', exact: true})).toHaveCount(0);
     await expect(page.getByRole('heading', {name: 'Purpose', exact: true})).toHaveCount(0);
@@ -163,7 +164,7 @@ test('Sleep has no duplicate step or generic command filler, while distinct guid
   expect(sleepText.match(/Close your eyes\./g)).toHaveLength(1);
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).toContain('temporary');
   expect(await page.locator('#behavior').evaluate(element => element.parentElement.textContent)).not.toContain('No additional lifecycle scopes are declared.');
-  expect(await page.locator('#safety').evaluate(element => element.parentElement.textContent)).not.toBe('');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
 });
 
 test('Insulate hold guidance uses the spoken Cancel cue without cue copy controls', async ({ page }) => {
@@ -304,8 +305,8 @@ test('related-practice directory retains all approved one-way records and their 
   await page.goto('/relationships/');
   const receipt = await page.request.get('/site-build-receipt.json').then(response => response.json());
   const rows = page.locator('.relationship-card');
-  await expect(rows).toHaveCount(33);
-  expect(receipt.approved_relationship_count).toBe(33);
+  await expect(rows).toHaveCount(34);
+  expect(receipt.approved_relationship_count).toBe(34);
   for (const row of await rows.all()) {
     await expect(row.locator('h3 a')).toHaveCount(2);
     await expect(row.locator('h3')).toContainText('→');
@@ -325,7 +326,8 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
   await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
   await page.goto('/preparation-learning/');
-  for (const player of await page.locator('.edition-card:visible audio').all()) await expect(player).toBeVisible();
+  await expect(page.locator('.edition-card:visible .ocf-local-player')).toBeVisible();
+  await expect(page.locator('audio[controls]')).toHaveCount(0);
   await expect(page.locator('.edition-card:visible audio')).toHaveCount(1);
 });
 
@@ -348,7 +350,7 @@ test('Browse & Listen stays truthful without JavaScript or when catalog loading 
   const noScriptContext = await browser.newContext({javaScriptEnabled: false});
   const noScriptPage = await noScriptContext.newPage();
   await noScriptPage.goto('/functions/');
-  await expect(noScriptPage.locator('.function-card')).toHaveCount(58);
+  await expect(noScriptPage.locator('.function-card')).toHaveCount(59);
   await expect(noScriptPage.locator('.function-card').first()).toContainText('Published recording available');
   await expect(noScriptPage.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2 * publishedCatalog.releases.length);
   await expect(noScriptPage.locator('audio')).toHaveCount(0);
@@ -356,7 +358,7 @@ test('Browse & Listen stays truthful without JavaScript or when catalog loading 
 
   await context.route('**/browse-catalog.json', route => route.abort());
   await page.goto('/functions/');
-  await expect(page.locator('.function-card')).toHaveCount(58);
+  await expect(page.locator('.function-card')).toHaveCount(59);
   await expect(page.locator('#empty-state')).toContainText('could not be loaded');
   await expect(page.locator('#empty-state')).not.toContainText('No published recordings');
   await expect(page.locator('.function-card').first().locator('.browse-action[href^="https://github.com/"]')).toHaveCount(2 * publishedCatalog.releases.length);
@@ -648,7 +650,7 @@ test('current-cue search normalizes separators, offers clear/no-results, and kee
   await expect(page.locator('#clear-library-filters')).toBeVisible();
   await page.locator('#clear-library-filters').click();
   await expect(search).toHaveValue('');
-  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
 
   await search.fill('PLUS-STRONG');
   await expect(page.locator('.session-card:visible')).toHaveCount(1);
@@ -674,7 +676,7 @@ test('current-cue search normalizes separators, offers clear/no-results, and kee
   await expect(page.locator('[data-reference-clear]')).toBeVisible();
   await page.locator('[data-reference-clear]').click();
   await expect(referenceSearch).toHaveValue('');
-  await expect(page.locator('[data-reference-row]:visible')).toHaveCount(58);
+  await expect(page.locator('[data-reference-row]:visible')).toHaveCount(59);
   await noAxeViolations(page, '.reference-tools');
 });
 
@@ -711,9 +713,9 @@ test('filtered-out synthetic media remains focused, understandable, seekable and
   await player.evaluate(audio => { audio.currentTime = 0.6; });
   await player.evaluate(audio => audio.dispatchEvent(new Event('timeupdate')));
   const positionBeforeFilter = await player.evaluate(audio => audio.currentTime);
-  await player.focus();
-  const focusedBeforeFilter = await player.evaluate(audio => document.activeElement === audio);
-  expect(focusedBeforeFilter).toBe(true);
+  const compactPause = relax.getByRole('button', {name: 'Pause', exact: true});
+  await compactPause.focus();
+  await expect(compactPause).toBeFocused();
   await page.locator('#search').evaluate(input => {
     input.value = 'OCF-BOD-001';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -722,7 +724,7 @@ test('filtered-out synthetic media remains focused, understandable, seekable and
   await expect(relax).toBeVisible();
   await expect(relax.locator('[data-filter-pinned]')).toContainText('Playing Relax');
   expect(await player.evaluate(audio => audio.isSameNode(document.querySelector('.session-card[data-function-id="OCF-FND-004"] audio')))).toBe(true);
-  expect(await player.evaluate(audio => document.activeElement === audio)).toBe(true);
+  await expect(compactPause).toBeFocused();
   await fixtureButton.focus();
   await page.keyboard.press('Enter');
   await expect.poll(() => player.evaluate(audio => audio.paused)).toBe(true);
@@ -1357,7 +1359,7 @@ test('Listening Guide and Preparation Learning clearly state preparation-first g
     await expect(page.locator(`[id="${id}"]`)).toHaveCount(1);
   }
 
-  expect(guideText).toContain('58 of 58 canonical function guides have at least one published recording');
+  expect(guideText).toContain('58 of 59 canonical function guides have at least one published recording');
   expect(guideText).toContain('audio-0.1.0-a6-20261111 (edition 0.1.0)');
   await noAxeViolations(page);
   await page.goto('/preparation-learning/');
@@ -1529,7 +1531,7 @@ test('Quick Reference filters, keyboard controls, narrow widths, print, themes, 
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/quick-reference/');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
-    await expect(page.locator('.reference-table tbody tr')).toHaveCount(58);
+    await expect(page.locator('.reference-table tbody tr')).toHaveCount(59);
     await expect(page.getByRole('table', {name: 'Current cues, function descriptions, and audio availability'})).toBeVisible();
     await expect(page.locator('.reference-table tbody tr').first().locator('td[data-label="Description"]')).toBeVisible();
     await expect(page.locator('.reference-table tbody tr').first().locator('td[data-label="Audio"] a')).toHaveText('Listen');
@@ -1607,7 +1609,7 @@ test('mobile Quick Reference cards retain descriptions, cues, and accurate audio
   await page.setViewportSize({width: 320, height: 900});
   await page.goto('/quick-reference/');
   const rows = page.locator('.quick-reference-table tbody tr[data-reference-row]');
-  await expect(rows).toHaveCount(58);
+  await expect(rows).toHaveCount(59);
   await expect(page.getByRole('columnheader', {name: 'Description'})).toHaveCount(1);
   await expect(page.getByRole('columnheader', {name: 'Audio availability'})).toHaveCount(1);
   for (const row of await rows.all()) {
@@ -1747,7 +1749,7 @@ test('quality metadata, slim catalog, static fallback and narrow print stay trut
   await expect(staticPage.locator('.library-tools')).toBeHidden();
   await expect(staticPage.locator('.selection-tools')).toBeHidden();
   await expect(staticPage.locator('#results-count')).not.toContainText('Loading');
-  await expect(staticPage.locator('[data-function-card]')).toHaveCount(58);
+  await expect(staticPage.locator('[data-function-card]')).toHaveCount(59);
   await context.close();
   await page.setViewportSize({width: 320, height: 800});
   await page.goto('/quick-reference/');
@@ -1758,8 +1760,8 @@ test('quality metadata, slim catalog, static fallback and narrow print stay trut
 
 test('browse constructs only requested players and preserves selection and identity', async ({ page }) => {
   await page.goto('/functions/');
-  await expect(page.locator('.session-card')).toHaveCount(59 * publishedCatalog.releases.length);
-  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""])')).toHaveCount(59 * publishedCatalog.releases.length);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
   await expect(page.locator('.session-card audio')).toHaveCount(0);
   const card = page.locator(`.session-card[data-edition="${latestEdition}"][data-function-id="OCF-FND-004"]`);
   const checkbox = card.getByRole('checkbox', {name:/^Select MP3/});
@@ -1767,7 +1769,7 @@ test('browse constructs only requested players and preserves selection and ident
   await card.getByRole('button', {name: /^Show player for/}).focus();
   await page.keyboard.press('Enter');
   const player = card.locator('audio');
-  await expect(player).toBeFocused();
+  await expect(card.getByRole('button', {name: 'Play', exact: true})).toBeFocused();
   await expect(page.locator('.session-card audio')).toHaveCount(1);
   expect(await player.evaluate(audio => audio.paused)).toBe(true);
   await player.evaluate(audio => { audio.dataset.identity = 'original'; });
@@ -1959,11 +1961,11 @@ test('both published editions retain exact provenance, downloads and accessible 
   await page.goto('/functions/');
   const selector = page.getByLabel('Audio edition', {exact: true});
   await expect(selector).toHaveValue('latest');
-  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
   for (const [, version] of contracts) {
     await selectPreference(page,'Audio edition',version);
-    await expect(page.locator('.session-card:visible')).toHaveCount(59);
-    expect(await page.locator('.session-card:visible').evaluateAll(cards => [...new Set(cards.map(card => card.dataset.edition))])).toEqual([version]);
+    await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
+    expect(await page.locator('.session-card:not([data-edition=""]):visible').evaluateAll(cards => [...new Set(cards.map(card => card.dataset.edition))])).toEqual([version]);
     const release = publishedCatalog.releases.find(row => row.version === version);
     const actualURLs = await page.locator('.session-card:visible .asset-row a').evaluateAll(links => links.map(link => link.href).sort());
     const expectedURLs = [...release.preparations, ...release.functions].flatMap(row => row.sessions.flatMap(session => session.assets.map(asset => asset.download_url))).sort();
@@ -1974,7 +1976,7 @@ test('both published editions retain exact provenance, downloads and accessible 
   await expect(selector).toHaveValue('0.1.0');
   await selectPreference(page,'Audio edition','latest');
   await expect(selector).toHaveValue('latest');
-  await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
   await page.goto('/downloads/');
   await expect(page.locator('.download-card[data-edition="0.2.0"]')).toHaveCount(59);
   await expect(page.locator('.download-card[data-edition="0.1.0"]')).toHaveCount(59);
@@ -2000,6 +2002,9 @@ test('edition changes retain selected-file provenance and an active historical p
   await expect(page.locator('#selected-files-review').getByRole('link')).toHaveAttribute('href', expectedURL);
   await historical.getByRole('button', {name: /^Show player/}).click();
   const player = historical.locator('audio');
+  await expect(historical.getByRole('button', {name:'Play', exact:true})).toBeVisible();
+  await expect(historical.locator('audio[controls]')).toHaveCount(0);
+  await expect(historical.getByRole('button', {name:'Use browser controls'})).toHaveCount(0);
   await player.evaluate(async audio => { audio.load(); await audio.play(); audio.dataset.editionIdentity = 'historical'; });
   await selectPreference(page,'Audio edition','0.2.0');
   await expect(historical).toBeVisible();
@@ -2061,14 +2066,15 @@ test('function source history works without JavaScript', async ({ browser }) => 
 });
 
 // Presentation only: source values and exact-edition assets remain untouched.
-test('function intent and duration qualifications remain visible without opening details', async ({ page }) => {
-  await page.goto('/functions/OCF-BOD-008/');
-  await expect(page.locator('#overview')).toContainText('Documented practice intent:');
-  await expect(page.locator('.intent-note')).toBeVisible();
-  await expect(page.locator('.intent-note')).toContainText('not a guaranteed result or medical treatment');
-  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toBeVisible();
-  await expect(page.locator('.scope-note').filter({ hasText: 'Duration labels' })).toContainText('not evidence of lasting biological change');
-  await expect(page.locator('#safety')).toHaveCount(1);
-  await expect(page.locator('main')).toContainText('Persistence described by the practice: permanent');
+test('function guides show original copy without a Precautions section', async ({ page }) => {
+  await page.goto('/functions/OCF-EXP-007/');
+  await expect(page.locator('#overview')).not.toContainText('Documented practice intent:');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText('no physical field, protection or guaranteed effect is claimed');
+  await expect(page.locator('main')).not.toContainText('Function-specific notes:');
+  await expect(page.locator('#listening')).toBeVisible();
   await noAxeViolations(page);
+  await page.goto('/functions/OCF-EMG-001/');
+  await expect(page.locator('main')).toContainText('call your local emergency number first.');
+  await expect(page.locator('#safety, a[href="#safety"]')).toHaveCount(0);
 });

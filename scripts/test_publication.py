@@ -178,6 +178,19 @@ class PublicationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "symlink"):
                 p.verify_files(manifest, root)
 
+    def test_hash_matched_wav_disguised_as_flac_is_not_publishable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            for prefix in (b"RIFF", b"RIFX", b"RF64", b"BW64"):
+                with self.subTest(prefix=prefix):
+                    manifest = fixture()
+                    audio = prefix + b"\0" * 4 + b"WAVE"
+                    item = manifest["assets"][0]
+                    item.update(size_bytes=len(audio), sha256=hashlib.sha256(audio).hexdigest())
+                    (root / item["filename"]).write_bytes(audio)
+                    with self.assertRaisesRegex(ValueError, "WAV masters are private"):
+                        p.verify_files(manifest, root)
+
     def test_canonical_digest_and_encoded_url(self):
         manifest = fixture()
         reordered = dict(reversed(list(manifest.items())))

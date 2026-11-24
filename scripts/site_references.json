@@ -20,6 +20,33 @@
       "format": "Public archive PDF reproduction; page numbers refer to this PDF"
     }
   },
+  "function_background": {
+    "OCF-EXP-007": {
+      "context": "OCF’s Energy Ball is inspired by the Monroe Institute’s Resonant Energy Balloon (REBAL). Picture or sense a comfortable space around you; a vivid image is not required. Plus Inflate and Plus Deflate are OCF’s cues, not Monroe Institute instructions. These suggested uses are visualization practices, not claims of physical protection or health benefits.",
+      "links": [
+        {
+          "title": "Robert A. Monroe: October 7, 1990 Gateway talk",
+          "url": "https://archive.org/details/ram-typed-transcripts",
+          "scope": "Monroe Institute Digital Archives. Choose “1990-10-07 - Bob’s Talk.” Monroe recalls the exercise’s origins in Explorer sessions."
+        },
+        {
+          "title": "Explorer session EGP-1, June 17, 1986",
+          "url": "https://archive.org/details/explorer-coll-86",
+          "scope": "Monroe Institute Digital Archives. An early example in the original audio and unedited transcript."
+        },
+        {
+          "title": "Restoring Your Energy",
+          "url": "https://www.monroeinstitute.org/pages/resources",
+          "scope": "A free ten-minute REBAL meditation from the Monroe Institute."
+        },
+        {
+          "title": "REBAL practice tips by Allyn Evans",
+          "url": "https://www.monroeinstitute.org/blogs/blog/tips-for-strengthening-expanding-and-using-your-biofield-with-the-resonant-energy-balloon-rebal",
+          "scope": "Includes a suggested application before public speaking."
+        }
+      ]
+    }
+  },
   "uses": [
     {
       "function_id": "OCF-BOD-005",

@@ -132,6 +132,44 @@ class CatalogValidationTests(unittest.TestCase):
             ):
                 validate_site.validate_site()
 
+    def test_public_site_rejects_wav_files_even_if_unlinked_or_renamed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory)
+            for name in validate_site.REQUIRED:
+                target = site / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("", encoding="utf-8")
+            (site / "catalog.json").write_text(json.dumps(empty_catalog()), encoding="utf-8")
+            validate_site.validate_site(site)
+            for name, content in (
+                ("Master.WAV", b"unlinked"),
+                ("recording.flac", b"RF64\x00\x00\x00\x00WAVE"),
+            ):
+                with self.subTest(name=name):
+                    bad = site / "assets" / name
+                    bad.write_bytes(content)
+                    with self.assertRaisesRegex(ValueError, "WAV masters are private"):
+                        validate_site.validate_site(site)
+                    bad.unlink()
+            (site / "index.html").write_text(
+                '<audio src="https://example.com/private%2eWAV?cache=1"></audio>',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "WAV masters are private"):
+                validate_site.validate_site(site)
+
+    def test_public_catalog_rejects_wav_in_legacy_format_or_mirror(self):
+        data = catalog_with_assets()
+        assets = data["releases"][0]["functions"][0]["sessions"][0]["assets"]
+        assets[1]["asset_id"] = "asset-two"
+        assets[0]["mirrors"] = ["https://example.com/MASTER.wav?token=x"]
+        with self.assertRaisesRegex(ValueError, "WAV masters are private"):
+            validate_site.validate_catalog(data)
+        assets[0]["mirrors"] = []
+        assets[0]["format"] = "WAV"
+        with self.assertRaisesRegex(ValueError, "WAV masters are private"):
+            validate_site.validate_catalog(data)
+
     def test_broken_internal_navigation_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             site = Path(directory)
