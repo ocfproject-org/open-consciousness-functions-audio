@@ -56,7 +56,7 @@ test('concealment keyboard reveal, pause, ended, replacement and media metadata'
  await box.getByRole('button',{name:'Show more',exact:true}).focus();await page.keyboard.press('Enter');
  await expect(box.locator('#surprise-details')).toBeVisible();await expect(box.locator('#surprise-details')).toBeFocused();
  const title=await box.locator('h4').textContent();expect(title).not.toBe('Your surprise session');
- await expect(player).toHaveAccessibleName(new RegExp(`^Listen to `));
+ await expect(box.locator('.ocf-local-player')).toHaveAccessibleName(new RegExp(`^Listen to `));
  expect(await page.evaluate(()=>navigator.mediaSession?.metadata?.title)).toBe(title);
  await choose(page).click();await expect(box.locator('#surprise-details')).toBeHidden();
  expect(await player.evaluate(a=>a.paused)).toBe(true);
