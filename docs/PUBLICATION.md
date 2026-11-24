@@ -25,7 +25,13 @@ records the later packaging implementation separately. Optional `render_source`
 records `state` (`committed` or `frozen-working-tree`), `base_commit`,
 `snapshot_sha256`, `snapshot_scope: public-repository-files`, and an optional
 `audio_code_equivalent_commit`. A later equivalent commit is not misrepresented
-as the HEAD used during rendering. Unknown fields are rejected.
+as the HEAD used during rendering. When a release deliberately collects candidates
+from multiple renderer revisions, its umbrella source commit is distinct from
+the exact per-asset `render_source_commit`. Pass the explicit umbrella to
+`prepare_review.py --release-source-commit` after checking that each contributing
+commit is reachable from it. The per-asset value remains bound to the verified
+candidate and technical receipt. Historical manifests without this field remain
+byte-identical. Unknown fields are rejected.
 
 Audio has a `session` object: `kind`, nullable `function_id`, `title`, `locale`,
 `voice_id`, `voice_name`, `edition`, measured `duration_seconds`, `sample_rate_hz`,

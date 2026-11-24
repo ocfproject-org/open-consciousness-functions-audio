@@ -6,7 +6,10 @@ import unittest
 from pathlib import Path
 
 from import_candidates import import_candidates, validate_lyrics_receipt
-from publication import canonical_bytes, verify_files
+from publication import canonical_bytes, manifest_digest, validate_manifest, verify_files
+from catalog import _project_entry
+from catalog_contract import validate_release
+from datetime import datetime, timezone
 from test_publication import fixture
 
 
@@ -204,6 +207,38 @@ class ImportTests(unittest.TestCase):
             )
             self.assertNotIn("approval", result)
             self.assertTrue(function.exists())
+
+    def test_mixed_render_commits_retain_exact_receipt_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            function, original = candidate(root / "function")
+            prep, later = candidate(root / "preparation", True)
+            later["source_commit"] = "c" * 40
+            receipt = later["artifacts"][-1]
+            technical = json.loads((prep.parent / receipt["file"]).read_text())
+            technical["source_commit"] = later["source_commit"]
+            data = canonical_bytes(technical)
+            (prep.parent / receipt["file"]).write_bytes(data)
+            receipt.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+            later["technical_receipt_sha256"] = receipt["sha256"]
+            prep.write_bytes(canonical_bytes(later))
+            edition = later["session"]["edition"]
+            with self.assertRaisesRegex(ValueError, "explicit release source"):
+                import_candidates([function, prep], root / "fail", tag="audio-mixed", edition=edition)
+            manifest = import_candidates(
+                [function, prep], root / "ok", tag="audio-mixed", edition=edition,
+                release_source_commit="d" * 40,
+            )
+            self.assertEqual(manifest["source_commit"], "d" * 40)
+            for item in manifest["assets"]:
+                self.assertEqual(item["provenance"]["render_source_commit"],
+                                 later["source_commit"] if item["filename"].startswith("00 - ") else original["source_commit"])
+            release = _project_entry(manifest, manifest_digest(manifest), datetime.now(timezone.utc))
+            self.assertEqual(validate_release(release), manifest)
+            invalid = copy.deepcopy(manifest)
+            invalid["assets"][0]["provenance"]["render_source_commit"] = "not-a-commit"
+            with self.assertRaisesRegex(ValueError, "invalid render_source_commit"):
+                validate_manifest(invalid)
 
     def test_tamper_duplicate_and_overwrite_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

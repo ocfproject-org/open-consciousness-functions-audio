@@ -19,7 +19,7 @@ from publication import (
 )
 
 
-def prepare_review(paths, destination, *, tag, edition, collections=False):
+def prepare_review(paths, destination, *, tag, edition, collections=False, release_source_commit=None):
     destination = Path(destination).absolute()
     require(not destination.exists(), "review destination already exists")
     require(
@@ -30,7 +30,7 @@ def prepare_review(paths, destination, *, tag, edition, collections=False):
     stage = Path(tempfile.mkdtemp(prefix=".ocf-review-stage-", dir=destination.parent))
     # Failed assembly is retained. Original candidates are only read.
     assets = stage / "assets"
-    manifest = import_candidates(paths, assets, tag=tag, edition=edition)
+    manifest = import_candidates(paths, assets, tag=tag, edition=edition, release_source_commit=release_source_commit)
     if collections:
         collection_root = stage / "collections"
         records = build_collections(manifest, assets, collection_root)
@@ -84,6 +84,7 @@ def main(argv=None):
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--edition", required=True)
+    parser.add_argument("--release-source-commit", help="explicit umbrella source commit for candidates rendered at different revisions")
     parser.add_argument("--collections", action="store_true")
     args = parser.parse_args(argv)
     report = prepare_review(
@@ -92,6 +93,7 @@ def main(argv=None):
         tag=args.tag,
         edition=args.edition,
         collections=args.collections,
+        release_source_commit=args.release_source_commit,
     )
     print(json.dumps({k: v for k, v in report.items() if k != "assets"}))
 

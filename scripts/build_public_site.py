@@ -1984,7 +1984,9 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     )
     audio_html = "".join(audio)
     transcript_html = "".join(transcript_controls)
-    source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(release["source_ocf_commit"])}</code></p></details>'
+    provenance = (playable or {}).get("provenance", {})
+    render_commit = provenance.get("render_source_commit", release["source_ocf_commit"])
+    source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(render_commit)}</code></p></details>'
     return f'''<article class="edition-card" data-format-session="{_html(json.dumps(list(sources)))}" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{transcript_html}{companion_html}</article>'''
 
 
