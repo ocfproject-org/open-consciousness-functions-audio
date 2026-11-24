@@ -15,9 +15,11 @@ const allow = new Set(['preview.html','preview.css','preview.js','stream.json',m
 for (const file of ['editions.js','playback-controls.js']) allow.add('/assets/js/'+file);
 const url = process.env.CONTINUOUS_SMART_PLAY_LIVE;
 const server = http.createServer((req,res) => {
-  if (!allow.has(req.url)) return res.writeHead(404).end();
-  const file = req.url.endsWith('.mp3') ? media : fs.readFileSync(path.join(root,req.url));
-  const type = {'.mp3':'audio/mpeg','.js':'text/javascript','.json':'application/json','.html':'text/html','.css':'text/css'}[path.extname(req.url)];
+  const target = new URL(req.url,'http://localhost');
+  const name = target.pathname;
+  if (!allow.has(name) || (target.search && !(name.startsWith('/assets/js/') && /^\?v=[a-f0-9]{16}$/.test(target.search)))) return res.writeHead(404).end();
+  const file = name.endsWith('.mp3') ? media : fs.readFileSync(path.join(root,name));
+  const type = {'.mp3':'audio/mpeg','.js':'text/javascript','.json':'application/json','.html':'text/html','.css':'text/css'}[path.extname(name)];
   const match = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range || '');
   const a = match ? Number(match[1]) : 0;
   const b = match && match[2] ? Math.min(Number(match[2]),file.length-1) : file.length-1;
