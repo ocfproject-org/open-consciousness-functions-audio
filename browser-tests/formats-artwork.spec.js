@@ -78,7 +78,7 @@ test('released Browse artwork is manifest matched, lazy, responsive and reserves
  }
 });
 test('format-specific ZIPs and cross-tab format choice follow the shared preference',async({page,context})=>{
- await page.goto('/functions/');const other=await context.newPage();await other.goto('/downloads/');
+ await page.goto('/functions/');await selectPreference(page,'Audio edition','0.2.0');const other=await context.newPage();await other.goto('/downloads/');
  for(const format of ['flac','mp3']){
   await selectPreference(page,'Audio format',format);await expect(other.getByLabel('Audio format',{exact:true})).toHaveValue(format);
   const details=page.locator('#release-extras details:visible');await details.evaluate(d=>d.open=true);
