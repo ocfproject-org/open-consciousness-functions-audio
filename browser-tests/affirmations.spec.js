@@ -10,7 +10,7 @@ async function exportPrivate(page){await openPreferences(page);const detail=page
 test('library deliberate first tap, combined search/category, independent hearts and bookmarked Morning reload',async({page})=>{
  const requests=[];page.on('request',r=>requests.push({method:r.method(),url:r.url()}));
  await ready(page);await expect(page.locator('.affirmation-card')).toHaveCount(50);expect(await state(page)).toEqual({custom:[],favorites:[]});
- const first=page.locator('.affirmation-heart').first();await first.click();await expect(first).toHaveAttribute('aria-pressed','true');expect(await page.evaluate(()=>window.ocfPrivateLibrary.store.config())).toBeNull();await first.click();
+ const first=page.locator('.affirmation-heart').first();await first.click();await expect(first).toHaveAttribute('aria-pressed','true');expect(await page.evaluate(()=>window.ocfPrivateLibrary.store.config()?.manualOnly)).toBe(true);await first.click();
  for(let i=0;i<3;i++){await first.click();await expect(first).toHaveAttribute('aria-pressed','true');await first.click();await expect(first).toHaveAttribute('aria-pressed','false');}await first.click();
  await page.getByLabel('Collection',{exact:true}).selectOption('archive');await page.getByLabel('Search affirmations').fill('small');await page.getByLabel('Filter by category',{exact:true}).selectOption('follow-through');await expect(page.locator('.affirmation-card')).toHaveCount(1);
  await page.getByRole('button',{name:'Clear filters'}).click();await expect(page.locator('.affirmation-card')).toHaveCount(50);
@@ -108,7 +108,7 @@ test('cross-tab reset and re-enable invalidate both a digest-delayed selection a
 });
 test('legacy private backup previews and recovery bypass corrupt affirmation data; schema3 rejects before any writes',async({page})=>{
  await ready(page);
- const corruptKey=await page.evaluate(()=>{const key=`ocf-learned:v1:affirmation:${window.ocfPrivateLibrary.store.config().epoch}:line:bad`;localStorage.setItem(key,'{');return key;});
+ const corruptKey=await page.evaluate(()=>{const key=`ocf-learned:v1:affirmation:${window.ocfPrivateLibrary.store.enableManual().epoch}:line:bad`;localStorage.setItem(key,'{');return key;});
  const record={id:'33333333-3333-4333-8333-333333333333',subject:'preparation:human-plus',markedAt:'2026-11-19T00:00:00.000Z',guide:null,recording:null,external:{edition:'legacy one',date:null}};
  for(const schema of [1,2]){
   const candidate={schema,records:[{...record,external:{edition:`legacy ${schema}`,date:null}}],...(schema===2?{flags:[{subject:'OCF-AUT-001',kind:'favorite'}]}:{})};

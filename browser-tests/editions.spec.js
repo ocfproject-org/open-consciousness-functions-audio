@@ -14,7 +14,7 @@ const routes=['/','/functions/','/downloads/','/functions/OCF-FND-004/','/prepar
 test('new users see latest only in every view; deliberate historical choice survives navigation and reload',async({page})=>{
   for(const route of routes){
     await page.goto(route); await assertEdition(page,'0.2.0','latest');
-    if(route==='/functions/') await expect(page.locator('.session-card:visible')).toHaveCount(59);
+    if(route==='/functions/') await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
     if(route==='/downloads/') await expect(page.locator('.download-card:visible')).toHaveCount(12);
     if(route.includes('OCF-FND')||route.includes('preparation')) await expect(page.locator('.edition-card:visible')).toHaveCount(1);
   }
@@ -23,10 +23,10 @@ test('new users see latest only in every view; deliberate historical choice surv
     await page.goto(route);await assertEdition(page,'0.1.0');
     await page.reload();await assertEdition(page,'0.1.0');
     if(route==='/functions/'){
-      await expect(page.locator('.session-card:visible')).toHaveCount(59);
+      await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
       await page.locator('#search').fill('Relax');await page.locator('#clear-library-filters').click();
       await assertEdition(page,'0.1.0');
-      expect(await page.locator('.session-card:visible').evaluateAll(nodes=>[...new Set(nodes.map(n=>n.dataset.edition))])).toEqual(['0.1.0']);
+      expect(await page.locator('.session-card:not([data-edition=""]):visible').evaluateAll(nodes=>[...new Set(nodes.map(n=>n.dataset.edition))])).toEqual(['0.1.0']);
       await expect(page.locator('#release-extras details:visible')).toHaveCount(1);
     }
     if(route==='/downloads/') await expect(page.locator('.download-card:visible')).toHaveCount(12);
@@ -129,7 +129,7 @@ test('the old numeric latest default migrates to following Latest, while new exp
 test('generated pages request content-bound assets instead of cached legacy edition code',async({page})=>{
   let legacyRequested=false;
   await page.route('**/assets/js/app.js',async route=>{legacyRequested=true;await route.fulfill({contentType:'application/javascript',body:'throw new Error("cached legacy code")'});});
-  await page.goto('/functions/');await expect(page.locator('.session-card:visible')).toHaveCount(59);
+  await page.goto('/functions/');await expect(page.locator('.session-card:not([data-edition=""]):visible')).toHaveCount(59);
   await expect(page.locator('script[src*="assets/js/app.js"]')).toHaveAttribute('src',/app\.js\?v=[a-f0-9]{16}$/);
   await expect(page.locator('script[src*="assets/js/editions.js"]')).toHaveAttribute('src',/editions\.js\?v=[a-f0-9]{16}$/);
   expect(legacyRequested).toBe(false);

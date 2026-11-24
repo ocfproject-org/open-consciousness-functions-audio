@@ -6,7 +6,7 @@ async function openBackup(page){await openPreferences(page);const panel=page.loc
 async function load(page,value){const panel=await openBackup(page);await panel.getByLabel('Import site settings',{exact:false}).setInputFiles({name:'settings.json',mimeType:'application/json',buffer:Buffer.from(typeof value==='string'?value:JSON.stringify(value))});return panel;}
 test('settings backup previews and confirms three preferences without progress, URLs or transient state',async({page})=>{
  const writes=[];page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))writes.push(r.url());});
- await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings').filter({hasText:'Private library'})).toBeAttached();
+ await page.goto('/functions/OCF-AUT-001/');await expect(page.locator('.personal-settings').filter({hasText:'Saved items'})).toBeAttached();
  await page.evaluate(key=>localStorage.setItem('synthetic-private','private URL and playback values'),KEY);
  let panel=await load(page,settings);await expect(panel).toContainText('Preview: theme black');await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('latest');
  await panel.getByRole('button',{name:'Cancel settings import'}).click();await expect(page.getByLabel('Audio edition',{exact:true})).toHaveValue('latest');

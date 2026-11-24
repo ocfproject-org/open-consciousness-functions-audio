@@ -46,7 +46,7 @@ test('concealment keyboard reveal, pause, ended, replacement and media metadata'
  await fixture(page); await hide(page).check();
  await choose(page).focus();await page.keyboard.press('Enter');
  const box=section(page), player=box.locator('audio');
- await expect(player).toBeFocused(); await expect(player).toHaveAccessibleName('Listen to your surprise session');
+ await expect(box.getByRole('button',{name:'Play',exact:true})).toBeFocused(); await expect(box.locator('.ocf-local-player')).toHaveAccessibleName('Listen to your surprise session');
  await expect(box.locator('#surprise-details')).toBeHidden();
  expect(await page.title()).not.toContain('Your surprise session');
  await player.evaluate(a=>a.play());
@@ -74,7 +74,7 @@ test('concealment keyboard reveal, pause, ended, replacement and media metadata'
 test('settings persist; corrupt and unavailable storage; empty pool',async({page})=>{
  await fixture(page);await hide(page).check();await page.reload();await expect(hide(page)).toBeChecked();
  await page.evaluate(()=>localStorage.setItem('ocf-surprise-history:v1','{bad'));
- await choose(page).click();await expect(section(page).locator('audio')).toBeVisible();
+ await choose(page).click();await expect(section(page).locator('.ocf-local-player')).toBeVisible();
  await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw Error('blocked');}}));
  await page.reload();await choose(page).click();const first=await section(page).locator('audio').evaluate(a=>a.testOriginalURL);
  await choose(page).click();expect(await section(page).locator('audio').evaluate(a=>a.testOriginalURL)).not.toBe(first);
@@ -122,14 +122,14 @@ test('failed audio stays concealed and choosing again clears stale error',async(
  await expect(section(page).locator('#surprise-details')).toBeHidden();
  await choose(page).click();await player.evaluate(a=>a.play());
  await expect(section(page).locator('[data-playback-status]')).not.toContainText('could not');
- await expect(player).toHaveAccessibleName('Listen to your surprise session');
+ await expect(section(page).locator('.ocf-local-player')).toHaveAccessibleName('Listen to your surprise session');
 });
 
 
-test('native player keyboard play and pause keeps details concealed',async({page})=>{
+test('compact player keyboard play and pause keeps details concealed',async({page})=>{
  await fixture(page);await hide(page).check();await choose(page).click();
  const player=section(page).locator('audio');
- await player.focus();await page.keyboard.press('Space');
+ await section(page).getByRole('button',{name:'Play',exact:true}).focus();await page.keyboard.press('Space');
  await expect.poll(()=>player.evaluate(a=>a.paused)).toBe(false);
  await page.keyboard.press('Space');
  await expect.poll(()=>player.evaluate(a=>a.paused)).toBe(true);

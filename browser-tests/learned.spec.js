@@ -28,7 +28,7 @@ test('compact independent controls save only when used, without an enable step o
 test('popup latest/historical target is explicit, local choice does not change global preference, cancel/Escape restore focus',async({page})=>{
  await ready(page);await openLearned(page);
  await expect(modal(page).getByLabel('Learning target',{exact:true})).toHaveValue('0');
- await expect(modal(page)).toContainText('audio-0.2.0');await expect(modal(page)).toContainText('Website guide c79421a');await expect(modal(page)).toContainText('Recording source 3bcb8c1');
+ await expect(modal(page)).toContainText('audio-0.2.0');const pin=await page.request.get('/source.json').then(r=>r.json());await expect(modal(page)).toContainText('Website guide '+pin.source_commit.slice(0,7));await expect(modal(page)).toContainText('Recording source 3bcb8c1');
  await modal(page).getByLabel('Learning target',{exact:true}).selectOption('1');await page.keyboard.press('Escape');
  await expect(modal(page)).not.toBeVisible();await expect(pageAction(page,'Learned')).toBeFocused();expect(await saved(page)).toHaveLength(0);
  await openLearned(page);await save(page,'1');expect((await saved(page))[0].recording.tag).toMatch(/^audio-0.1.0/);
@@ -50,7 +50,7 @@ test('saved versions remain readable, show truthful changes and can be removed w
 test('Browse and Quick Reference filters/sorts compose with edition and search; order restores',async({page})=>{
  await ready(page);await pageAction(page,'Favorite').click();await openLearned(page);await save(page);
  await ready(page,'/functions/OCF-BOD-002/');await pageAction(page,'To Do').click();
- await ready(page,'/functions/');await expect(page.locator('.session-card')).toHaveCount(118);
+ await ready(page,'/functions/');await expect(page.locator('.session-card:not([data-edition=""])')).toHaveCount(118);
  const original=await page.locator('.session-card:visible').evaluateAll(cards=>cards.map(c=>c.dataset.functionId));
  await page.getByLabel('My library',{exact:true}).selectOption('favorite');await expect(page.locator('.session-card:visible')).toHaveCount(1);
  await selectPreference(page,'Audio edition','0.1.0');await expect(page.locator('.session-card:visible')).toHaveAttribute('data-edition','0.1.0');

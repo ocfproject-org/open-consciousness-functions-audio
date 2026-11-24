@@ -364,6 +364,9 @@
           keys.filter(k => (k?.startsWith(`${KEY}:record:`) || k?.startsWith(`${KEY}:flag:`) || k?.startsWith(`${KEY}:affirmation:`) || k?.startsWith(`${KEY}:routine:`))).forEach(k => this.storage.removeItem(k));
         }
         this.memory.clear(); this.blocked = false;
+        // A deliberate clear invalidates pending saves in other tabs even if
+        // there was no data. No epoch is written by a passive read or visit.
+        this.put(KEY, JSON.stringify({schema:1,epoch:globalThis.crypto.randomUUID(),manualOnly:true}));
         this.warning = this.storage ? '' : 'Memory records cleared. Storage is unavailable; browser copies, if any, could not be checked or cleared.';
       } catch (_) { this.fallback(); this.memory.clear(); this.blocked = false; this.warning += ' Browser copies could not be fully cleared. Use browser site-data settings to remove them.'; }
     }

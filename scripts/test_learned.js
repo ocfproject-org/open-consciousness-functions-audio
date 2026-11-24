@@ -55,7 +55,11 @@ class MemoryStorage {
   ]) await assert.rejects(parseBackup(JSON.stringify({schema: 1, records: [invalid]}), subjects));
   await assert.rejects(parseBackup(JSON.stringify({schema: 1, records: Array(501).fill(record)}), subjects));
   const beforeRemove = await first.read(); second.remove(beforeRemove[0].id); assert.equal((await first.read()).length, 2);
-  second.reset(); assert.equal((await first.read()).length, 0); assert.equal(storage.length,0);
+  const oldEpoch = second.config().epoch;
+  second.reset(); assert.equal((await first.read()).length, 0); assert.equal(storage.length, 1);
+  assert.notEqual(second.config().epoch, oldEpoch);
+  const clearEpoch = second.config().epoch; second.reset();
+  assert.notEqual(second.config().epoch, clearEpoch);
   first.writeConfig();
   const interrupted = first.merge([record]); second.reset();
   await assert.rejects(interrupted, /another tab/); assert.equal((await first.read()).length, 0);
