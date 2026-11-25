@@ -148,8 +148,8 @@ function quietRecording(seconds=2) {
  wave.write('data',36); wave.writeUInt32LE(pcmBytes,40);
  return wave;
 }
-async function fixturePlayback(page) {
- const audio=quietRecording();
+async function fixturePlayback(page, seconds=2) {
+ const audio=quietRecording(seconds);
  await page.route(url=>url.hostname==='github.com' && /\.(mp3|flac)$/.test(url.pathname),async intercepted=>{
   const range=/^bytes=(\d+)-(\d*)$/.exec(intercepted.request().headers().range||'');
   if(!range)return intercepted.fulfill({status:200,body:audio,contentType:'audio/wav'});
@@ -226,4 +226,49 @@ test('Browse & Listen saves the edition of a dynamically opened native player',a
  const [record]=await saved(page);
  expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
  await expect(card.getByRole('button',{name:/^Learned:/})).toHaveAttribute('aria-pressed','true');
+});
+
+test('finishing a retained previous player saves the recording actually played',async({page})=>{
+ await fixturePlayback(page,8);
+ await ready(page);
+ await selectPreference(page,'Audio edition','0.1.0');
+ const group=page.locator('.edition-card[data-edition-content="0.1.0"]:visible').filter({has:page.locator('audio')}).first();
+ const audio=group.locator('audio');
+ const key=JSON.parse(await audio.getAttribute('data-learned-recording'));
+ await group.getByRole('button',{name:'Play',exact:true}).click();
+ await expect.poll(()=>audio.evaluate(a=>!a.paused && a.currentTime>0)).toBe(true);
+ const original=await audio.evaluate(a=>a.currentSrc);
+ expect(original).toContain('/releases/download/audio-0.1.0');
+ await selectPreference(page,'Audio edition','latest');
+ await expect(group.getByText('This player belongs to your previous edition.')).toBeVisible();
+ expect(await audio.evaluate(a=>a.currentSrc)).toBe(original);
+ expect(await page.evaluate(()=>window.ocfEditions.current())).not.toBe('0.1.0');
+ await audio.evaluate(a=>{a.playbackRate=4;});
+ await expect.poll(()=>audio.evaluate(a=>a.ended)).toBe(true);
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ const [record]=await saved(page);
+ expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
+});
+
+test('concealed Surprise Me learns the chosen recording only after playback ends',async({page})=>{
+ await fixturePlayback(page,4);
+ await ready(page,'/functions/');
+ const section=page.locator('.surprise-session');
+ await section.getByRole('checkbox',{name:'Hide session details until I reveal them'}).check();
+ await section.getByRole('button',{name:'Surprise me',exact:true}).click();
+ const audio=section.locator('audio');
+ const key=JSON.parse(await audio.getAttribute('data-learned-recording'));
+ await expect(section.locator('.ocf-local-player')).toHaveAccessibleName('Listen to your surprise session');
+ await expect(section.locator('#surprise-details')).toBeHidden();
+ expect(await audio.getAttribute('data-session-edition')).toBeNull();
+ await section.getByRole('button',{name:'Play',exact:true}).click();
+ await expect.poll(()=>audio.evaluate(a=>!a.paused && a.currentTime>0)).toBe(true);
+ expect(await saved(page)).toEqual([]);
+ expect(await page.evaluate(()=>navigator.mediaSession?.metadata?.title || 'Your surprise session')).toBe('Your surprise session');
+ await expect(section.locator('#surprise-details')).toBeHidden();
+ await expect.poll(()=>audio.evaluate(a=>a.ended)).toBe(true);
+ await expect(section.locator('#surprise-details')).toBeVisible();
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ const [record]=await saved(page);
+ expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
 });
