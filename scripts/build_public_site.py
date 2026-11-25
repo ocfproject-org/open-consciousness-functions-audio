@@ -1135,7 +1135,12 @@ def build_public_site(
                     collection["audio_format"] = match[1]
             browse_catalog["releases"].append(public_release)
         _write(staging / "browse-catalog.json", json.dumps(browse_catalog, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n")
-        urls = [PUBLIC_ORIGIN + (path.parent.relative_to(staging).as_posix() + "/" if path.parent != staging else "") for path in sorted(staging.rglob("index.html")) if path.parent.name != "practice-chains"]
+        excluded_sitemap_paths = {Path("practice-chains"), Path("experiments/shared-clips-test")}
+        urls = [
+            PUBLIC_ORIGIN + (relative.as_posix() + "/" if relative != Path(".") else "")
+            for path in sorted(staging.rglob("index.html"))
+            if (relative := path.parent.relative_to(staging)) not in excluded_sitemap_paths
+        ]
         _write(staging / "sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + "".join(f"<url><loc>{_html(url)}</loc></url>" for url in urls) + "</urlset>\n")
         _write(staging / "robots.txt", f"User-agent: *\nAllow: /\nSitemap: {PUBLIC_ORIGIN}sitemap.xml\n")
         not_found = _shell("Page not found — OCF", '<h1>Page not found</h1><p>This address may have changed. <a href="functions/">Browse or search the function library</a>, or <a href="start/">Start Here</a>.</p>', "", source_commit, root=True)
