@@ -4,7 +4,7 @@
   const button=(text)=>{const b=el('button',text);b.type='button';return b;};
   const modes={standard:'Original recording',full:'Full guidance',experienced:'Shorter guidance',advanced:'Custom'};
   const values={off:'Off',reminder:'Reminder',short:'Short',full:'Full'};
-  const endpoint=new URL('virtual/',navigator.serviceWorker.controller.scriptURL).pathname;
+
   const catalog={'resonant-tuning':['Resonant Tuning','off','reminder']};
   const key='ocf.canary.shared-clips.preferences.v1', prefix=key+'.session.';
   const valid=value=>{
@@ -43,7 +43,9 @@
     }
     state.setAttribute('role','status');line.append(save,' ',reset,' ',exp);
     details.append(labeled('Default guidance',mode),fields,line,state,el('p','Saved for individual sessions:'),list);
+    details.hidden=true;
     prefs.append(details);
+    window.ocfPreviewAudio.then(url=>{details.hidden=!url;});
     const getSessions=()=>{
       const sessions={};
       try{for(const k of Object.keys(localStorage)){
@@ -101,7 +103,7 @@
     details.append(summary,list);details.hidden=true;
     ui.append(status,details);
     const say=text=>{status.textContent=text;status.hidden=!text;};
-    const dialog=el('dialog');dialog.setAttribute('aria-labelledby','local-smart-title-'+iid);
+    const dialog=el('dialog');dialog.setAttribute('aria-labelledby','local-smart-title-'+iid);dialog.className='ocf-smart-dialog';
     const title=el('h2','Smart Play');title.id='local-smart-title-'+iid;
     const desc=el('p','Edited selections use one continuous FLAC stream. Applying a new selection restarts it paused.');
     const form=el('form'), fields=el('div'), error=el('p');error.setAttribute('role','alert');
@@ -116,7 +118,7 @@
     gear.setAttribute('aria-haspopup','dialog');gear.title='Smart Play settings';
     gear.hidden=true;gear.className='ocf-local-smart-gear';
     controls.append(gear);controls.classList.add('ocf-local-player--smart');
-    let opts=[], current={}, applied={mode:'standard',choices:{}}, edited=false, saving=false, ready=false;
+    let endpoint, opts=[], current={}, applied={mode:'standard',choices:{}}, edited=false, saving=false, ready=false;
     const radio=new Map();
     const captionButton=ui.querySelector('button[aria-pressed]');
     const captions=ui.querySelector('.ocf-recording-captions');
@@ -137,9 +139,7 @@
         audio.pause();audio.removeAttribute('src');clearResume();
         delete audio.dataset.formatUsed;delete audio.dataset.localSmartActive;
         if(!audio.querySelector('source')){
-          const fmt=window.ocfFormats?.current()||audio.dataset.sessionFormat;
-          audio.src=JSON.parse(audio.dataset.formatSources)[fmt];
-          audio.dataset.sessionFormat=fmt;
+          audio.src=JSON.parse(audio.dataset.formatSources)[audio.dataset.sessionFormat];
         }
         window.ocfFormats?.refresh();
         audio.load();
@@ -234,7 +234,11 @@
       if(ready)return;
       event.preventDefault();event.stopImmediatePropagation();firstPlayQueued=true;
     },true);
-    fetch(endpoint+'options/'+fid,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(async result=>{
+    window.ocfPreviewAudio.then(url=>{
+      if(!url)throw Error();
+      endpoint=url;
+      return fetch(endpoint+'options/'+fid,{cache:'no-store'});
+    }).then(r=>{if(!r.ok)throw Error();return r.json();}).then(async result=>{
       opts=result.controls;
       if(!opts.length)return;
       for(const row of opts){
@@ -253,6 +257,5 @@
       ready=true;if(firstPlayQueued&&audio.isConnected)play.click();
     });
   }
-  document.querySelectorAll('audio[data-local-smart]').forEach(init);
   window.ocfLocalSmartInit=init;
 })();

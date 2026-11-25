@@ -3,11 +3,14 @@
 import argparse
 from hashlib import file_digest, sha256
 import json
+import re
+from html import escape, unescape
 from pathlib import Path
+from posixpath import relpath
 import shutil
 import tarfile
 import tempfile
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse, urlunsplit
 from urllib.request import Request, urlopen
 
 SCOPE = Path("experiments/shared-clips-test")
@@ -15,8 +18,13 @@ SESSION_IDS = {"OCF-FND-004", "OCF-EXP-007"}
 COMPANION = "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/smart-play-unlisted-input-20261125/"
 RECIPES_DIGEST = "ee65a7f6bd53d9a6d72b49988dbd59fffd25708bec74b86ef153574c2ad612a8"
 REMINDER_HASH = "8911c081552055681d2307b263945741c1d9389a8acfab61259a65a2f07a152c"
-TOP = {"index.html", "worker.mjs", "virtual-flac.mjs", "player.js",
-       "playback-controls.js", "preview.mjs", "website.css"}
+TOP = {"worker.mjs", "virtual-flac.mjs", "player.js", "preview.js", "smart-player.css"}
+PUBLIC_JS = {"app.js", "docs.js", "editions.js", "learned.js", "playback-controls.js"}
+BASE = "/" + SCOPE.as_posix() + "/"
+PREVIEW_PAGES = {"/functions/": BASE, **{
+    f"/functions/{fid}/": f"{BASE}functions/{fid}/" for fid in SESSION_IDS
+}}
+
 RECIPES = {"OCF-FND-004-reminder.json", "OCF-EXP-007-reminder.json", "OCF-EXP-007-off.json"}
 
 
@@ -80,6 +88,96 @@ def download(url, destination, expected):
             raise ValueError("Released original is longer than sealed size")
 
 
+def replace_once(text, old, new):
+    if text.count(old) != 1:
+        raise ValueError("Public player integration point changed: " + old)
+    return text.replace(old, new, 1)
+
+
+def preview_scripts(site, staged):
+    """Use this build's real controllers; only adapt storage and player integration."""
+    for name in sorted(PUBLIC_JS):
+        source = (site / "assets/js" / name).read_text(encoding="utf-8")
+        if "window.localStorage" in source or "window.sessionStorage" in source:
+            raise ValueError("Preview controller bypasses isolated storage: " + name)
+        if name == "app.js":
+            marker = "    const items = entries(catalog, documentation);"
+            source = replace_once(source, marker, marker + """
+    for (const item of items) {
+      const id = encodeURIComponent(item.id);
+      item.href = item.id === 'preparation-learning' ? '/preparation-learning/' :
+        (window.ocfPreviewSupports(item.id) ? window.ocfPreviewBase : '/') + 'functions/' + id + '/';
+    }""")
+            for file in ("browse-catalog.json", "documentation-index.json", "source.json"):
+                source = replace_once(source, "fetch('../" + file, "fetch('/" + file)
+            marker = "      player.dataset.sessionLocale = item.locale;"
+            source = replace_once(source, marker, marker + """
+      if (item.edition === '0.3.0' && item.locale === 'en-US' && item.voiceId === 'mike-original'
+          && window.ocfPreviewSupports(item.id)) player.dataset.localSmart = item.id;""")
+            source = replace_once(source, "'ocf-surprise-selection'", "'ocf-canary-surprise-selection'")
+        elif name == "editions.js":
+            marker = "    document.querySelectorAll('audio[data-format-sources]').forEach(player => {"
+            source = replace_once(source, marker, marker + """
+      // Keep the current Smart Play stream when the separate original-format default changes.
+      if (player.dataset.localSmartActive) return;""")
+            source = replace_once(source, "const namePrefix = 'ocf-audio-edition:v1:';", "const namePrefix = 'ocf-canary-edition:v1:';")
+            source = replace_once(source, "event.key === key", "window.ocfPreviewStorageKey(event.key) === key")
+        elif name == "learned.js":
+            source = replace_once(source, "event.key.startsWith(KEY)", "window.ocfPreviewStorageKey(event.key)?.startsWith(KEY)")
+        elif name == "playback-controls.js":
+            marker = "    return players.get(audio);\n  }"
+            source = replace_once(source, marker, "    window.ocfLocalSmartInit(audio);\n" + marker)
+        (staged / name).write_text(
+            "((localStorage, sessionStorage) => {\n" + source
+            + "\n})(window.ocfPreviewStorage('localStorage'), window.ocfPreviewStorage('sessionStorage'));\n",
+            encoding="utf-8",
+        )
+
+
+def preview_pages(site, staged):
+    preview_scripts(site, staged)
+
+    def relative(path, scoped):
+        return relpath(path, scoped) + ("/" if path.endswith("/") else "")
+
+    def attributes(match, pathname, scoped):
+        name, raw = match.groups()
+        value = unescape(raw)
+        url = urlparse(value)
+        if url.scheme or url.netloc or not url.path or value.startswith("data:"):
+            return match.group(0)
+        path = urljoin(pathname, url.path)
+        name_only = path.rsplit("/", 1)[-1]
+        query = url.query
+        if path.startswith("/assets/js/") and name_only in PUBLIC_JS:
+            path = BASE + name_only
+            query = "v=" + digest(staged / name_only)[:16]
+        else:
+            path = PREVIEW_PAGES.get(path, path)
+        return f'{name}="{escape(urlunsplit(("", "", relative(path, scoped), query, url.fragment)), quote=True)}"'
+
+    for pathname, scoped in PREVIEW_PAGES.items():
+        html = (site / pathname.lstrip("/") / "index.html").read_text(encoding="utf-8")
+        html = re.sub(r'(?<![\w:-])(href|src|data-(?:learned|transcript)-src)="([^"]*)"',
+                      lambda match: attributes(match, pathname, scoped), html)
+        durable = lambda n: relative(BASE + n, scoped) + "?v=" + digest(staged / n)[:16]
+        additions = ('<meta name="robots" content="noindex,nofollow,noarchive">'
+                     '<meta name="referrer" content="no-referrer">'
+                     f'<link rel="stylesheet" href="{durable("smart-player.css")}">'
+                     f'<script src="{durable("preview.js")}" defer></script>'
+                     f'<script src="{durable("player.js")}" defer></script>')
+        html = replace_once(html, '<meta charset="utf-8">', '<meta charset="utf-8">' + additions)
+        if pathname != "/functions/":
+            fid = pathname.split("/")[-2]
+            pattern = r'<audio [^>]*\bdata-session-edition="0\.3\.0"[^>]*>'
+            html, count = re.subn(pattern, lambda m: m[0][:-1] + f' data-local-smart="{fid}">', html)
+            if count != 1:
+                raise ValueError("Expected exactly one released preview player: " + fid)
+        destination = staged / scoped.removeprefix(BASE) / "index.html"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(html, encoding="utf-8")
+
+
 def stage(site, source, local_originals=None):
     before = inventory(site)
     dest = site / SCOPE
@@ -92,8 +190,6 @@ def stage(site, source, local_originals=None):
     expected_assets = {"original-" + fid for fid in SESSION_IDS} | {"shared-reminder"}
     if set(sealed) != expected_assets or sealed["shared-reminder"]["sha256"] != REMINDER_HASH:
         raise ValueError("Unexpected relay assets or reminder")
-    if "noindex,nofollow,noarchive" not in (source / "index.html").read_text(encoding="utf-8"):
-        raise ValueError("Canary page must opt out of indexing")
     originals = catalog_originals(site, sealed)
     (site / "experiments").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=site.parent) as temporary:
@@ -121,6 +217,7 @@ def stage(site, source, local_originals=None):
             else:
                 shutil.copyfile(local_originals / (key + ".flac"), target)
             integrity(target, sealed[key])
+        preview_pages(site, staged)
         staged.replace(dest)
     after = inventory(site)
     if {k: v for k, v in after.items() if not k.startswith(SCOPE.as_posix() + "/")} != before:
