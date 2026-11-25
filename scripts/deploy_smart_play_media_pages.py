@@ -2,7 +2,7 @@
 import argparse
 import json
 from pathlib import Path
-import re
+from runpy import run_path
 import shutil
 import subprocess
 import time
@@ -21,13 +21,7 @@ def api(ep,*args,optional=False):
         raise RuntimeError(r.stderr.strip())
     return json.loads(r.stdout)
 
-def validate(entry):
-    assert entry["schema"]==1 and re.fullmatch(r"v\d+\.\d+\.\d+",entry["route"])
-    rows=entry["assets"]
-    assert rows and sum(v["bytes"] for v in rows.values())<900000000
-    for key,v in rows.items():
-        assert re.fullmatch(r"[A-Za-z0-9-]+",key) and re.fullmatch(r"[a-f0-9]{64}",v["sha256"]) and v["bytes"]>0
-        assert v["source"].startswith("https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/")
+validate = run_path(str(BASE / "build.py"))["validate"]
 
 def deploy(shard,manifest,work):
     name="ocf-smart-play-media-"+shard
@@ -80,12 +74,20 @@ def main():
     p.add_argument("--shard",choices=SHARDS,action="append")
     p.add_argument("--apply",action="store_true")
     a=p.parse_args()
-    manifests={n:a.manifests/(n+".json") for n in (a.shard or SHARDS)}
-    for n,file in manifests.items():
-        entry=json.loads(file.read_text());validate(entry);print(n,len(entry["assets"]),sum(v["bytes"] for v in entry["assets"].values()))
+    manifests={n:a.manifests/(n+".json") for n in SHARDS}
+    entries = {n: json.loads(file.read_text()) for n, file in manifests.items()}
+    for n, entry in entries.items():
+        validate(entry)
+        print(n, len(entry["assets"]), sum(v["bytes"] for v in entry["assets"].values()))
+    if len({(v["route"], tuple(v["shared_release_tags"])) for v in entries.values()}) != 1:
+        raise ValueError("Shard set must use one edition and one set of approved tags")
+    names = [key for v in entries.values() for key in v["assets"]]
+    if len(set(names)) != len(names):
+        raise ValueError("Duplicate asset across shards")
     if a.apply:
         a.workspace.mkdir(parents=True,exist_ok=True)
-        for n,file in manifests.items():deploy(n,file,a.workspace)
+        for n in a.shard or SHARDS:
+            deploy(n, manifests[n], a.workspace)
 
 if __name__=="__main__":
     try:

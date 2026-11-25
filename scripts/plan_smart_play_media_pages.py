@@ -4,9 +4,9 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
-from urllib.parse import urlsplit
+from runpy import run_path
 
-RELEASES = "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/"
+BUILD = run_path(str(Path(__file__).resolve().parents[1] / "smart-play/media-pages/build.py"))
 PAGES = "https://ocfproject-org.github.io/ocf-smart-play-media-"
 CHUNK = 1 << 20
 
@@ -21,11 +21,15 @@ def main():
     for opt in ("catalog","shared","source","output"):
         p.add_argument("--"+opt,required=True,type=Path)
     p.add_argument("--edition",required=True)
+    p.add_argument("--shared-release-tag",action="append",required=True,
+                   help="Exact previously approved and published shared-clip tag; repeat for multiple tags")
     p.add_argument("--locale",default="en-US")
     p.add_argument("--voice",default="mike-original")
     a=p.parse_args()
     if not re.fullmatch(r"\d+\.\d+\.\d+",a.edition):
         raise ValueError("Invalid published edition")
+    BUILD["validate_tags"](a.shared_release_tag)
+    tags=sorted(a.shared_release_tag)
     release,=[r for r in read(a.catalog)["releases"] if r["version"]==a.edition]
     inventory=read(a.source/"inventory.json")
     names={}
@@ -42,15 +46,13 @@ def main():
         names[key]=val
     if not names or names.keys()!=inventory.keys():
         raise ValueError("Public source manifest does not match the verified inventory")
-    groups=[{"schema":1,"route":"v"+a.edition,"assets":{}} for _ in range(6)]
+    groups=[{"schema":2,"route":"v"+a.edition,"shared_release_tags":tags,"assets":{}} for _ in range(6)]
     totals=[0]*6
     registry={}
     for key,row in sorted(names.items(),key=lambda kv:(-kv[1]["bytes"],kv[0])):
-        if not re.fullmatch(r"[A-Za-z0-9-]+",key) or not row["source"].startswith(RELEASES):
-            raise ValueError("Unexpected released asset")
-        endpoint=urlsplit(row["source"])
-        if endpoint.query or endpoint.fragment:
-            raise ValueError("Expected a stable release URL")
+        if not re.fullmatch(BUILD["ASSET_NAME"],key):
+            raise ValueError("Unexpected released asset name")
+        BUILD["validate_source"](key,row,a.edition,set(tags))
         size,digest=row["bytes"],row["sha256"]
         if inventory[key]!={"bytes":size,"sha256":digest}:
             raise ValueError("Published bytes do not match the verified inventory: "+key)
@@ -65,8 +67,8 @@ def main():
                 total+=len(data);h.update(data);r["chunks"].append(sha256(data).hexdigest())
         if total!=size or h.hexdigest()!=digest:
             raise ValueError("Local audio does not match exact published proof: "+key)
-    if any(n>=900000000 for n in totals):
-        raise ValueError("Latest alone does not fit the six hosts; do not deploy")
+    for group in groups:
+        BUILD["validate"](group)
     a.output.mkdir(parents=True,exist_ok=True)
     for i,manifest in enumerate(groups,1):
         dump(a.output/f"{i:02}.json",manifest)
