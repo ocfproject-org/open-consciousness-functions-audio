@@ -87,6 +87,8 @@ jobs:
             --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md \
             --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --continuous-smart-play \
             --output verified-site
+      - name: Add the scoped shared-clip preview
+        run: python scripts/stage_shared_clip_canary.py --site verified-site
       - run: python scripts/validate_site.py verified-site
       # Package this exact build before browser acceptance so the artifact is
       # visible when the gated deploy job lists the run's artifacts.
@@ -105,6 +107,7 @@ jobs:
         run: |
           node scripts/test_smart_playback_browser.cjs
           node scripts/test_continuous_smart_play.cjs
+          python scripts/check_shared_clip_canary.py verified-site
       - name: Retain public-safe browser acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
