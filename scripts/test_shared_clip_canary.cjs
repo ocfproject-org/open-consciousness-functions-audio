@@ -23,29 +23,68 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
     return v;
   });
   assert.equal((await p.goto(base+path)).status(),200);
-  assert.equal(await p.locator('audio').count(),2);
-  assert.equal(await p.getByRole('button',{name:'Smart Play settings'}).count(),0);
-  await p.getByRole('button',{name:'Enable Smart Play for this test'}).click();
-  await p.getByText('Shared-clip test is ready.').waitFor();
+  await p.getByRole('heading',{name:'Browse & Listen',exact:true}).waitFor();
+  assert.equal(await p.locator('meta[name=robots]').getAttribute('content'),'noindex,nofollow,noarchive');
+  const browse=p.locator('article.session-card[data-function-id="OCF-FND-004"][data-edition="0.3.0"]');
+  assert.equal(await p.locator('#edition-filter').inputValue(),'latest');
+  assert.equal(await p.locator('#format-filter').inputValue(),'mp3');
+  const regularBrowse=await ctx.newPage();
+  await regularBrowse.goto(base+'/functions/');
+  await regularBrowse.getByRole('heading',{name:'Browse & Listen',exact:true}).waitFor();
+  assert.equal(await p.locator('header.site-header').innerText(),await regularBrowse.locator('header.site-header').innerText());
+  await regularBrowse.close();
+  await browse.getByRole('button',{name:/Show player/}).click();
+  await browse.getByRole('button',{name:'Smart Play settings'}).waitFor();
+  assert.equal(await browse.getByText('Smart Play bookmarks',{exact:true}).isVisible(),false);
+  const prefix=base+path+'functions/';
   const scope=await p.evaluate(async()=>(await navigator.serviceWorker.getRegistration()).scope);
   assert.equal(scope,base+path);
-  for(const [sel,choice] of [['#relax','reminder'],['#energy','reminder'],['#energy','off']]){
-   const c=p.locator(sel),a=c.locator('audio');
+  const gearAligned=async c=>{
+   const rect=await c.locator('.ocf-local-player').evaluate(el=>[...el.children].map(x=>x.getBoundingClientRect().toJSON()));
+   assert.equal(rect.length,3);
+   assert.ok(rect[0].right<=rect[1].left+1&&rect[1].right<=rect[2].left+1);
+   assert.ok(rect[2].width>=44&&rect[2].height>=44);
+   assert.ok(Math.abs(rect[0].y-rect[2].y)<2);
+  };
+  await gearAligned(browse);
+  const guidePath=await browse.locator('h3 a').getAttribute('href');
+  assert.equal(guidePath,path+'functions/OCF-FND-004/');
+  await browse.locator('h3 a').click();
+  await p.waitForURL(prefix+'OCF-FND-004/');
+  for(const [fid,choice] of [['OCF-FND-004','reminder'],['OCF-EXP-007','reminder'],['OCF-EXP-007','off']]){
+   await p.goto(prefix+fid+'/');
+   const title=fid==='OCF-FND-004'?'Relax':'Energy Ball';
+   await p.getByRole('heading',{name:title,exact:true,level:1}).waitFor();
+   const c=p.locator('section.guide-section:has(> #listening) [data-edition-content="0.3.0"]').first(),a=c.locator('audio').first();
+   const production=await ctx.newPage();
+   await production.goto(base+'/functions/'+fid+'/');
+   const chrome=async page=>page.evaluate(()=>({
+     title:document.title, header:document.querySelector('header.site-header').innerText,
+     sections:[...document.querySelectorAll('main h2')].map(x=>x.textContent),
+     layout:document.querySelector('.docs-layout')?.className,
+     css:[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>new URL(x.href).pathname).filter(x=>x.startsWith('/assets/'))
+   }));
+   assert.deepEqual(await chrome(p),await chrome(production));
+   await production.close();
+   await c.getByRole('button',{name:'Smart Play settings'}).waitFor();
+   await gearAligned(c);
+   if(fid==='OCF-FND-004') assert.equal(await p.locator('[data-edition-content="0.2.0"] .ocf-local-smart-gear').count(),0);
    await c.getByRole('button',{name:'Smart Play settings'}).click();
    const d=p.getByRole('dialog',{name:'Smart Play',exact:true});
    await d.getByLabel('Resonant Tuning').selectOption(choice);
+   assert.equal(await d.getByLabel('Guidance',{exact:true}).inputValue(),'advanced');
    await d.getByRole('button',{name:'Apply',exact:true}).click();
    await d.waitFor({state:'hidden'});
    assert.ok(await a.evaluate(a=>a.paused));
    await c.getByRole('button',{name:'Play',exact:true}).click();
-   await p.waitForFunction(sel=>{const a=document.querySelector(sel+' audio');return !a.paused&&a.currentTime>.06;},sel);
+   await p.waitForFunction(()=>{const a=document.querySelector('audio[data-local-smart]');return !a.paused&&a.currentTime>.06;});
    const src=await a.evaluate(a=>a.currentSrc);
    assert.ok(src.startsWith(base+path+'virtual/audio/'));
    const status=await p.evaluate(async s=>{const r=await fetch(s,{headers:{Range:'bytes=0-3'}});return [r.status,await r.text()]},src);
    assert.deepEqual(status,[206,'fLaC']);
    const marks=c.getByText('Smart Play bookmarks',{exact:true}); await marks.click();
    await c.getByRole('button',{name:/Resonant Tuning ·/}).click();
-   await p.waitForFunction(sel=>{const a=document.querySelector(sel+' audio');return !a.seeking&&a.currentTime>450&&!a.paused;},sel);
+   await p.waitForFunction(()=>{const a=document.querySelector('audio[data-local-smart]');return !a.seeking&&a.currentTime>450&&!a.paused;});
    assert.equal(await a.evaluate(a=>a.currentSrc),src);
    await c.getByRole('button',{name:'Pause',exact:true}).click();
    await c.getByRole('button',{name:'Smart Play settings'}).click();
@@ -55,6 +94,7 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
    assert.equal(await marks.isVisible(),false);
   }
   await p.getByRole('button',{name:'Preferences',exact:true}).click();
+  await p.locator('#format-filter').selectOption('flac');
   const pd=p.locator('[data-local-smart-preferences]');
   await pd.locator('summary').click();
   await pd.getByLabel('Default guidance').selectOption('advanced');
@@ -62,6 +102,9 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
   await pd.getByRole('button',{name:'Save Smart Play default'}).click();
   const download=p.waitForEvent('download');await pd.getByRole('button',{name:'Export Smart Play settings'}).click();
   assert.equal((await download).suggestedFilename(),'ocf-smart-play-settings.json');
+  await p.getByRole('button',{name:'Close preferences',exact:true}).click();
+  await p.reload();
+  await p.locator('audio[data-local-smart][data-local-smart-active]').waitFor({state:'attached'});
   const live=await normal.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),Object.keys(baseline));
   assert.deepEqual(live,baseline);
   assert.equal(await normal.evaluate(()=>navigator.serviceWorker.controller),null);

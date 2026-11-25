@@ -1,0 +1,15 @@
+.ocf-local-player--smart:not(:has(.ocf-local-smart-gear[hidden])) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.ocf-local-player .ocf-local-smart-gear {
+  justify-self: end;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}
+.ocf-local-smart-gear[hidden] { display: none; }
+[data-local-smart-preferences] label, .ocf-smart-dialog label {
+  display: block;
+}
+.ocf-smart-dialog select, [data-local-smart-preferences] select {
+  max-inline-size: 100%;
+}
