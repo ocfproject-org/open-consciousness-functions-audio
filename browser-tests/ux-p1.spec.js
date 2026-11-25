@@ -2,11 +2,11 @@ const {test,expect}=require('@playwright/test');
 const {openPreferences,closePreferences,selectPreference}=require('./preferences');
 const fs=require('node:fs/promises');
 async function axe(page){await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});expect(await page.evaluate(async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations)).toEqual([]);}
-test('375px first session explains four steps and duration before one short scroll',async({page})=>{
+test('375px first session explains five steps and duration before one short scroll',async({page})=>{
  await page.setViewportSize({width:375,height:812});
  const media=[];page.on('request',r=>{if(/\.(mp3|flac)(\?|$)/.test(r.url()))media.push(r.url());});
  await page.goto('/start/');
- await expect(page.locator('.start-steps strong')).toHaveText(['Prepare','Choose','Learn','Use']);
+ await expect(page.locator('.start-steps strong')).toHaveText(['Check your audio','Prepare','Choose','Learn','Use']);
  const cta=page.getByRole('link',{name:'Play Preparation Learning (about 28 minutes)',exact:true});
  expect((await cta.boundingBox()).y+(await cta.boundingBox()).height).toBeLessThan(812);
  await expect(page.locator('.start-journey > p').first()).toContainText('guided audio');

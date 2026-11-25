@@ -37,3 +37,12 @@
 /* Keep preparation discoverable without leading with an already learned step. */
 :root:not([data-ocf-preparation-learned]) [data-preparation-learned],
 :root[data-ocf-preparation-learned] [data-preparation-prominent] { display: none !important; }
+
+.preparation-completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-block: .65rem;
+}
+.preparation-completion-actions:has(> button:not([hidden])) { align-items: center; }
+.preparation-completion-actions:not(:has(> button:not([hidden]))) { display: none; }

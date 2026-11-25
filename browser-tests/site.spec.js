@@ -184,10 +184,10 @@ test('Insulate hold guidance uses the spoken Cancel cue without cue copy control
   await expect(releaseCommand.locator('button.copy-cue, button[aria-label^="Copy cue:"]')).toHaveCount(0);
 });
 
-test('Start Here renders the approved suggestion as an ordered list and presents Preparation Learning first', async ({ page }) => {
+test('Start Here renders the approved suggestion as an ordered list and presents the audio check before Preparation Learning', async ({ page }) => {
   await page.goto('/start/');
   const headings = await page.locator('#main h2').allTextContents();
-  await expect(page.locator('.start-steps strong').first()).toHaveText('Prepare');
+  await expect(page.locator('.start-steps strong').first()).toHaveText('Check your audio');
   await expect(page.locator('.primary-action')).toHaveAttribute('href', '../preparation-learning/#listen');
   await page.locator('.start-more > summary').click();
   expect(headings.indexOf('Choose one practice')).toBeLessThan(headings.indexOf('A suggested way to explore'));
@@ -206,8 +206,8 @@ test('Start Here renders the approved suggestion as an ordered list and presents
   expect(items[3]).toContain('Recall — OCF-COG-006');
   expect(items[4]).toContain('Think Fast — OCF-COG-007');
   expect(text).not.toContain('distinguishes displayed cues from spoken cues');
-  await expect(page.locator('.start-steps li').first()).toContainText('Complete Preparation Learning');
-  expect(text).toContain('After Preparation Learning, these five functions can be approachable starting points:');
+  await expect(page.locator('.start-steps li').nth(1)).toContainText('Complete Preparation Learning');
+  expect(text).toContain('These five functions can be approachable starting points:');
   expect(text).not.toContain('three functions');
   expect(text).toContain('You can explore these functions in any order;');
   expect(text).toContain('not a required sequence among them');

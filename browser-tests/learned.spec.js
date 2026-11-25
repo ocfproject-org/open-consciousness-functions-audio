@@ -272,3 +272,111 @@ test('concealed Surprise Me learns the chosen recording only after playback ends
  const [record]=await saved(page);
  expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
 });
+
+for (const [kind, entry, subject, choice] of [
+ ['OCF Preparation Learning','/start/','preparation:ocf','0'],
+ ['official Human Plus preparation','/function-chains/','preparation:human-plus','external'],
+]) test(`either prep choice from a contextual prompt stops the sitewide reminders: ${kind}`,async({page})=>{
+ await page.setViewportSize({width:390,height:812});
+ await ready(page,entry);
+ const start=page.getByRole('button',{name:`I completed ${kind}`,exact:true}).first();
+ await start.focus(); await page.keyboard.press('Enter');
+ await expect(target(page)).toHaveValue(choice);
+ await save(page);
+ expect((await saved(page)).map(item=>item.subject)).toEqual([subject]);
+ await ready(page,'/start/');
+ await expect(page.locator('.start-steps li:visible strong')).toHaveText(['Check your audio','Choose','Learn','Use']);
+ for (const route of ['/','/start/','/functions/','/listening/','/downloads/','/function-chains/','/preparation-learning/']) {
+  await ready(page,route);
+  await expect(page.locator('html')).toHaveAttribute('data-ocf-preparation-learned','');
+  await expect(page.locator('[data-preparation-prominent]:visible')).toHaveCount(0);
+  await expect(page.getByText(/^Start with Preparation Learning, then choose/)).not.toBeVisible();
+  await expect(page.getByRole('heading',{name:'Preparation first',exact:true})).not.toBeVisible();
+ }
+ await ready(page,'/function-chains/#preparation-first');
+ await expect(page.locator('#preparation-first')).toHaveCount(1);
+ await expect(page.locator('nav li[data-preparation-prominent]:visible')).toHaveCount(0);
+ await ready(page,'/preparation-learning/');
+ await openLearned(page); await modal(page).getByText('Saved versions and changes',{exact:true}).click();
+ await modal(page).locator('details[open] > div > details > summary').click();
+ page.once('dialog',dialog=>dialog.accept());
+ await modal(page).getByRole('button',{name:/^Remove/}).click();
+ await expect.poll(()=>saved(page)).toHaveLength(0);
+ await ready(page,'/function-chains/');
+ await expect(page.getByRole('heading',{name:'Preparation first',exact:true})).toBeVisible();
+});
+
+for (const listened of [true,false]) test(`reload preserves genuine playback coverage, never a seek-only jump (${listened})`,async({page})=>{
+ await fixturePlayback(page,5);
+ await ready(page);
+ const group=page.locator('.edition-card[data-edition-content]:visible').filter({has:page.locator('audio')}).first();
+ const audio=group.locator('audio');
+ if(listened){
+  await group.getByRole('button',{name:'Play',exact:true}).click();
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(1.25);
+  await group.getByRole('button',{name:'Pause',exact:true}).click();
+ }else{
+  await audio.evaluate(async a=>{
+   a.load();
+   if(!a.readyState) await new Promise(resolve=>a.addEventListener('loadedmetadata',resolve,{once:true}));
+   a.currentTime=2;
+  });
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(1.5);
+ }
+ expect(await saved(page)).toHaveLength(0);
+ await page.reload();
+ if(listened) {
+  await group.getByRole('button',{name:'Play',exact:true}).click();
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime),{timeout:1000}).toBeGreaterThan(1.1);
+ } else {
+  await audio.evaluate(async a=>{
+   a.load();
+   if(!a.readyState)await new Promise(resolve=>a.addEventListener('loadedmetadata',resolve,{once:true}));
+   a.currentTime=a.duration-.15;
+   await a.play();
+  });
+ }
+ await expect.poll(()=>audio.evaluate(a=>a.ended)).toBe(true);
+ await expect.poll(()=>saved(page)).toHaveLength(listened?1:0);
+});
+
+test('the ordinary Smart Play settings player marks a naturally completed edit learned',async({page})=>{
+ // Keep the deployed player and its dialogs, but use a short real audio body
+ // for this browser test of completion (the FLAC worker has separate tests).
+ const id='OCF-FND-004';
+ await page.route('**/assets/js/smart-play/bootstrap.js*',route=>route.fulfill({
+  contentType:'text/javascript',
+  body:`window.ocfPublicSmartEligible=new Set(['${id}']);window.ocfPublicSmartAudio=Promise.resolve('/__ocf-smart/');`,
+ }));
+ await page.route('**/__ocf-smart/options/**',route=>route.fulfill({
+  json:{controls:[{control:'relaxation',name:'Relaxation',original:'full',options:{short:true}}],held:[]},
+ }));
+ await page.route('**/__ocf-smart/route/**',route=>route.fulfill({
+  json:{url:`/__ocf-smart/audio/${id}.flac?relaxation=short&_revision=learning-fixture`,format:'FLAC',seconds:2,bookmarks:[]},
+ }));
+ await page.route('**/__ocf-smart/audio/**',route=>route.fulfill({
+  contentType:'audio/wav',body:quietRecording(2),
+ }));
+ await ready(page,`/functions/${id}/`);
+ const group=page.locator('.edition-card[data-edition-content]:visible').filter({has:page.locator('audio')}).first();
+ test.skip(!(await group.locator('audio').getAttribute('data-local-smart')),'The site fixture does not stage Smart Play.');
+ await group.getByRole('button',{name:'Smart Play settings',exact:true}).click();
+ const settings=page.getByRole('dialog',{name:'Smart Play',exact:true});
+ await settings.getByLabel('Relaxation',{exact:true}).selectOption('short');
+ await settings.getByRole('button',{name:'Apply',exact:true}).click();
+ await expect(settings).not.toBeVisible();
+ const audio=group.locator('audio');
+ await expect(audio).toHaveAttribute('src',/\/__ocf-smart\/audio\/.*relaxation=short/);
+ await playAndWaitForNaturalEnd(page,group);
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ const [record]=await saved(page);
+ expect(record.subject).toBe(id);
+ expect(record.recording.edition).toBe('0.3.0');
+});
+
+test('the separate left/right Test Audio is never a meditation completion',async({page})=>{
+ await ready(page,'/listening/#stereo-test');
+ const testAudio=page.locator('#stereo-test');
+ await expect(testAudio.locator('[data-learned-recording]')).toHaveCount(0);
+ expect(await saved(page)).toEqual([]);
+});

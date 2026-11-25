@@ -26,8 +26,7 @@ Choose a function that fits what you want to explore. Read its guide, then liste
 
 ## A suggested way to explore
 
-After Preparation Learning, these five functions can be approachable starting
-points:
+These five functions can be approachable starting points:
 
 1. [Relax — OCF-FND-004](../functions/OCF-FND-004/) — a gentle introduction to
    guided relaxation and the structure of OCF listening.
