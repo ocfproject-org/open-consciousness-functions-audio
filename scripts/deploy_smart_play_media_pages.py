@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import time
 
 BASE = Path(__file__).resolve().parents[1] / "smart-play/media-pages"
 ORG = "ocfproject-org"
@@ -63,7 +64,13 @@ def deploy(shard,manifest,work):
     sha=git("rev-parse","HEAD").stdout.strip()
     result=run("gh","run","list","-R",full,"--workflow","pages.yml","--commit",sha,"--limit","5","--json","status,conclusion",check=False)
     if result.returncode or not any(r["status"]!="completed" or r["conclusion"]=="success" for r in json.loads(result.stdout)):
-        run("gh","workflow","run","pages.yml","-R",full,"--ref","main")
+        # GitHub can take a minute to discover the first committed workflow.
+        for attempt in range(12):
+            dispatched=run("gh","workflow","run","pages.yml","-R",full,"--ref","main",check=False)
+            if not dispatched.returncode: break
+            if "HTTP 404" not in dispatched.stderr or attempt==11:
+                raise RuntimeError(dispatched.stderr.strip())
+            time.sleep(5)
     (work/(shard+"-receipt.json")).write_text(json.dumps({"repo":full,"id":repo["id"],"head":sha,"url":p["html_url"]}))
     print("Dispatched or reused exact-head deployment:",full,sha,flush=True)
 
