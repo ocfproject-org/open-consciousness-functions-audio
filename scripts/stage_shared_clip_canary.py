@@ -17,8 +17,12 @@ SCOPE = Path("experiments/shared-clips-test")
 SESSION_IDS = {"OCF-FND-004", "OCF-EXP-007"}
 COMPANION = "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/smart-play-unlisted-input-20261125/"
 RECIPES_DIGEST = "ee65a7f6bd53d9a6d72b49988dbd59fffd25708bec74b86ef153574c2ad612a8"
+OPTIONS_COMPANION = COMPANION.replace("smart-play-unlisted-input-20261125", "smart-play-unlisted-options-20261125")
+OPTIONS_INDEX = {"bytes": 897463, "sha256": "8916c2af74c5b7104c6740688a704046d66234ee087a83616f339f1c2818e09d"}
+OPTION_CLIPS = {"affirmation-full", "affirmation-reminder", "energy-ball-reminder",
+                "preparation-reminder", "relaxation-short", "resonant-tuning-full", "return-short"}
 REMINDER_HASH = "8911c081552055681d2307b263945741c1d9389a8acfab61259a65a2f07a152c"
-TOP = {"worker.mjs", "virtual-flac.mjs", "player.js", "preview.js", "smart-player.css"}
+TOP = {"compose.mjs", "worker.mjs", "virtual-flac.mjs", "player.js", "preview.js", "smart-player.css"}
 PUBLIC_JS = {"app.js", "docs.js", "editions.js", "learned.js", "playback-controls.js"}
 BASE = "/" + SCOPE.as_posix() + "/"
 PREVIEW_PAGES = {"/functions/": BASE, **{
@@ -178,7 +182,27 @@ def preview_pages(site, staged):
         destination.write_text(html, encoding="utf-8")
 
 
-def stage(site, source, local_originals=None):
+def unpack_index(bundle, data, allowed):
+    with tarfile.open(bundle, mode="r:gz") as archive:
+        members = archive.getmembers()
+        if len(members) != len(allowed) or {item.name for item in members} != allowed:
+            raise ValueError("Unexpected canary index files")
+        for item in members:
+            if not item.isfile() or item.size > 2_000_000:
+                raise ValueError("Unsafe canary index archive")
+            with archive.extractfile(item) as index, (data / item.name).open("xb") as output:
+                shutil.copyfileobj(index, output)
+
+
+def local_or_download(url, output, expected, local=None):
+    if local is None:
+        download(url, output, expected)
+    else:
+        shutil.copyfile(local / output.name, output)
+    integrity(output, expected)
+
+
+def stage(site, source, local_originals=None, local_options=None):
     before = inventory(site)
     dest = site / SCOPE
     if dest.exists() or SCOPE.as_posix() in (site / "sitemap.xml").read_text(encoding="utf-8"):
@@ -187,7 +211,7 @@ def stage(site, source, local_originals=None):
     if set(inventory(source)) != allowed:
         raise ValueError("Unexpected file among canary release inputs")
     sealed = json.loads((source / "data/inventory.json").read_text(encoding="utf-8"))
-    expected_assets = {"original-" + fid for fid in SESSION_IDS} | {"shared-reminder"}
+    expected_assets = {"original-" + fid for fid in SESSION_IDS} | {"shared-reminder"} | OPTION_CLIPS
     if set(sealed) != expected_assets or sealed["shared-reminder"]["sha256"] != REMINDER_HASH:
         raise ValueError("Unexpected relay assets or reminder")
     originals = catalog_originals(site, sealed)
@@ -201,15 +225,13 @@ def stage(site, source, local_originals=None):
         bundle = Path(temporary) / "recipes.tar.gz"
         download(COMPANION + "packet-recipes.tar.gz", bundle, {"bytes": 1128181})
         integrity(bundle, {"sha256": RECIPES_DIGEST, "bytes": 1128181})
-        with tarfile.open(bundle, mode="r:gz") as archive:
-            members = archive.getmembers()
-            if len(members) != len(RECIPES) or {item.name for item in members} != RECIPES:
-                raise ValueError("Unexpected canary recipe files")
-            for item in members:
-                if not item.isfile() or item.size > 2_000_000:
-                    raise ValueError("Unsafe canary recipe archive")
-                with archive.extractfile(item) as recipe, (staged / "data" / item.name).open("xb") as output:
-                    shutil.copyfileobj(recipe, output)
+        unpack_index(bundle, staged / "data", RECIPES)
+        options_index = Path(temporary) / "options-index.tar.gz"
+        local_or_download(OPTIONS_COMPANION + options_index.name, options_index, OPTIONS_INDEX, local_options)
+        unpack_index(options_index, staged / "data", {fid + ".json" for fid in SESSION_IDS})
+        for clip in sorted(OPTION_CLIPS):
+            target = staged / "data" / (clip + ".flac")
+            local_or_download(OPTIONS_COMPANION + target.name, target, sealed[clip], local_options)
         for key, url in sorted(originals.items()):
             target = staged / "data" / (key + ".flac")
             if local_originals is None:
@@ -236,5 +258,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", type=Path, required=True)
     parser.add_argument("--local-test-originals", type=Path, help="Optional offline QA source, never used for production.")
+    parser.add_argument("--local-test-options", type=Path, help="Exact checksum-pinned inputs for offline QA; not used by Pages.")
     args = parser.parse_args()
-    stage(args.site, Path(__file__).resolve().parents[1] / SCOPE, args.local_test_originals)
+    stage(args.site, Path(__file__).resolve().parents[1] / SCOPE, args.local_test_originals, args.local_test_options)

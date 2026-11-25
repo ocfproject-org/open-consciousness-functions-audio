@@ -1,0 +1,871 @@
+{
+  "OCF-FND-004": [
+    {
+      "opts": {
+        "return": "short"
+      },
+      "size": 73527939,
+      "frames": 65163830,
+      "bookmarks": [
+        {
+          "control": "return",
+          "frame": 59037032
+        }
+      ],
+      "reads": [
+        [
+          36763969,
+          512,
+          "7e7199d1b95590fd8dce36086f35d913bfe8dc2ffe9974c9679f8bd36fc41b11"
+        ],
+        [
+          73527427,
+          512,
+          "574de039d800d6c8a8355a026b6da2b2fab5261ed12bd9ceca6253a7b1cc2e40"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "affirmation": "full"
+      },
+      "size": 81530258,
+      "frames": 73597945,
+      "bookmarks": [
+        {
+          "control": "affirmation",
+          "frame": 20539565
+        }
+      ],
+      "reads": [
+        [
+          40765129,
+          512,
+          "7fc3002b78a7c83473f9211c8a261492379938cb8ed88da004b962677ebd1e61"
+        ],
+        [
+          81529746,
+          512,
+          "99f8029cb5f678b182cd8e7bb3a70922d9222be596beae5093e69ac53459d3c6"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "affirmation": "reminder"
+      },
+      "size": 76148289,
+      "frames": 68218194,
+      "bookmarks": [
+        {
+          "control": "affirmation",
+          "frame": 20539565
+        }
+      ],
+      "reads": [
+        [
+          38074144,
+          512,
+          "386648d2dee5a1bfc90b0815128d9d5f8e31b835e87591d4e737e3992f16673f"
+        ],
+        [
+          76147777,
+          512,
+          "b736db3715ca60e121226922af0eb6cbe6ada8b746f15b491a104b5c9e9a8c1e"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "energy-ball": "reminder"
+      },
+      "size": 76526030,
+      "frames": 68549385,
+      "bookmarks": [
+        {
+          "control": "energy-ball",
+          "frame": 20531798
+        }
+      ],
+      "reads": [
+        [
+          38263015,
+          512,
+          "ff0f8e095c432d7b660006bd6153609c095d983df61b773efbd38e633d92c48b"
+        ],
+        [
+          76525518,
+          512,
+          "f8ef000faa0643175fcfcc0d08f898164fb09d01df41f0372771a2cf080b262e"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "resonant-tuning": "full"
+      },
+      "size": 78523928,
+      "frames": 70548871,
+      "bookmarks": [
+        {
+          "control": "resonant-tuning",
+          "frame": 20524032
+        }
+      ],
+      "reads": [
+        [
+          39261964,
+          512,
+          "83abd43c54249584fb25bbb151e4e3eb5010f982419c490b42f59ab93f90ab36"
+        ],
+        [
+          78523416,
+          512,
+          "e04ce129e44e22f06a75b4efbee52e1d7f95b2372908940bcc12c8cc0e0f58aa"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "resonant-tuning": "reminder"
+      },
+      "size": 80281446,
+      "frames": 72714630,
+      "bookmarks": [
+        {
+          "control": "resonant-tuning",
+          "frame": 20524032
+        }
+      ],
+      "reads": [
+        [
+          40140723,
+          512,
+          "1da137cbcd4a327d1bda3121c3c20c2b80f39591efd5934daf359d32296c77d0"
+        ],
+        [
+          80280934,
+          512,
+          "a54bb5862a7be215aea6ba0a5a1daedd220955c869a72efbf10a0f11dc9dd235"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short"
+      },
+      "size": 62509360,
+      "frames": 54390657,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6654249
+        }
+      ],
+      "reads": [
+        [
+          31254680,
+          512,
+          "6f051b31d6f88bded075e868768853baab601d210fe784686aad939896710448"
+        ],
+        [
+          62508848,
+          512,
+          "5ca2f1ce3838ff1eb531b020fe7f7222a9eda991332f5ee7e6faed6a3c11cdfc"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder"
+      },
+      "size": 71730340,
+      "frames": 63742486,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2041387
+        }
+      ],
+      "reads": [
+        [
+          35865170,
+          512,
+          "026f396f9f0ad973c766a5991d679b3433dbe6ab05c10015a19c0ad347c2fab2"
+        ],
+        [
+          71729828,
+          512,
+          "099377dc716dcb92b249f0b3560efd1eef733f0c7ea75388c672682ece07a618"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "energy-ball": "reminder",
+        "affirmation": "reminder",
+        "return": "short"
+      },
+      "size": 66276960,
+      "frames": 58051842,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2041387
+        },
+        {
+          "control": "relaxation",
+          "frame": 3451267
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 4766239
+        },
+        {
+          "control": "energy-ball",
+          "frame": 10543167
+        },
+        {
+          "control": "affirmation",
+          "frame": 12154851
+        },
+        {
+          "control": "return",
+          "frame": 51925044
+        }
+      ],
+      "reads": [
+        [
+          33138480,
+          512,
+          "0296ae61a5a3851a95290b4ae36fd56148c3bc16692efd3661a6ddf73211f5b3"
+        ],
+        [
+          66276448,
+          512,
+          "bcdcb3396b62ee4e589540c714229a47826ad330889244ec917247662a3407b2"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short",
+        "energy-ball": "reminder",
+        "affirmation": "reminder",
+        "return": "short"
+      },
+      "size": 64044253,
+      "frames": 55485662,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6654249
+        },
+        {
+          "control": "energy-ball",
+          "frame": 7976987
+        },
+        {
+          "control": "affirmation",
+          "frame": 9588671
+        },
+        {
+          "control": "return",
+          "frame": 49358864
+        }
+      ],
+      "reads": [
+        [
+          32022126,
+          512,
+          "cc9373c09521433c53036da9779c7905b5d078017b5e0c5c308750b3e1863e8a"
+        ],
+        [
+          64043741,
+          512,
+          "9d07a74e7a6a0bc80dbec237540837f501f17ad5f1f5bed7c8ae6de0f8c265f9"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "energy-ball": "reminder",
+        "affirmation": "reminder"
+      },
+      "size": 70796543,
+      "frames": 63036462,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6654249
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 7969221
+        },
+        {
+          "control": "energy-ball",
+          "frame": 13746149
+        },
+        {
+          "control": "affirmation",
+          "frame": 15357833
+        }
+      ],
+      "reads": [
+        [
+          35398271,
+          512,
+          "d91702b7a132ffdcf6c7f4443b2daf3d7256c3f2ee48941bcbb1f546ab246ede"
+        ],
+        [
+          70796031,
+          512,
+          "f634691dcf7204cf299714bdaf17d7ccf63e9488e633a38f5cee31f669f3e5be"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "resonant-tuning": "full",
+        "energy-ball": "reminder",
+        "affirmation": "full",
+        "return": "short"
+      },
+      "size": 82281853,
+      "frames": 73820645,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2041387
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 17321050
+        },
+        {
+          "control": "energy-ball",
+          "frame": 20932219
+        },
+        {
+          "control": "affirmation",
+          "frame": 22543903
+        },
+        {
+          "control": "return",
+          "frame": 67693847
+        }
+      ],
+      "reads": [
+        [
+          41140926,
+          512,
+          "b69712d9bfe2f610129dcdeaeb72221d4f4dd984aa078b65fe760abf58ac3b75"
+        ],
+        [
+          82281341,
+          512,
+          "e061ebdeb1d023c49f2fe74b525bea13cc52b18278edb0faca9a7ce5fac6fe4c"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "energy-ball": "reminder",
+        "affirmation": "full"
+      },
+      "size": 67627473,
+      "frames": 59444069,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2041387
+        },
+        {
+          "control": "relaxation",
+          "frame": 3451267
+        },
+        {
+          "control": "energy-ball",
+          "frame": 4774005
+        },
+        {
+          "control": "affirmation",
+          "frame": 6385689
+        }
+      ],
+      "reads": [
+        [
+          33813736,
+          512,
+          "55b91974f7369e4987acafd25705d068a617a85d89f53c3fb4b23f7230386f70"
+        ],
+        [
+          67626961,
+          512,
+          "657974f16f42b6fa16496e35a3e935265eec8df6bef052e8f68c629a75090cdb"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "energy-ball": "reminder",
+        "return": "short"
+      },
+      "size": 65017843,
+      "frames": 56779116,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2041387
+        },
+        {
+          "control": "relaxation",
+          "frame": 3451267
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 4766239
+        },
+        {
+          "control": "energy-ball",
+          "frame": 10543167
+        },
+        {
+          "control": "return",
+          "frame": 50652318
+        }
+      ],
+      "reads": [
+        [
+          32508921,
+          512,
+          "69a7d1426d4a9da087e41e5c1f6989b7fc776b9031b27d585251529269fede88"
+        ],
+        [
+          65017331,
+          512,
+          "1db6294bd60fd718ef9678be5de5621f776fb6289bad4acac4a543579949a46a"
+        ]
+      ]
+    }
+  ],
+  "OCF-EXP-007": [
+    {
+      "opts": {
+        "return": "short"
+      },
+      "size": 103493744,
+      "frames": 98916160,
+      "bookmarks": [
+        {
+          "control": "return",
+          "frame": 92545040
+        }
+      ],
+      "reads": [
+        [
+          51746872,
+          512,
+          "d029cfa206f11d54a2ad724b55fc6a2a28d48d11ee1c7144510f190837b79c42"
+        ],
+        [
+          103493232,
+          512,
+          "c5837740e64e7b5a0fc2afbe417bb9460d3282fa35ee317d00408ecf4f64ca92"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "affirmation": "reminder"
+      },
+      "size": 102718313,
+      "frames": 98228197,
+      "bookmarks": [
+        {
+          "control": "affirmation",
+          "frame": 54311287
+        }
+      ],
+      "reads": [
+        [
+          51359156,
+          512,
+          "a7defff3c7b64d32ce6b6d66cd4d0300f8ef13d9dd69ec848173237d693cb8c8"
+        ],
+        [
+          102717801,
+          512,
+          "062ae48d2a50d0502b36b7bad8319ae6dc6f042c00149054bbc914a7b2f7122a"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "affirmation": "full"
+      },
+      "size": 108100282,
+      "frames": 103607948,
+      "bookmarks": [
+        {
+          "control": "affirmation",
+          "frame": 54311287
+        }
+      ],
+      "reads": [
+        [
+          54050141,
+          512,
+          "45e62c286c231e0ade5094c9ed18e7397104bb7a71a0dd3160ab122d4e23da13"
+        ],
+        [
+          108099770,
+          512,
+          "50d78079137a516ef04b7b911fe50c8635096173ceec855af16a0ea4bfd247e8"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "resonant-tuning": "off"
+      },
+      "size": 93339159,
+      "frames": 87767119,
+      "bookmarks": [
+        {
+          "control": "resonant-tuning",
+          "frame": 20699136
+        }
+      ],
+      "reads": [
+        [
+          46669579,
+          512,
+          "264af63bbb1577f88c7ff3e2476902c18d7d36e801c64b9c8820402bad06b051"
+        ],
+        [
+          93338647,
+          512,
+          "fe7abd99c28fa4ff9ce764d074573a50679b30fe374b8e58059eb138cc71acf9"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "resonant-tuning": "reminder"
+      },
+      "size": 98717198,
+      "frames": 93536281,
+      "bookmarks": [
+        {
+          "control": "resonant-tuning",
+          "frame": 20699136
+        }
+      ],
+      "reads": [
+        [
+          49358599,
+          512,
+          "20703dbb8e8a299c14897b7730c4c1b75595b8414d2c482774b5e61a108e759e"
+        ],
+        [
+          98716686,
+          512,
+          "f4180387c923db9e5d8e7d457eeec0762f2e6e6ab68230256ca88594b28d295c"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short"
+      },
+      "size": 89079211,
+      "frames": 84400660,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6788313
+        }
+      ],
+      "reads": [
+        [
+          44539605,
+          512,
+          "4b5dce2075bbd36e399cdf6c5384eb9251de747707ab14fddf5f687fa417f01f"
+        ],
+        [
+          89078699,
+          512,
+          "2ac0663644b4d0e7adfc093226b46e2a8925423698bb70f782af827de4afda68"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder"
+      },
+      "size": 98299172,
+      "frames": 93752489,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2175451
+        }
+      ],
+      "reads": [
+        [
+          49149586,
+          512,
+          "10894f0467452a2288a11cc11f16f219da542a4b30949a3d1d9aabc783aafb4a"
+        ],
+        [
+          98298660,
+          512,
+          "73f220faf7e682e08be7d92666f3503817538c20c0bf06e961546b43242b187d"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "affirmation": "full",
+        "return": "short"
+      },
+      "size": 91853829,
+      "frames": 86391654,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2175451
+        },
+        {
+          "control": "relaxation",
+          "frame": 3585331
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 4941343
+        },
+        {
+          "control": "affirmation",
+          "frame": 35134304
+        },
+        {
+          "control": "return",
+          "frame": 80020534
+        }
+      ],
+      "reads": [
+        [
+          45926914,
+          512,
+          "7fa3f7f79d72e24f4087580dbda53c9095f9973d46fa65a6fb14b1a58a50f001"
+        ],
+        [
+          91853317,
+          512,
+          "4116113b74d36bf7a406afd3f09bd28b2c2717df3a8b2cc6b9a69548604611dc"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short",
+        "affirmation": "full",
+        "return": "short"
+      },
+      "size": 97755357,
+      "frames": 93013826,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6788313
+        },
+        {
+          "control": "affirmation",
+          "frame": 41756476
+        },
+        {
+          "control": "return",
+          "frame": 86642706
+        }
+      ],
+      "reads": [
+        [
+          48877678,
+          512,
+          "d45c2f648d1422fb04b39cda5e0e2bd7ca6ceed26ba945414d02d2a2d7d1eb5d"
+        ],
+        [
+          97754845,
+          512,
+          "730b0bc4af57c2192b5533d7adaea037d0b66b8c7ea443d7c4c1f5e9b10c1e4a"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "affirmation": "full"
+      },
+      "size": 92978811,
+      "frames": 87633947,
+      "bookmarks": [
+        {
+          "control": "relaxation",
+          "frame": 6788313
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 8144325
+        },
+        {
+          "control": "affirmation",
+          "frame": 38337286
+        }
+      ],
+      "reads": [
+        [
+          46489405,
+          512,
+          "a2e5c6725a6f6c73dd3087ad96d658cf85e0e639bc2e63b129d041a9f6c3fba3"
+        ],
+        [
+          92978299,
+          512,
+          "4f51d0b9f1f097d839291a9322e5f1c124346b2233ceee234add23ef5f4f9c92"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "resonant-tuning": "off",
+        "affirmation": "reminder",
+        "return": "short"
+      },
+      "size": 93473559,
+      "frames": 87797552,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2175451
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 17496154
+        },
+        {
+          "control": "affirmation",
+          "frame": 41919953
+        },
+        {
+          "control": "return",
+          "frame": 81426432
+        }
+      ],
+      "reads": [
+        [
+          46736779,
+          512,
+          "ebd162c420faabbddaeb9c78365100d34c46521dc321d38234d87c2969d33451"
+        ],
+        [
+          93473047,
+          512,
+          "3808f36886293e1c2df7ab5f8288112f609b9b2929b8dd094750cfa74bdff457"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "affirmation": "reminder"
+      },
+      "size": 87178798,
+      "frames": 82470404,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2175451
+        },
+        {
+          "control": "relaxation",
+          "frame": 3585331
+        },
+        {
+          "control": "affirmation",
+          "frame": 38553494
+        }
+      ],
+      "reads": [
+        [
+          43589399,
+          512,
+          "bb71804dd011dacf0bb694bc16df627450e304e835363601b46eb04cfc9ca9f6"
+        ],
+        [
+          87178286,
+          512,
+          "e626b2ea899972d402ac622acf7309fe416dc0b7195013ee70a8ab150ba2c2e1"
+        ]
+      ]
+    },
+    {
+      "opts": {
+        "preparation": "reminder",
+        "relaxation": "short",
+        "resonant-tuning": "reminder",
+        "return": "short"
+      },
+      "size": 85212496,
+      "frames": 79739177,
+      "bookmarks": [
+        {
+          "control": "preparation",
+          "frame": 2175451
+        },
+        {
+          "control": "relaxation",
+          "frame": 3585331
+        },
+        {
+          "control": "resonant-tuning",
+          "frame": 4941343
+        },
+        {
+          "control": "return",
+          "frame": 73368057
+        }
+      ],
+      "reads": [
+        [
+          42606248,
+          512,
+          "75068dc3c9bf4d33c773bc8aaacee0b317dce4363e2450256fa7e8dfda0041ff"
+        ],
+        [
+          85211984,
+          512,
+          "724d7ac633854a2f36997e869b41d9b0bbfdb95061013c757accde7927aed4ab"
+        ]
+      ]
+    }
+  ]
+}

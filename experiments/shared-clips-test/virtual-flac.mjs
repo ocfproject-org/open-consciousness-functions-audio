@@ -10,7 +10,7 @@ function crc(data,bits){
  else for(const b of data)tag=((tag<<8)&65535)^crc16[b^(tag>>>8)];
  return tag;
 }
-function flacInteger(value){
+export function flacInteger(value){
  if(value<128)return [value];
  for(let n=2;n<8;n++)if(value<2**(5*n+1)){
    const d=[256-(1<<(8-n))+Math.floor(value/2**(6*(n-1)))];

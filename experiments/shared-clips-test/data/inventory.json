@@ -1,1 +1,42 @@
-{"original-OCF-EXP-007":{"bytes":101838307,"sha256":"40b31fb003354e375e7bdd5732d4ccfc14711f2c293a4722861c9840255ed655"},"original-OCF-FND-004":{"bytes":75254488,"sha256":"ee40e9c63155237469b9526bcddd177e49df34d3787acd7ca37bc48b13ff58da"},"shared-reminder":{"bytes":5365982,"sha256":"8911c081552055681d2307b263945741c1d9389a8acfab61259a65a2f07a152c"}}
+{
+  "affirmation-full": {
+    "bytes": 6590667,
+    "sha256": "53cb357e5d49007ee3f51125d6874868eed3f415caacf0925a05331c36ae0d3a"
+  },
+  "affirmation-reminder": {
+    "bytes": 1221201,
+    "sha256": "70198ce538924dd1f26609fbe222ae25691fd3d7ea0be75e500dc615a0118368"
+  },
+  "energy-ball-reminder": {
+    "bytes": 1600534,
+    "sha256": "968f2686cd383c80a46030c6b748c851610087aa74437086bde0443ed58f1e7c"
+  },
+  "original-OCF-EXP-007": {
+    "bytes": 101838307,
+    "sha256": "40b31fb003354e375e7bdd5732d4ccfc14711f2c293a4722861c9840255ed655"
+  },
+  "original-OCF-FND-004": {
+    "bytes": 75254488,
+    "sha256": "ee40e9c63155237469b9526bcddd177e49df34d3787acd7ca37bc48b13ff58da"
+  },
+  "preparation-reminder": {
+    "bytes": 1010664,
+    "sha256": "b9aa5e1fb8aa8671a7cb512859b1e5a071fd27ea7823e5d294c78fcc5466a16d"
+  },
+  "relaxation-short": {
+    "bytes": 1280825,
+    "sha256": "7302afe6ece9908c18eda629e42a428227ef6fe8537f38529b9d3394579609c9"
+  },
+  "resonant-tuning-full": {
+    "bytes": 3608055,
+    "sha256": "08b11b19343951f977809935b70540b68777af41eef6982dd250da311e7c1ac4"
+  },
+  "return-short": {
+    "bytes": 3820510,
+    "sha256": "a860bf550e607e2dc015c5ad618efd3086f8ffb09194a5484afe6abcb3df22c4"
+  },
+  "shared-reminder": {
+    "bytes": 5365982,
+    "sha256": "8911c081552055681d2307b263945741c1d9389a8acfab61259a65a2f07a152c"
+  }
+}

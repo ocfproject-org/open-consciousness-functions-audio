@@ -20,7 +20,7 @@
   window.ocfPreviewAudio = (async () => {
     const manager = navigator.serviceWorker;
     if (!manager) return null;
-    const expected = new URL(base + 'worker.mjs', location.origin).href;
+    const expected = new URL(base + 'worker.mjs?v=full-options-1', location.origin).href;
     const attached = () => manager.controller?.scriptURL === expected;
     try {
       const reg = await manager.register(expected, {type: 'module', scope: base, updateViaCache: 'none'});
