@@ -48,3 +48,29 @@ Use the normal Pages CI and separate deployment gate for the main site.
    open-consciousness-functions-audio, their releases, original files, or DNS
    as part of this cleanup. Website rollback has been rehearsed; no previous
    Smart Play audio is kept as a standby copy for latest-only releases.
+
+## Production enablement and future editions
+
+1. Use the site catalog for the approved audio release and the renderer's
+   verified per-session indexes. Verify the public media range bytes with
+   `seal_smart_play_catalog.py verify-ranges --registry ...`. Then run
+   `seal_smart_play_catalog.py seal --catalog ... --index ... --registry ...
+   --output ... --edition ...`. This emits the immutable bundle and its site
+   pin for the exact approved release; no new full recordings are produced.
+2. Publish `smart-play-indexes.tar.gz` as a public, non-latest companion with
+   the tag in the generated `public-release.json`. Confirm the downloaded
+   bytes match the pin. Copy that generated pin to
+   `smart-play/public-release.json` in the audio-site PR. Do not replace
+   earlier audio assets. CI downloads and validates the companion, builds the
+   public site, and tests playback from the selected media origins.
+3. Keep the prior website checkpoint and wait for the exact PR head's checks
+   before merging. After Pages deploys, run
+   `node scripts/check_public_smart_play.cjs https://ocfproject.org --all-sessions`
+   and verify standard playback, earlier editions, and the separate preview.
+4. For a later latest-only switch, six Pages projects publish one edition
+   each. Do not assume that the previous Smart Play inputs will stay
+   reachable during the switch. If needed, first remove the site pin with a
+   normal validated deployment to turn off Smart Play and leave Original
+   working. Then update all six media shards, verify them, and enable the
+   new pin through the same workflow. Website rollback does not require
+   maintaining a duplicate Smart Play audio catalog.

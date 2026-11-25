@@ -90,6 +90,9 @@ def seal(catalog, indexes, registry, output, version, locale, voice):
                "sha256": sha256(file.read_bytes()).hexdigest(), "revision": revision, "edition": version}
     (output / "smart-play-indexes-receipt.json").write_bytes(canonical(receipt))
     (output / "registry.json").write_bytes(canonical(manifest))
+    (output / "public-release.json").write_bytes(canonical({
+        **receipt, "tag": "smart-play-release-" + version, "locale": locale, "voice": voice,
+    }))
     print(receipt)
 
 def verify(registry, origin, full=False):
