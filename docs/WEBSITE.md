@@ -21,6 +21,13 @@ unreviewed relationships, invalid release catalog or broken local page link.
 Only the exact 58-function en-US export is currently supported; no locale is
 silently substituted.
 
+## Website changelog
+
+Add notable website changes to [the changelog source](website/changelog.md) in
+newest-first order. Use the verified public availability date and link to the
+affected page. Leave unpublished work out. Keep audio changes in their recording
+edition's release notes rather than this page.
+
 ## Local verification
 
 The Pages workflow checks out the pinned public source commit and derives the

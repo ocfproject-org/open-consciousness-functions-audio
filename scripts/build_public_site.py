@@ -918,7 +918,11 @@ def build_public_site(
                 description="Optional original reflection prompts and a device-local space for your favorites.",
             ))
         _write(staging / "practice-chains" / "index.html", _chains_redirect_page(source_commit))
-        for route, title in (("how-it-works", "How OCF works"), ("get-involved", "Get involved")):
+        for route, title in (
+            ("how-it-works", "How OCF works"),
+            ("get-involved", "Get involved"),
+            ("changelog", "Website changelog"),
+        ):
             markdown = _read_markdown(content_dir, f"{route}.md")
             body = render_markdown(markdown)
             if route == "get-involved":
@@ -1397,7 +1401,7 @@ def _shell(
 <nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_links}</nav></details>
 <button class="preferences-open" type="button" data-preferences-open hidden>Preferences</button></header>
 <main id="main" class="docs-main">{toc_mobile}<div class="docs-layout{" with-toc" if toc_nav else ""}">{toc_desktop}<article class="{content_class}">{body}</article></div></main>
-<footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
+<footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{base}changelog/">Website changelog</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
 </body></html>'''
 
 
