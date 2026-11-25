@@ -33,3 +33,7 @@
 .preferences-backup button { margin: .3rem .4rem .3rem 0; white-space: normal; }
 .preferences-backup p { overflow-wrap: anywhere; }
 .preferences-backup :focus-visible { outline: 3px solid var(--focus-ring, currentColor); outline-offset: 3px; }
+
+/* Keep preparation discoverable without leading with an already learned step. */
+:root:not([data-ocf-preparation-learned]) [data-preparation-learned],
+:root[data-ocf-preparation-learned] [data-preparation-prominent] { display: none !important; }

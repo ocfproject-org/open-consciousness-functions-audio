@@ -1,6 +1,10 @@
 /* Public catalog presentation: no private paths, tracking, or HTML interpolation. */
 (() => {
   'use strict';
+  const learningKey = session => JSON.stringify([
+    session.id === 'preparation-learning' ? 'preparation:ocf' : session.id,
+    session.releaseTag, session.edition, session.locale, session.voiceId,
+  ]);
   const safeURL = value => {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null; }
     catch (_) { return null; }
@@ -19,7 +23,7 @@
         href: fn.function_id ? `${encodeURIComponent(fn.function_id)}/` : '../preparation-learning/',
         locale: session.locale || session.language || '',
         voice: session.voice_name || session.voice_id || '', voiceId: session.voice_id || '',
-        edition: session.edition || release.version, date: release.date,
+        edition: session.edition || release.version, date: release.date, releaseTag: release.tag,
         artwork: safeURL(session.artwork?.download_url),
         releaseURL: safeURL(release.release_url), assets: (session.assets || []).filter(a => safeURL(a.download_url))
       }))));
@@ -387,6 +391,7 @@
       current = selected; concealed = hide.checked;
       player.src = current.assets.find(a => a.format === format && safeURL(a.download_url)).download_url;
       player.dataset.sessionFormat = format;
+      player.dataset.learnedRecording = learningKey(current);
       card.hidden = false;
       present();
       window.ocfRegisterMediaPlayer?.(player);
@@ -455,6 +460,7 @@
       player.dataset.sessionTitle = item.title;
       player.dataset.sessionEdition = item.edition;
       player.dataset.sessionLocale = item.locale;
+      player.dataset.learnedRecording = learningKey(item);
       launch.before(player);
       launch.hidden = true;
       window.ocfRegisterMediaPlayer?.(player);

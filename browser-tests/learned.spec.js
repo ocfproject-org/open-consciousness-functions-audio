@@ -138,3 +138,92 @@ test('Preferences manages tracking on the home page; compact lists stay usable o
  await openPreferences(page);await page.locator('.personal-settings').scrollIntoViewIfNeeded();await page.screenshot({path:'browser-artifacts/compact-preferences-390.png'});await closePreferences(page);
  await ready(page);await openLearned(page);await modal(page).getByLabel('Learning target',{exact:true}).focus();await page.keyboard.press('Tab');await expect(modal(page).getByRole('button',{name:'Cancel',exact:true})).toBeFocused();await page.keyboard.press('Tab');await expect(modal(page).getByRole('button',{name:'Save learned version'})).toBeFocused();await page.keyboard.press('Escape');await expect(pageAction(page,'Learned')).toBeFocused();
 });
+
+function quietRecording(seconds=2) {
+ const rate=8000, pcmBytes=rate*2*seconds, wave=Buffer.alloc(44+pcmBytes);
+ wave.write('RIFF',0); wave.writeUInt32LE(36+pcmBytes,4); wave.write('WAVEfmt ',8);
+ wave.writeUInt32LE(16,16); wave.writeUInt16LE(1,20); wave.writeUInt16LE(1,22);
+ wave.writeUInt32LE(rate,24); wave.writeUInt32LE(rate*2,28);
+ wave.writeUInt16LE(2,32); wave.writeUInt16LE(16,34);
+ wave.write('data',36); wave.writeUInt32LE(pcmBytes,40);
+ return wave;
+}
+async function fixturePlayback(page) {
+ const audio=quietRecording();
+ await page.route(url=>url.hostname==='github.com' && /\.(mp3|flac)$/.test(url.pathname),async intercepted=>{
+  const range=/^bytes=(\d+)-(\d*)$/.exec(intercepted.request().headers().range||'');
+  if(!range)return intercepted.fulfill({status:200,body:audio,contentType:'audio/wav'});
+  const from=Number(range[1]), to=range[2]?Math.min(Number(range[2]),audio.length-1):audio.length-1;
+  await intercepted.fulfill({status:206,body:audio.subarray(from,to+1),headers:{
+   'content-type':'audio/wav','accept-ranges':'bytes','content-range':`bytes ${from}-${to}/${audio.length}`
+  }});
+ });
+}
+async function playAndWaitForNaturalEnd(page, group) {
+ const audio=group.locator('audio');
+ await group.getByRole('button',{name:'Play',exact:true}).click();
+ await expect.poll(()=>audio.evaluate(a=>a.ended)).toBe(true);
+}
+test('real completed playback saves the exact historical edition without treating a seek-to-end or replays as new records',async({page})=>{
+ await fixturePlayback(page);
+ await ready(page);
+ await selectPreference(page,'Audio edition','0.1.0');
+ const group=page.locator('.edition-card[data-edition-content="0.1.0"]:visible').filter({has:page.locator('audio')}).first();
+ const audio=group.locator('audio');
+ const key=JSON.parse(await audio.getAttribute('data-learned-recording'));
+ await audio.evaluate(async a=>{
+  a.load();
+  if(!a.readyState)await new Promise(resolve=>a.addEventListener('loadedmetadata',resolve,{once:true}));
+  a.currentTime=a.duration-0.15;
+  await a.play();
+  await new Promise(resolve=>a.addEventListener('ended',resolve,{once:true}));
+ });
+ expect(await saved(page)).toEqual([]);
+ await audio.evaluate(a=>{a.currentTime=0;});
+ await playAndWaitForNaturalEnd(page,group);
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ const [record]=await saved(page);
+ expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
+ await expect(pageAction(page,'Learned')).toHaveAttribute('aria-pressed','true');
+ await audio.evaluate(a=>{a.currentTime=0;});
+ await playAndWaitForNaturalEnd(page,group);
+ expect(await saved(page)).toHaveLength(1);
+});
+
+test('finished Preparation Learning is less prominent across the site but stays available',async({page})=>{
+ await fixturePlayback(page);
+ await ready(page,'/start/');
+ await expect(page.locator('.primary-action')).toBeVisible();
+ await ready(page,'/preparation-learning/');
+ const group=page.locator('.edition-card[data-edition-content]:visible').filter({has:page.locator('audio')}).first();
+ await playAndWaitForNaturalEnd(page,group);
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ expect((await saved(page))[0].subject).toBe('preparation:ocf');
+ await expect(pageAction(page,'Learned')).toHaveAttribute('aria-pressed','true');
+ for(const route of ['/','/start/','/functions/','/listening/','/downloads/']){
+  await ready(page,route);
+  await expect(page.locator('html')).toHaveAttribute('data-ocf-preparation-learned','');
+  await expect(page.getByRole('link',{name:'Review Preparation Learning',exact:true})).toBeVisible();
+  await expect(page.locator('[data-preparation-prominent]:visible')).toHaveCount(0);
+ }
+ await ready(page,'/functions/');
+ const cards=page.locator('.session-card:visible');
+ await expect(cards.first()).not.toHaveAttribute('data-function-id','preparation-learning');
+ await expect(cards.filter({has:page.getByRole('button',{name:/Learned: OCF Preparation Learning/})})).toHaveCount(1);
+ await page.locator('#search').fill('Preparation Learning');
+ await expect(cards.first()).toHaveAttribute('data-function-id','preparation-learning');
+});
+
+test('Browse & Listen saves the edition of a dynamically opened native player',async({page})=>{
+ await fixturePlayback(page);
+ await ready(page,'/functions/');
+ await page.locator('#search').fill('OCF-AUT-001');
+ const card=page.locator('.session-card[data-function-id="OCF-AUT-001"]:visible');
+ await card.getByRole('button',{name:/^Show player/}).click();
+ const key=JSON.parse(await card.locator('audio').getAttribute('data-learned-recording'));
+ await playAndWaitForNaturalEnd(page,card);
+ await expect.poll(()=>saved(page)).toHaveLength(1);
+ const [record]=await saved(page);
+ expect([record.subject,record.recording.tag,record.recording.edition,record.recording.locale,record.recording.voice]).toEqual(key);
+ await expect(card.getByRole('button',{name:/^Learned:/})).toHaveAttribute('aria-pressed','true');
+});
