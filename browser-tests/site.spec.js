@@ -326,7 +326,8 @@ test('Start Here leads the home paths while Preparation Learning stays available
   await page.goto('/start/');
   await expect(page.locator('#main')).toContainText('Complete Preparation Learning before using any OCF function.');
   await expect(page.locator('#main')).toContainText('Only people who have already learned the official Human Plus preparation track may skip it.');
-  await expect(page.locator('#main a[href="../preparation-learning/"]').first()).toBeVisible();
+  await expect(page.getByRole('link',{name:'Complete Preparation Learning',exact:true})).toBeVisible();
+  await expect(page.locator('[data-preparation-learned] a[href="../preparation-learning/"]')).not.toBeVisible();
   await page.goto('/preparation-learning/');
   await expect(page.locator('.edition-card:visible .ocf-local-player')).toBeVisible();
   await expect(page.locator('audio[controls]')).toHaveCount(0);
