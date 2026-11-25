@@ -5,7 +5,7 @@
   const modes={standard:'Original recording',full:'Full guidance',experienced:'Shorter guidance',advanced:'Custom'};
   const values={off:'Off',reminder:'Reminder',short:'Short',full:'Full'};
 
-  const catalog={'resonant-tuning':['Resonant Tuning','off','reminder']};
+  const catalog={"preparation":["Transmutation Box","reminder"],"relaxation":["Relaxation","short"],"resonant-tuning":["Resonant Tuning","full","reminder","off"],"energy-ball":["Energy Ball","reminder"],"affirmation":["Affirmation","full","reminder"],"return":["Waking Return","short"]};
   const key='ocf.canary.shared-clips.preferences.v1', prefix=key+'.session.';
   const valid=value=>{
     const mode=value?.mode??value?.preset;

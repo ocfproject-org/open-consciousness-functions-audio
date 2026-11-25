@@ -1,4 +1,5 @@
 const {chromium,devices}=require('playwright'), assert=require('node:assert/strict');
+const wire=require('./fixtures/smart-play-preview-wire.json');
 (async()=>{
  const base=process.argv[2], path='/experiments/shared-clips-test/';
  const browser=await chromium.launch();
@@ -51,6 +52,7 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
   assert.equal(guidePath,path+'functions/OCF-FND-004/');
   await browse.locator('h3 a').click();
   await p.waitForURL(prefix+'OCF-FND-004/');
+  const exercised=new Set();
   for(const [fid,choice] of [['OCF-FND-004','reminder'],['OCF-EXP-007','reminder'],['OCF-EXP-007','off']]){
    await p.goto(prefix+fid+'/');
    const title=fid==='OCF-FND-004'?'Relax':'Energy Ball';
@@ -71,6 +73,18 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
    if(fid==='OCF-FND-004') assert.equal(await p.locator('[data-edition-content="0.2.0"] .ocf-local-smart-gear').count(),0);
    await c.getByRole('button',{name:'Smart Play settings'}).click();
    const d=p.getByRole('dialog',{name:'Smart Play',exact:true});
+   const labels={preparation:'Transmutation Box',relaxation:'Relaxation','resonant-tuning':'Resonant Tuning','energy-ball':'Energy Ball',affirmation:'Affirmation',return:'Waking Return'};
+   const expected={};
+   for(const item of wire[fid].filter(x=>Object.keys(x.opts).length===1)){
+    const [control,value]=Object.entries(item.opts)[0];
+    (expected[control]??=[]).push(value);
+   }
+   for(const [control,options] of Object.entries(expected)){
+    const entries=await d.getByLabel(labels[control],{exact:true}).locator('option').evaluateAll(el=>el.map(e=>e.value).filter(Boolean).sort());
+    assert.deepEqual(entries,options.sort());
+   }
+   assert.equal(await d.getByLabel('Guidance',{exact:true}).locator('option[value="full"]').isEnabled(),true);
+   assert.equal(await d.getByLabel('Guidance',{exact:true}).locator('option[value="experienced"]').isEnabled(),true);
    await d.getByLabel('Resonant Tuning').selectOption(choice);
    assert.equal(await d.getByLabel('Guidance',{exact:true}).inputValue(),'advanced');
    await d.getByRole('button',{name:'Apply',exact:true}).click();
@@ -92,6 +106,29 @@ const {chromium,devices}=require('playwright'), assert=require('node:assert/stri
    await d.getByRole('button',{name:'Apply',exact:true}).click();
    await d.waitFor({state:'hidden'});
    assert.equal(await marks.isVisible(),false);
+   if (id==='desktop' && !exercised.has(fid)) {
+    exercised.add(fid);
+    // A real worker Range read, not just an outer 206. Hash exact bytes measured
+    // against the native local player for individual choices and mixed selections.
+    const match=await p.evaluate(async ({scope,fid,proof})=>{
+     for(const item of proof){
+      const route=await fetch(scope+'virtual/route/'+fid+'?'+new URLSearchParams(item.opts));
+      if(!route.ok)return 'Route status '+route.status;
+      const r=await route.json();
+      if(Math.round(r.seconds*44100)!==item.frames||r.bookmarks.length!==item.bookmarks.length)return 'Wrong duration or bookmarks';
+      for(const [off,n,expected] of item.reads){
+       const res=await fetch(r.url,{headers:{Range:'bytes='+off+'-'+(off+n-1)}});
+       const b=await res.arrayBuffer();
+       if(res.status!==206||b.byteLength!==n)return 'Wrong range length or status';
+       const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b)),x=>x.toString(16).padStart(2,'0')).join('');
+       if(digest!==expected)return 'Wrong range digest for '+JSON.stringify(item.opts);
+      }
+     }
+     return 'ok';
+    },{scope:path,fid,proof:wire[fid]});
+    assert.equal(match,'ok');
+   }
+
   }
   await p.getByRole('button',{name:'Preferences',exact:true}).click();
   await p.locator('#format-filter').selectOption('flac');
