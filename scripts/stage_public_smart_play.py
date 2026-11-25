@@ -83,16 +83,24 @@ def stage(site,index,media_registry,edition,locale,voice):
     mark=" const manager=navigator.serviceWorker;"
     write(boot,replace(boot.read_text(),mark," window.ocfPublicSmartEligible=new Set("+json.dumps(sorted(sessions))+");\n"+mark))
     pubPath='assets/js/smart-play/'
-    for fid in [None,*sessions]:
-        page=site/'functions'/(fid or '')/'index.html'
-        src=page.read_text()
-        if fid:
+    edition_key = '030' if edition == '0.3.0' else edition.replace('.', '-')
+    session_pages = {site/'functions'/fid/'index.html': fid for fid in sessions}
+    for page in site.rglob('*.html'):
+        if 'experiments' in page.relative_to(site).parts:
+            continue
+        src = page.read_text()
+        if page in session_pages:
+            fid = session_pages[page]
             src,n=re.subn(rf'<audio [^>]*\bdata-session-edition="{re.escape(edition)}"[^>]*>',
                           lambda m:m[0][:-1]+f' data-local-smart="{fid}">',src)
             if n!=1:raise ValueError('No exact player: '+fid)
+        if 'id="preferences"' not in src:
+            if page in session_pages or page == site/'functions/index.html':
+                raise ValueError('No main preferences dialog in ' + str(page.relative_to(site)))
+            continue
         script=lambda name:relpath(pubPath+name,page.parent.relative_to(site).as_posix())+'?v='+sha(modules/name)[:16]
         inserts=(f'<link rel="stylesheet" href="{script("smart-player.css")}">'
-           f'<script src="{script("bootstrap.js")}" data-ocf-smart-play data-service-worker="/{worker.name}?v={worker_rev}" defer></script>'
+           f'<script src="{script("bootstrap.js")}" data-ocf-smart-play data-service-worker="/{worker.name}?v={worker_rev}" data-session-key-edition="{edition_key}" defer></script>'
            f'<script src="{script("player.js")}" defer></script>')
         mark='<meta charset="utf-8">'
         src=replace(src,mark,mark+inserts)

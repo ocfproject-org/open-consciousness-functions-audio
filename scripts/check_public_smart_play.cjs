@@ -5,6 +5,16 @@ const assert=require('node:assert/strict'), {chromium,devices}=require('playwrig
  try {
  for(const [label,opt] of [['desktop',{}],['mobile',devices['Pixel 7']]]){
   const p=await b.newPage(opt);p.setDefaultTimeout(20000);
+  await p.goto(url+'/');
+  await p.locator('.site-header [data-preferences-open]').click();
+  const settings=p.locator('#preferences [data-local-smart-preferences]');
+  await settings.locator('summary').click();
+  await settings.getByLabel('Default guidance',{exact:true}).selectOption('advanced');
+  await settings.getByLabel('Relaxation',{exact:true}).selectOption('short');
+  await settings.getByRole('button',{name:'Save Smart Play default'}).click();
+  assert.match(await settings.getByRole('status').textContent(),/Default saved/);
+  assert.equal(await settings.getByRole('button',{name:'Export Smart Play settings'}).isEnabled(),true);
+  await settings.getByRole('button',{name:'Reset Smart Play default'}).click();
   for(const id of ids){
    await p.goto(url+'/functions/'+id+'/');const a=p.locator('audio[data-local-smart]');
    const active=p.getByRole('button',{name:'Smart Play settings',exact:true});

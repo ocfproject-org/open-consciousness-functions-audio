@@ -18,7 +18,7 @@
     if(v)localStorage.setItem(k,JSON.stringify(v));
     else localStorage.removeItem(k);
   };
-  const sessionKey=id=>prefix+id.toLowerCase()+'-030';
+  const sessionKey=id=>prefix+id.toLowerCase()+'-'+document.querySelector('[data-ocf-smart-play]').dataset.sessionKeyEdition;
   const makeMode=()=>{
     const e=el('select');for(const [k,v] of Object.entries(modes))e.add(new Option(v,k));return e;
   };
