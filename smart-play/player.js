@@ -147,6 +147,17 @@
       edited=false;current={};setCaptions(false);
       details.hidden=true;details.open=false;list.replaceChildren();
     }
+    audio.addEventListener('error',()=>{
+      if(!edited)return;
+      // A media-host outage or quota never changes the stored preferences.
+      say('Smart Play audio is temporarily unavailable. ');
+      const resume=button('Play Original recording');
+      status.append(resume);
+      resume.addEventListener('click',()=>{
+        original();applied={mode:'standard',choices:{}};say('');
+        controls.querySelector('button').click();
+      },{once:true});
+    });
     function setBookmarks(books){
       details.open=false;list.replaceChildren();
       for(const b of books){
