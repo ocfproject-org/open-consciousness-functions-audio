@@ -56,6 +56,18 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_listening_permalink_wraps_the_heading_without_changing_its_id(self):
+        self.assertEqual(
+            render_markdown("### A **clear** title", heading_permalinks=True),
+            '<h3 id="a-clear-title"><a class="heading-permalink" href="#a-clear-title">A <strong>clear</strong> title</a></h3>',
+        )
+        self.assertEqual(
+            render_markdown("### A **clear** title"),
+            '<h3 id="a-clear-title">A <strong>clear</strong> title</h3>',
+        )
+        with self.assertRaisesRegex(ValueError, "cannot contain another link"):
+            render_markdown("### [A title](../listening/)", heading_permalinks=True)
+
     def test_public_smart_play_help_preserves_faq_and_points_to_real_controls(self):
         copy = (Path(__file__).resolve().parents[1] / "docs/website/smart-play.md").read_text()
         original = (

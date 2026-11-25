@@ -397,7 +397,11 @@ def _inline(markdown):
     return text
 
 
-def render_markdown(markdown):
+def _heading_permalink(identity, label):
+    return f'<a class="heading-permalink" href="#{_html(identity)}">{label}</a>'
+
+
+def render_markdown(markdown, *, heading_permalinks=False):
     blocks = re.split(r"\n\s*\n", markdown.strip())
     output = []
     for block in blocks:
@@ -408,9 +412,12 @@ def render_markdown(markdown):
         if heading:
             level = len(heading.group(1))
             text = heading.group(2)
-            output.append(
-                f'<h{level} id="{_html(_slug(text))}">{_inline(text)}</h{level}>'
-            )
+            identity = _slug(text)
+            label = _inline(text)
+            if heading_permalinks:
+                _require("<a " not in label, f"Permalink heading cannot contain another link: {text}")
+                label = _heading_permalink(identity, label)
+            output.append(f'<h{level} id="{_html(identity)}">{label}</h{level}>')
         elif (unordered_items := _unordered_list_items(lines)) is not None:
             output.append(
                 "<ul>"
@@ -959,7 +966,7 @@ def build_public_site(
             listening_markdown = _public_smart_play_listening(
                 listening_markdown, _read_markdown(content_dir, "smart-play.md")
             )
-        listening_html = render_markdown(listening_markdown)
+        listening_html = render_markdown(listening_markdown, heading_permalinks=True)
         # Retain incoming links when consolidating/renaming public guide sections.
         for old_id, current_id in (
             ("welcome-to-ocf", "listening-guide"),
@@ -1001,7 +1008,7 @@ def build_public_site(
         )
         for platform in ("android", "ios", "windows", "macos", "linux"):
             markdown = _read_markdown(content_dir, f"listening/{platform}.md")
-            content = render_markdown(markdown)
+            content = render_markdown(markdown, heading_permalinks=True)
             _write(
                 staging / "listening" / platform / "index.html",
                 _shell(
@@ -1483,7 +1490,8 @@ def _feedback_contact():
 
 
 def _stereo_test():
-    return '''<section id="stereo-test" class="stereo-test" aria-labelledby="stereo-test-title"><h2 id="stereo-test-title">Check left and right</h2><p>Put on your stereo headphones or earbuds and start at a comfortable low volume. Each button plays a short, quiet tone in one channel. Left should be heard on your left; right on your right.</p><div class="stereo-controls"><button type="button" data-test-channel="0">Play left</button><button type="button" data-test-channel="1">Play right</button><button type="button" data-test-stop disabled>Stop test</button></div><p data-test-status role="status" aria-live="polite">Ready. No sound plays until you choose a channel.</p><p>If both sides sound the same, check mono audio, balance and your device’s processing settings below. This test lets you listen for separation; it cannot inspect your headphones or system settings.</p><p data-no-script-note>This interactive test needs JavaScript. The listening and device setup guides below remain available.</p></section>'''
+    title = _heading_permalink("stereo-test", "Check left and right")
+    return f'''<section id="stereo-test" class="stereo-test" aria-labelledby="stereo-test-title"><h2 id="stereo-test-title">{title}</h2><p>Put on your stereo headphones or earbuds and start at a comfortable low volume. Each button plays a short, quiet tone in one channel. Left should be heard on your left; right on your right.</p><div class="stereo-controls"><button type="button" data-test-channel="0">Play left</button><button type="button" data-test-channel="1">Play right</button><button type="button" data-test-stop disabled>Stop test</button></div><p data-test-status role="status" aria-live="polite">Ready. No sound plays until you choose a channel.</p><p>If both sides sound the same, check mono audio, balance and your device’s processing settings below. This test lets you listen for separation; it cannot inspect your headphones or system settings.</p><p data-no-script-note>This interactive test needs JavaScript. The listening and device setup guides below remain available.</p></section>'''
 
 
 def _home_page(functions, catalog, source_commit):
@@ -2449,7 +2457,9 @@ def _about_page(guide_export, catalog, source_docs_url, transcript_counts):
 
 
 def _recommended_settings(source_commit):
-    return """<section class="guide-section" id="recommended-audio-settings"><h2>Optional audio processing</h2><p>For the required stereo setup and its alternatives, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3>Processing preferences</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices are separate from the required stereo delivery. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
+    title = _heading_permalink("recommended-audio-settings", "Optional audio processing")
+    preferences = _heading_permalink("processing-preferences", "Processing preferences")
+    return f"""<section class="guide-section" id="recommended-audio-settings"><h2>{title}</h2><p>For the required stereo setup and its alternatives, see <a href="#headphones-and-stereo">Headphones and stereo</a>.</p><p>Preserve separate left/right playback and keep balance centered unless you use an accessibility adjustment.</p><h3 id="processing-preferences">{preferences}</h3><ul><li>Turn off optional spatial audio, head tracking, surround virtualization, EQ, audio enhancements, and crossfade when you want the unmodified stereo mix and those controls are available.</li><li>Disable unwanted repeat and shuffle, and disable automatic loudness normalization if the player offers that control. Use normal playback speed (1.0x).</li><li>Start at a comfortable low volume. Do not increase volume to chase a perceived effect.</li></ul><p>Optional processing choices are separate from the required stereo delivery. The website cannot detect or turn off operating-system, headphone, driver, or player processing. Accessibility needs and comfortable listening take priority.</p></section>"""
 
 
 def _device_links():
@@ -2461,7 +2471,9 @@ def _device_links():
         ("Linux", "linux"),
     ]
     return (
-        '<section class="guide-section" id="device-specific-setup"><h2>Device-specific setup</h2><p>Vendor and distribution menus vary. Review the guide for your device:</p><ul>'
+        '<section class="guide-section" id="device-specific-setup"><h2>'
+        + _heading_permalink("device-specific-setup", "Device-specific setup")
+        + '</h2><p>Vendor and distribution menus vary. Review the guide for your device:</p><ul>'
         + "".join(
             f'<li><a href="{_html(slug)}/">{_html(name)}</a></li>'
             for name, slug in labels

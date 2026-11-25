@@ -90,6 +90,9 @@
 .docs-content li + li, .guide-section li + li { margin-top: .35rem; }
 .docs-content a, .guide-section a, .page-intro a { color: var(--ink); text-decoration-thickness: .08em; text-underline-offset: .18em; }
 .docs-content a:hover, .guide-section a:hover { color: var(--ink); text-decoration-thickness: .12em; }
+.docs-content .heading-permalink:not(:hover):not(:focus-visible) { text-decoration-color: var(--muted); }
+.docs-content :is(h1, h3, h4)[id]:has(> .heading-permalink),
+.docs-content section[id]:has(> h2 > .heading-permalink) { scroll-margin-top: 1rem; }
 .docs-content blockquote { margin: 1.5rem 0; padding: .8rem 1.1rem; border-left: 3px solid var(--accent); background: var(--card); color: var(--muted); }
 .docs-content code, .guide-section code, .session-card code { font: .92em var(--mono); overflow-wrap: anywhere; }
 .page-intro { max-width: 70ch; margin: 1rem auto 2.5rem; }
