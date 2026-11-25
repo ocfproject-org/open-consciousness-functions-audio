@@ -60,7 +60,7 @@ test('recording reports follow dynamic Browse and respect the Surprise Me reveal
   const group = release.functions.find(g => g.function_id === id);
   await expectIssue(issueLink(card), release, group, group.sessions[0]);
   await card.getByRole('button', {name: /^Show player for/}).click();
-  await expect(card.getByRole('button', {name: 'Play'})).toBeVisible();
+  await expect(card.getByRole('button', {name: 'Play', exact: true})).toBeVisible();
   await expectIssue(issueLink(card), release, group, group.sessions[0]);
 
   const surprise = page.locator('.surprise-session');
