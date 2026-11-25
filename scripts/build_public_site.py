@@ -618,6 +618,37 @@ def _listening_guide_for_publication(markdown, catalog, functions, sessions_by_f
     return markdown
 
 
+
+def _smart_play_edition(row):
+    session = row["session"]
+    return (
+        not row["is_preparation"]
+        and session["edition"] == "0.3.0"
+        and session["locale"] == "en-US"
+        and session["voice_id"] == "mike-original"
+        and any(asset["format"] == "flac" for asset in row["audio_assets"])
+    )
+
+
+def _smart_play_help(root_prefix):
+    return (
+        f'<p class="smart-play-help"><a href="{root_prefix}listening/#smart-play">'
+        "Smart Play help</a> for optional guidance settings in eligible 0.3.0 recordings.</p>"
+    )
+
+
+def _public_smart_play_listening(listening, help_copy):
+    smart_play = _markdown_section_body(help_copy, "Smart Play")
+    questions = _markdown_section_body(help_copy, "Common questions")
+    playback_heading = "Players and playback settings"
+    playback = _markdown_section_body(listening, playback_heading)
+    listening = _replace_markdown_section(
+        listening, playback_heading, f"{playback}\n\n## Smart Play\n\n{smart_play}"
+    )
+    faq_heading = "Common questions"
+    faq = _markdown_section_body(listening, faq_heading)
+    return _replace_markdown_section(listening, faq_heading, f"{faq}\n\n{questions}")
+
 def _catalog_sessions(catalog):
     sessions_by_function = {
         function["function_id"]: []
@@ -751,6 +782,7 @@ def build_public_site(
     transcript_fetcher=None,
     smart_playback_media: Path | None = None,
     continuous_smart_play: bool = False,
+    public_smart_play: bool = False,
 ):
     """Build all local pages from one pinned OCF export and verified release catalog."""
     validate_guide_export(guide_export, source_pin)
@@ -789,6 +821,10 @@ def build_public_site(
         row for rows in sessions_by_function.values() for row in rows
     ] + preparation_sessions
     _validate_suggested_download_filenames(all_session_rows)
+    smart_play_functions = {
+        fid for fid, rows in sessions_by_function.items()
+        if public_smart_play and any(_smart_play_edition(row) for row in rows)
+    }
     with tempfile.TemporaryDirectory(
         prefix="ocf-site-build-", dir=output.parent
     ) as staging_name:
@@ -818,11 +854,16 @@ def build_public_site(
         )
 
         docs_dir = staging / "functions"
+        browse = _functions_index(functions, sessions_by_function, preparation_sessions)
+        if smart_play_functions:
+            marker = 'id="release-description"'
+            tag_end = browse.index("</p>", browse.index(marker)) + len("</p>")
+            browse = browse[:tag_end] + _smart_play_help("../") + browse[tag_end:]
         _write(
             docs_dir / "index.html",
             _shell(
                 "Browse & Listen — OCF Functions",
-                _functions_index(functions, sessions_by_function, preparation_sessions),
+                browse,
                 "functions",
                 source_commit,
                 include_catalog=True,
@@ -832,6 +873,9 @@ def build_public_site(
             fid = function["function_id"]
             sessions = sessions_by_function.get(fid, [])
             body = _function_page(function, sessions, transcript_paths, source_commit, histories[function["function_id"]])
+            if fid in smart_play_functions:
+                marker = '<h2 id="listening">Listen and download</h2>'
+                body = body.replace(marker, marker + _smart_play_help("../../"), 1)
             _write(
                 docs_dir / fid / "index.html",
                 _shell(
@@ -849,7 +893,8 @@ def build_public_site(
             staging / "start" / "index.html",
             _shell(
                 "Start Here — OCF",
-                _start_page(_read_markdown(content_dir, "start-here.md"), functions, catalog),
+                _start_page(_read_markdown(content_dir, "start-here.md"), functions, catalog)
+                + (_smart_play_help("../") if smart_play_functions else ""),
                 "start",
                 source_commit,
             ),
@@ -906,6 +951,10 @@ def build_public_site(
             functions,
             sessions_by_function,
         )
+        if smart_play_functions:
+            listening_markdown = _public_smart_play_listening(
+                listening_markdown, _read_markdown(content_dir, "smart-play.md")
+            )
         listening_html = render_markdown(listening_markdown)
         # Retain incoming links when consolidating/renaming public guide sections.
         for old_id, current_id in (
@@ -952,7 +1001,7 @@ def build_public_site(
                 staging / "listening" / platform / "index.html",
                 _shell(
                     f"{platform.title()} Audio Guide — OCF",
-                    content,
+                    content + (_smart_play_help("../../") if smart_play_functions else ""),
                     f"listening/{platform}",
                     source_commit,
                     toc=True,
@@ -2390,6 +2439,7 @@ def _validate_build(args):
         ),
         smart_playback_media=args.smart_playback_media,
         continuous_smart_play=args.continuous_smart_play,
+        public_smart_play=args.public_smart_play,
     )
 
 
@@ -2405,6 +2455,8 @@ def main(argv=None):
     parser.add_argument("--smart-playback-media", type=Path, help="Exact approved public Comfort MP3; verified and inventoried in the isolated experiment")
     parser.add_argument("--continuous-smart-play", action="store_true",
                         help="Build the isolated, verified public-source Energy Ball experiment")
+    parser.add_argument("--public-smart-play", action="store_true",
+                        help="Include Smart Play help when deploying the public player with verified media")
     parser.add_argument("--published-transcript-mirror", type=Path,
                         help="Offline folder of published transcript sidecars; every file is still verified")
     args = parser.parse_args(argv)

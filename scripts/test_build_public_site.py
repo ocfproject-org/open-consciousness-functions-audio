@@ -42,6 +42,9 @@ from build_public_site import (
     _recommended_settings,
     _shell,
     _request_public_asset,
+    _public_smart_play_listening,
+    _smart_play_edition,
+    _smart_play_help,
     _suggested_download_filename,
     _validate_suggested_download_filenames,
     _spoken_cue_references,
@@ -53,6 +56,35 @@ from build_public_site import (
 
 
 class PublicSiteBuildTests(unittest.TestCase):
+    def test_public_smart_play_help_preserves_faq_and_points_to_real_controls(self):
+        copy = (Path(__file__).resolve().parents[1] / "docs/website/smart-play.md").read_text()
+        original = (
+            "## Players and playback settings\n\nOriginal player instructions.\n\n"
+            "## Editions and versions\n\nEdition details.\n\n"
+            "## Common questions\n\n### Existing question\n\nExisting answer.\n"
+        )
+        rendered = render_markdown(_public_smart_play_listening(original, copy))
+        self.assertIn('<h2 id="smart-play">Smart Play</h2>', rendered)
+        self.assertEqual(rendered.count('<h2 id="common-questions">'), 1)
+        self.assertIn('<h3 id="existing-question">Existing question</h3>', rendered)
+        self.assertIn("Original recording", rendered)
+        self.assertIn("Remember for this session", rendered)
+        self.assertIn("Use site default for this session", rendered)
+        self.assertIn("Preparation Learning and older editions", rendered)
+        self.assertIn('href="../../listening/#smart-play"', _smart_play_help("../../"))
+
+    def test_smart_play_help_eligibility_matches_the_supported_edition(self):
+        setup = {
+            "is_preparation": False,
+            "session": {"edition": "0.3.0", "locale": "en-US", "voice_id": "mike-original"},
+            "audio_assets": [{"format": "mp3"}, {"format": "flac"}],
+        }
+        self.assertTrue(_smart_play_edition(setup))
+        self.assertFalse(_smart_play_edition({**setup, "is_preparation": True}))
+        self.assertFalse(_smart_play_edition({**setup, "audio_assets": [{"format": "mp3"}]}))
+        for k, v in [("edition", "0.2.0"), ("locale", "fr-FR"), ("voice_id", "other-voice")]:
+            self.assertFalse(_smart_play_edition({**setup, "session": {**setup["session"], k: v}}))
+
     def test_function_chains_legacy_page_has_canonical_accessible_fallback(self):
         page = _chains_redirect_page("a" * 40)
         self.assertIn('<h1>Function Chains</h1>', page)
