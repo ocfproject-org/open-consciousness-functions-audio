@@ -88,8 +88,6 @@ jobs:
             --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --continuous-smart-play \
             --output verified-site
       - name: Add the scoped shared-clip preview
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: python scripts/stage_shared_clip_canary.py --site verified-site
       - run: python scripts/validate_site.py verified-site
       # Package this exact build before browser acceptance so the artifact is

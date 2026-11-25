@@ -72,8 +72,6 @@ jobs:
           python scripts/validate_site.py verified-site
       - name: Add and validate the isolated preview in same-repository CI
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           python scripts/stage_shared_clip_canary.py --site verified-site
           python scripts/validate_site.py verified-site

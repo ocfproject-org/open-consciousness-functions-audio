@@ -5,7 +5,6 @@ from hashlib import file_digest, sha256
 import json
 from pathlib import Path
 import shutil
-import subprocess
 import tarfile
 import tempfile
 from urllib.parse import urlparse
@@ -13,9 +12,7 @@ from urllib.request import Request, urlopen
 
 SCOPE = Path("experiments/shared-clips-test")
 SESSION_IDS = {"OCF-FND-004", "OCF-EXP-007"}
-DRAFT_ASSET_ENDPOINT = "repos/ocfproject-org/open-consciousness-functions-audio/releases/assets/"
-CLIP_ID = 789466631
-RECIPES_ID = 789471531
+COMPANION = "https://github.com/ocfproject-org/open-consciousness-functions-audio/releases/download/smart-play-unlisted-input-20261125/"
 RECIPES_DIGEST = "ee65a7f6bd53d9a6d72b49988dbd59fffd25708bec74b86ef153574c2ad612a8"
 REMINDER_HASH = "8911c081552055681d2307b263945741c1d9389a8acfab61259a65a2f07a152c"
 TOP = {"index.html", "worker.mjs", "virtual-flac.mjs", "player.js",
@@ -83,14 +80,6 @@ def download(url, destination, expected):
             raise ValueError("Released original is longer than sealed size")
 
 
-def fetch_draft(asset, destination):
-    with destination.open("xb") as output:
-        subprocess.run(
-            ["gh", "api", DRAFT_ASSET_ENDPOINT + str(asset), "-H", "Accept: application/octet-stream"],
-            stdout=output, check=True, timeout=60,
-        )
-
-
 def stage(site, source, local_originals=None):
     before = inventory(site)
     dest = site / SCOPE
@@ -111,10 +100,10 @@ def stage(site, source, local_originals=None):
         staged = Path(temporary) / "canary"
         shutil.copytree(source, staged)
         reminder = staged / "data/shared-reminder.flac"
-        fetch_draft(CLIP_ID, reminder)
+        download(COMPANION + "shared-reminder.flac", reminder, sealed["shared-reminder"])
         integrity(reminder, sealed["shared-reminder"])
         bundle = Path(temporary) / "recipes.tar.gz"
-        fetch_draft(RECIPES_ID, bundle)
+        download(COMPANION + "packet-recipes.tar.gz", bundle, {"bytes": 1128181})
         integrity(bundle, {"sha256": RECIPES_DIGEST, "bytes": 1128181})
         with tarfile.open(bundle, mode="r:gz") as archive:
             members = archive.getmembers()
