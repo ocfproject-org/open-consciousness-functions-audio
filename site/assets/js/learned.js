@@ -1,4 +1,4 @@
-/* Explicit private self-reports. No analytics, progress URLs, or network writes. */
+/* Private learning records and personal choices. No analytics, progress URLs, or network writes. */
 (() => {
   'use strict';
   const affirmations = typeof module !== 'undefined' && module.exports ? require('./affirmations-state.js') : globalThis.ocfAffirmationsState;
@@ -371,9 +371,45 @@
       } catch (_) { this.fallback(); this.memory.clear(); this.blocked = false; this.warning += ' Browser copies could not be fully cleared. Use browser site-data settings to remove them.'; }
     }
   }
-  const API = {validateFlag, parsePersonalBackup, canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT};
+  // A playhead near the end is not a completed listen. Allow only tiny decoder gaps.
+  function listenedToEnd(played, duration) {
+    if (!Number.isFinite(duration) || duration <= 0 || !played?.length) return false;
+    const allowance = Math.min(0.5, duration / 100);
+    let since = 0, gaps = 0;
+    for (let i = 0; i < played.length; i++) {
+      const start = played.start(i), end = played.end(i);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start < since || end < start) return false;
+      gaps += start - since;
+      if (gaps > allowance) return false;
+      since = end;
+    }
+    return since <= duration + allowance && gaps + Math.max(0, duration - since) <= allowance;
+  }
+  function recordingByKey(subjects, key) {
+    if (!Array.isArray(key) || key.length !== 5 || key.some(v => typeof v !== 'string' || !v)) return null;
+    const [subject, tag, edition, locale, voice] = key;
+    if (!Object.hasOwn(subjects, subject)) return null;
+    const current = subjects[subject];
+    const matches = current.recordings.filter(r => r.tag === tag && r.edition === edition && r.locale === locale && r.voice === voice);
+    return matches.length === 1 ? {subject, guide:current.guide, recording:matches[0]} : null;
+  }
+  const API = {validateFlag, parsePersonalBackup, canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT, listenedToEnd, recordingByKey};
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   const panel = document.querySelector('[data-learned-src]'); if (!panel) return;
+  const completed = new Map();
+  let saveCompleted;
+  document.addEventListener('ended', event => {
+    const audio = event.target;
+    if (!event.isTrusted || !(audio instanceof HTMLAudioElement) || !audio.ended ||
+        !audio.dataset.learnedRecording || !listenedToEnd(audio.played, audio.duration)) return;
+    try {
+      const key = JSON.parse(audio.dataset.learnedRecording);
+      if (Array.isArray(key) && key.length === 5) {
+        completed.set(audio.dataset.learnedRecording, key);
+        saveCompleted?.();
+      }
+    } catch (_) { /* Only use a well-formed published recording identity. */ }
+  }, true);
   let records = [], flags = [], filterValue = 'all', sortValue = 'default', decorate = () => {};
   const has = (id, kind) => kind === 'learned'
     ? records.some(r => r.subject === id || (id === 'preparation:ocf' && r.subject === 'preparation:human-plus'))
@@ -384,7 +420,9 @@
     const groups = new Map();
     elements.forEach(element => { if (!originalOrder.has(element)) originalOrder.set(element, ordinal++); const parent = element.parentElement; if (!groups.has(parent)) groups.set(parent, []); groups.get(parent).push(element); });
     for (const [parent, items] of groups) {
-      const ordered = [...items].sort((a,b) => priority(a) - priority(b) || (sortValue === 'default' ? 0 : Number(has(normalized(idFor(b)), sortValue)) - Number(has(normalized(idFor(a)), sortValue))) || originalOrder.get(a) - originalOrder.get(b));
+      const prepLast = item => Number(sortValue === 'default' && has('preparation:ocf', 'learned') &&
+          normalized(idFor(item)) === 'preparation:ocf');
+      const ordered = [...items].sort((a,b) => priority(a) - priority(b) || (sortValue === 'default' ? 0 : Number(has(normalized(idFor(b)), sortValue)) - Number(has(normalized(idFor(a)), sortValue))) || prepLast(a) - prepLast(b) || originalOrder.get(a) - originalOrder.get(b));
       if (ordered.some((item,i) => [...parent.children].filter(child => items.includes(child))[i] !== item)) {
         if (!parent.moveBefore && items.some(item => item.contains(document.activeElement) || [...item.querySelectorAll('audio')].some(audio => !audio.paused && !audio.ended))) continue;
         ordered.forEach(item => parent.moveBefore ? parent.moveBefore(item, null) : parent.append(item));
@@ -418,7 +456,7 @@
     const notice = node('p', '', panel); notice.className = 'personal-notice'; notice.setAttribute('role','status'); notice.tabIndex = -1;
     const settings = node('section', undefined, preferences); settings.className = 'personal-settings';
     node('h2', 'Saved items', settings);
-    node('p', 'Favorites, To Do, and Learned are saved in this browser. Use the backup controls below to move your saved items to another browser.', settings);
+    node('p', 'Favorites, To Do, and Learned are saved in this browser. Finishing a recording in the site player also marks that edition learned. Use the backup controls below to move your saved items to another browser.', settings);
     const settingsNotice = node('p', '', settings); settingsNotice.setAttribute('role','status');
     const counts = node('p', '', settings);
     const recordsDisclosure = node('details', undefined, settings); node('summary', 'Review saved learned versions', recordsDisclosure);
@@ -607,7 +645,7 @@
         const detail = node('details', undefined, saved);
         node('summary', `${data.subjects[record.subject].title} — ${record.external ? 'Official Human Plus preparation; edition ' + (record.external.edition || 'unknown') : audioLabel(record.recording)}`, detail);
         node('p', 'Saved snapshots and imported records are personal claims, not independently verified learning or official teaching history.', detail);
-        node('p', `Self-reported ${record.markedAt.slice(0, 10)}. ${record.external ? 'External learning date: ' + (record.external.date || 'unknown') + '.' : ''}`, detail);
+        node('p', `Saved ${record.markedAt.slice(0, 10)}. ${record.external ? 'External learning date: ' + (record.external.date || 'unknown') + '.' : ''}`, detail);
         if (record.guide) {
           sourceLink(detail, `Saved website guide ${record.guide.commit.slice(0, 7)}`, record.guide.commit);
           node('p', `Tracked public-guide fingerprint: ${record.guide.fingerprint}`, detail);
@@ -650,6 +688,7 @@
       invalidateChangedImportEpoch();
       const turn=++generation;const loaded=await store.read();if(turn!==generation)return;
       records=loaded;flags=store.readFlags();save.disabled=store.blocked||selection.value==='';
+      document.documentElement.toggleAttribute('data-ocf-preparation-learned', has('preparation:ocf', 'learned'));
       const text=[message,store.warning].filter(Boolean).join(' ');
       notice.textContent=text;notice.hidden=!text;
       settingsNotice.textContent=text;
@@ -662,6 +701,30 @@
       document.dispatchEvent(new Event('ocf-private-library-change'));
       if(focused&&!focused.isConnected)(modal.open?modalNotice:settingsNotice).focus({preventScroll:true});
     }
+    let savingCompletion = false;
+    saveCompleted = async () => {
+      if (savingCompletion) return;
+      savingCompletion = true;
+      try {
+        while (completed.size) {
+          const keys = [...completed.values()];
+          completed.clear();
+          const entries = keys.map(key => recordingByKey(data.subjects, key)).filter(Boolean);
+          if (!entries.length) continue;
+          const before = store.config()?.epoch ?? null;
+          const exactRecording = ({subject, recording}) => canonical({subject, recording});
+          const saved = new Set((await store.read()).map(exactRecording));
+          const when = new Date().toISOString();
+          const newEntries = entries.filter(entry => !saved.has(exactRecording(entry))).map(entry => ({
+            ...entry, id: crypto.randomUUID(), markedAt: when, external: null,
+          }));
+          if (!newEntries.length) continue;
+          const wrote = await store.merge(newEntries, before);
+          if (wrote) await refresh('Finished listening. Marked learned in this browser.');
+        }
+      } catch (error) { showError(error); }
+      finally { savingCompletion = false; }
+    };
     function showError(error){notice.hidden=false;notice.textContent=error.message+' '+store.warning;settingsNotice.textContent=notice.textContent;modalNotice.textContent=notice.textContent;}
     async function act(action){try{const message=await action();await refresh(message);}catch(error){showError(error);}}
     [modalNotice,settingsNotice].forEach(n=>n.tabIndex=-1);
@@ -670,6 +733,7 @@
     window.ocfPrivateLibrary={store,refresh,openSettings};
     document.dispatchEvent(new Event('ocf-private-library-ready'));
     await refresh();
+    saveCompleted();
     interactionEvents.forEach(event=>document.removeEventListener(event,interaction));
     if(initialHash&&initialHash===location.hash&&!interacted&&performance.getEntriesByType('navigation')[0]?.type!=='back_forward'){
       try{document.getElementById(decodeURIComponent(initialHash.slice(1)))?.scrollIntoView();}catch(_){}

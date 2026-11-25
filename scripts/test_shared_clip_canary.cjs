@@ -13,9 +13,19 @@ const wire=require('./fixtures/smart-play-preview-wire.json');
   await normal.locator('#edition-filter').selectOption('0.2.0');
   await normal.locator('#format-filter').selectOption('flac');
   await normal.getByRole('button',{name:'Close preferences',exact:true}).click();
+  const productionSmart=await normal.locator('script[data-ocf-smart-play]').count()===1;
+  async function productionController(page){
+   if(productionSmart)assert.equal(await page.evaluate(()=>window.ocfPublicSmartAudio),'/__ocf-smart/');
+   const controller=await page.evaluate(()=>navigator.serviceWorker.controller?.scriptURL??null);
+   if(productionSmart)assert.equal(new URL(controller).pathname,'/ocf-smart-worker.mjs');
+   else assert.equal(controller,null);
+   return controller;
+  }
+  const mainController=await productionController(normal);
   const baseline=await normal.evaluate(()=>{
     const v={'ocf-audio-edition:v1':'{"schema":1,"selection":"0.2.1","format":"flac"}',
-      'ocf.private-batch.smart-play-defaults.v1':'{"mode":"advanced","choices":{"relaxation":"short"}}'};
+      'ocf.private-batch.smart-play-defaults.v1':'{"mode":"advanced","choices":{"relaxation":"short"}}',
+      'ocf.smart-play.preferences.v1':localStorage.getItem('ocf.smart-play.preferences.v1')};
     const actual=localStorage.getItem('ocf-audio-edition:v1'), state=JSON.parse(actual);
     if(state.selection!=='0.2.0'||state.format!=='flac')throw Error('Production baseline differs');
     v['ocf-audio-edition:v1']=actual;
@@ -64,9 +74,11 @@ const wire=require('./fixtures/smart-play-preview-wire.json');
      title:document.title, header:document.querySelector('header.site-header').innerText,
      sections:[...document.querySelectorAll('main h2')].map(x=>x.textContent),
      layout:document.querySelector('.docs-layout')?.className,
-     css:[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>new URL(x.href).pathname).filter(x=>x.startsWith('/assets/'))
+     css:[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>new URL(x.href).pathname).filter(x=>x.startsWith('/assets/css/'))
    }));
    assert.deepEqual(await chrome(p),await chrome(production));
+   assert.equal(await production.locator('link[href*="/assets/js/smart-play/smart-player.css"]').count(),Number(productionSmart));
+   assert.equal(await p.locator('link[href*="/assets/js/smart-play/smart-player.css"]').count(),0);
    await production.close();
    await c.getByRole('button',{name:'Smart Play settings'}).waitFor();
    await gearAligned(c);
@@ -144,11 +156,11 @@ const wire=require('./fixtures/smart-play-preview-wire.json');
   await p.locator('audio[data-local-smart][data-local-smart-active]').waitFor({state:'attached'});
   const live=await normal.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),Object.keys(baseline));
   assert.deepEqual(live,baseline);
-  assert.equal(await normal.evaluate(()=>navigator.serviceWorker.controller),null);
+  assert.equal(await productionController(normal),mainController);
   assert.equal(await normal.locator('#edition-filter').inputValue(),'0.2.0');
   assert.equal(await normal.locator('#format-filter').inputValue(),'flac');
   await p.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();if(r)await r.unregister();});
-  await p.goto(base+'/');assert.equal(await p.evaluate(()=>navigator.serviceWorker.controller),null);
+  await p.goto(base+'/');assert.equal(await productionController(p),mainController);
   assert.deepEqual(await p.evaluate(keys=>Object.fromEntries(keys.map(k=>[k,localStorage.getItem(k)])),Object.keys(baseline)),baseline);
   assert.equal(await normal.evaluate(keys=>storageEvents.some(k=>keys.includes(k)),Object.keys(baseline)),false);
   assert.deepEqual(errors,[]);console.log(id,'worker isolated; 3 routes play and seek from real ranges; Original restored; production preferences unchanged through storage, export and unregister');
