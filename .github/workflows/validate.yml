@@ -70,6 +70,13 @@ jobs:
           python -m ocf_tools.public_site_export --source-commit "${{ steps.source.outputs.commit }}" --output public-guide-export.json
           python scripts/build_public_site.py --site-root site --content-dir docs/website --source-pin site/source.json --guide-export public-guide-export.json --catalog verified-catalog.json --historical-reference ocf-source/docs/releases/OCF_HISTORICAL_LOOKUP_CURRENT.md --smart-playback-media experiment-media/comfort-401a132683e40b34.mp3 --continuous-smart-play --output verified-site
           python scripts/validate_site.py verified-site
+      - name: Add and validate the isolated preview in same-repository CI
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/stage_shared_clip_canary.py --site verified-site
+          python scripts/validate_site.py verified-site
       - name: Install pinned browser test dependencies
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         run: npm ci
@@ -89,6 +96,9 @@ jobs:
         run: |
           node scripts/test_smart_playback_browser.cjs
           node scripts/test_continuous_smart_play.cjs
+      - name: Exercise the exact shared-clip preview with the established site
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: python scripts/check_shared_clip_canary.py verified-site
       - name: Retain public-safe browser acceptance evidence
         if: always() && matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         uses: actions/upload-artifact@v4
