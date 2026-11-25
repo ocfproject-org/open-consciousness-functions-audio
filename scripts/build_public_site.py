@@ -15,7 +15,7 @@ import unicodedata
 import urllib.request
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from catalog import validate_catalog
 from learned_site import install as install_learned_tracking
@@ -1110,6 +1110,9 @@ def build_public_site(
                     for session in group.get("sessions", []):
                         public_session = {key: value for key, value in session.items() if key != "assets"}
                         public_session["assets"] = [{key: value for key, value in asset.items() if key != "provenance"} for asset in session["assets"]]
+                        report_url = _recording_issue_url(release, group, session)
+                        if report_url:
+                            public_session["report_issue_url"] = report_url
                         session_row = next((row for row in all_session_rows if row["session"] is session), None)
                         art = session_row["companions"].get("png") if session_row else None
                         if art:
@@ -1968,6 +1971,39 @@ def _discovery_section(title, values, function_id=None):
     return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul>{rows}</ul>{references}</details>'
 
 
+def _recording_issue_url(release, group, session):
+    """Use only the public, catalog-pinned recording identity in the draft."""
+    title = session.get("title") or group.get("title")
+    function_id = group.get("function_id") or "preparation-learning"
+    edition, locale, voice_id = (session.get(key) for key in ("edition", "locale", "voice_id"))
+    release_tag = release.get("tag")
+    if not all((title, edition, locale, voice_id, release_tag)) or not any(
+        asset.get("format") in {"mp3", "flac"} for asset in session.get("assets", [])
+    ):
+        return ""
+    voice = session.get("voice_name") or voice_id
+    body = (
+        f"Recording: {title} ({function_id})\n"
+        f"Audio release: {release_tag}\n"
+        f"Edition: {edition}\n"
+        f"Voice: {voice} ({voice_id})\n"
+        f"Locale: {locale}\n\n"
+        "What happened? Include the timestamp, format, and whether you used Smart Play if relevant.\n"
+    )
+    params = urlencode({"title": f"Recording issue: {title} ({function_id})", "body": body})
+    return f"{SITE_REPOSITORY}/issues/new?{params}"
+
+
+def _recording_issue_link(release, group, session):
+    url = _recording_issue_url(release, group, session)
+    if not url:
+        return ""
+    title = session.get("title") or group.get("title")
+    voice = session.get("voice_name") or session["voice_id"]
+    label = f'Report an issue with {title}, {session["locale"]}, {voice}, edition {session["edition"]} (opens GitHub)'
+    return f'<p><a class="recording-issue-link" href="{_html(url)}" aria-label="{_html(label)}" rel="noreferrer">Report an issue</a></p>'
+
+
 def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     release, session, companions = row["release"], row["session"], row["companions"]
     title = session.get("title") or row["group"].get("title")
@@ -2051,7 +2087,8 @@ def _session_card(row, transcript_paths, *, site_root_prefix="../../"):
     provenance = (playable or {}).get("provenance", {})
     render_commit = provenance.get("render_source_commit", release["source_ocf_commit"])
     source_info = f'<details class="recording-details"><summary>Recording source and version</summary><p>Published release <a href="{_html(release["release_url"])}">{_html(release["tag"])}</a></p><p>Source OCF commit: <code>{_html(render_commit)}</code></p></details>'
-    return f'''<article class="edition-card" data-format-session="{_html(json.dumps(list(sources)))}" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{transcript_html}{companion_html}</article>'''
+    report_link = _recording_issue_link(release, row["group"], session)
+    return f'''<article class="edition-card" data-format-session="{_html(json.dumps(list(sources)))}" data-edition-content="{_html(session["edition"])}" id="{_session_anchor(row)}"><div class="edition-heading">{artwork}<div><h3>{_html(title)}</h3><p>{_html(session["locale"])} · {_html(session["voice_name"])} · edition {_html(session["edition"])}</p>{source_info}</div></div>{audio_html}{report_link}{transcript_html}{companion_html}</article>'''
 
 
 def _asset_specification(asset, *, size=None, duration=None):
@@ -2365,8 +2402,9 @@ def _downloads_page(catalog, preparation_sessions, functions=()):
                     file_details.append(
                         f'<li data-format-content="{_html(asset["format"])}"><strong>{_html(fmt)}</strong> · <code>{_html(asset.get("filename", "Filename not supplied"))}</code><br>SHA-256 <code>{_html(asset.get("sha256", "Not supplied"))}</code></li>'
                     )
+                report_link = _recording_issue_link(release, group, session)
                 cards.append(
-                    f'<article class="download-card" data-format-session="{_html(json.dumps([a["format"] for a in session.get("assets", [])]))}" aria-labelledby="{heading_id}" data-download-card data-download-title="{_html(title)}" data-download-cues="{_html(json.dumps(cues, ensure_ascii=False))}" data-download-search="{_html(search)}" data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2>{cue_html}</header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div><details class="download-file-details"><summary>Release and file details</summary><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
+                    f'<article class="download-card" data-format-session="{_html(json.dumps([a["format"] for a in session.get("assets", [])]))}" aria-labelledby="{heading_id}" data-download-card data-download-title="{_html(title)}" data-download-cues="{_html(json.dumps(cues, ensure_ascii=False))}" data-download-search="{_html(search)}" data-edition-content="{_html(edition)}" data-function-id="{_html(function_id)}" data-edition="{_html(edition)}"><header><h2 id="{heading_id}"><a href="{href}">{_html(title)}</a></h2>{cue_html}</header><div class="download-card-actions" role="group" aria-label="Individual file downloads for {_html(title)}">{"".join(actions)}</div>{report_link}<details class="download-file-details"><summary>Release and file details</summary><dl class="download-session-meta"><div><dt>Language</dt><dd>{_html(locale)}</dd></div><div><dt>Voice</dt><dd>{_html(voice)}</dd></div><div><dt>Edition</dt><dd>{_html(edition)}</dd></div></dl><p>Release <a href="{_html(release["release_url"])}">{_html(release.get("tag", "Published release"))}</a></p><ul>{"".join(file_details)}</ul></details></article>'
                 )
     return f'<header class="page-intro downloads-intro"><h1>Downloads</h1></header><div class="download-tools" hidden><label for="download-search">Search by title, cue, description or category</label><div class="download-search-row"><input id="download-search" type="search" aria-describedby="download-count" aria-controls="download-results"><button id="download-clear" type="button" disabled>Clear search</button></div><p id="download-count" role="status" aria-live="polite"></p></div><div data-download-intro><p>MP3 files are smaller; FLAC is lossless and larger. Choose your format in Audio preferences; all links open the original published files.</p><p data-preparation-prominent><a href="../preparation-learning/#listen">Start with Preparation Learning</a></p>{_preparation_learned_link()}</div><section id="download-results" class="download-directory" aria-label="Individual session downloads">{"".join(cards)}</section><button type="button" id="downloads-more" hidden>Show more</button><section class="download-release-notes" aria-label="Release notes">{"".join(release_notes)}</section>'
 
