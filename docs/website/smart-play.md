@@ -29,6 +29,7 @@ The gear is available for supported edition 0.3.0 function recordings.
 Preparation Learning and older editions use Original recording only. If you
 don't see the gear, check the **Audio edition** in Preferences and open the
 player for the session you want. Not every session offers the same changes.
+If your browser can’t load Smart Play, you can still play the Original recording.
 
 ### Does Smart Play change the files I download?
 

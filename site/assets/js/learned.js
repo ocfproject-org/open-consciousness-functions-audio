@@ -385,6 +385,23 @@
     }
     return since <= duration + allowance && gaps + Math.max(0, duration - since) <= allowance;
   }
+  function mergePlayed(prior, played, duration) {
+    if (!Number.isFinite(duration) || duration <= 0) return [];
+    const ranges = [...prior];
+    for (let i = 0; i < (played?.length || 0); i++) ranges.push([played.start(i), played.end(i)]);
+    const valid = ranges.filter(r => Array.isArray(r) && r.length === 2 && r.every(Number.isFinite)
+      && r[0] >= 0 && r[0] < r[1] && r[1] <= duration + 0.25);
+    const merged = [];
+    for (const [start, end] of valid.sort((a, b) => a[0] - b[0])) {
+      const tail = merged.at(-1);
+      if (tail && start <= tail[1]) tail[1] = Math.max(tail[1], end);
+      else merged.push([start, end]);
+    }
+    return merged;
+  }
+  function asTimeRanges(ranges) {
+    return {length:ranges.length, start:i=>ranges[i][0], end:i=>ranges[i][1]};
+  }
   function recordingByKey(subjects, key) {
     if (!Array.isArray(key) || key.length !== 5 || key.some(v => typeof v !== 'string' || !v)) return null;
     const [subject, tag, edition, locale, voice] = key;
@@ -393,15 +410,92 @@
     const matches = current.recordings.filter(r => r.tag === tag && r.edition === edition && r.locale === locale && r.voice === voice);
     return matches.length === 1 ? {subject, guide:current.guide, recording:matches[0]} : null;
   }
-  const API = {validateFlag, parsePersonalBackup, canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT, listenedToEnd, recordingByKey};
+  const API = {validateFlag, parsePersonalBackup, canonical, digest, validateRecord, parseBackup, status, Store, identity, KEY, LIMIT, listenedToEnd, mergePlayed, asTimeRanges, recordingByKey};
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   const panel = document.querySelector('[data-learned-src]'); if (!panel) return;
   const completed = new Map();
   let saveCompleted;
+  // A browser tab can resume a timeline, but neither a playhead nor a saved
+  // seek is evidence of listening. Keep only bounded native played intervals.
+  const progressKey = 'ocf-listening-progress:v1';
+  const touched = new WeakMap(), lastWrite = new WeakMap();
+  const hasProgress = audio => audio instanceof HTMLAudioElement && audio.dataset.learnedRecording;
+  function sourceFor(audio) {
+    if (audio.src) return audio.src;
+    const sources = [...audio.querySelectorAll(':scope > source[src]')];
+    return sources.find(source=>source.src===audio.currentSrc)?.src || sources[0]?.src || '';
+  }
+  const timeline = audio => {
+    const source = sourceFor(audio);
+    return source ? JSON.stringify([audio.dataset.learnedRecording,source]) : '';
+  };
+  const readProgress = () => {
+    try {
+      const rows = JSON.parse(sessionStorage.getItem(progressKey) || '[]');
+      return Array.isArray(rows) ? rows.filter(row=>row && typeof row.key === 'string' &&
+        typeof row.at === 'number' && Date.now()-row.at <= 12*60*60*1000 &&
+        Array.isArray(row.ranges) && row.ranges.length <= 64).slice(0,8) : [];
+    } catch (_) { return []; }
+  };
+  const writeProgress = entries => {
+    try {
+      if(entries.length) sessionStorage.setItem(progressKey,JSON.stringify(entries.slice(0,8)));
+      else sessionStorage.removeItem(progressKey);
+    } catch (_) { /* Session storage is optional. Live completion still works. */ }
+  };
+  const priorFor = (entries,key,duration) => entries.find(row=>row.key===key && Math.abs(row.duration-duration)<0.01);
+  function capture(audio, finishing = false) {
+    if(!hasProgress(audio) || (!finishing && audio.ended) ||
+      audio.currentSrc !== sourceFor(audio) || !Number.isFinite(audio.duration) || audio.duration <= 0) return [];
+    const key = timeline(audio);
+    const entries = readProgress();
+    const previous = priorFor(entries,key,audio.duration);
+    const ranges = mergePlayed(previous?.ranges || [],audio.played,audio.duration);
+    if (!ranges.length || !audio.played.length) return ranges;
+    if (finishing && listenedToEnd(asTimeRanges(ranges),audio.duration)) {
+      writeProgress(entries.filter(row=>row.key!==key));
+    } else if (ranges.length<=64) {
+      const current = audio.currentTime;
+      const actual = Number.isFinite(current) && ranges.some(([from,to])=>current>=from && current<=to+.05);
+      const position = actual ? current : previous?.position;
+      writeProgress([{key,duration:audio.duration,ranges,position,at:Date.now()},...entries.filter(row=>row.key!==key)]);
+    }
+    return ranges;
+  }
+  document.addEventListener('seeking',event=>{
+    if(event.isTrusted && hasProgress(event.target)) touched.set(event.target,timeline(event.target));
+  },true);
+  document.addEventListener('play',event=>{
+    const audio=event.target;
+    if(!event.isTrusted || !hasProgress(audio)) return;
+    const key=timeline(audio);
+    if(!key || touched.get(audio)===key) return;
+    touched.set(audio,key);
+    const restore=()=>{
+      if(timeline(audio)!==key || audio.currentSrc!==sourceFor(audio) || audio.currentTime>0.25 ||
+        audio.seeking || Number(audio.dataset.ocfResumePosition)>0 ||
+        audio.dataset.ocfResumePositionExplicit==='true' || audio.dataset.ocfResumeEnded==='true') return;
+      const saved=priorFor(readProgress(),key,audio.duration);
+      if(Number.isFinite(saved?.position) && saved.position>0.25 && saved.position<audio.duration-.25)
+        audio.currentTime=saved.position;
+    };
+    if(audio.readyState>0) restore();
+    else audio.addEventListener('loadedmetadata',restore,{once:true});
+  },true);
+  for(const type of ['timeupdate','pause','seeked']) document.addEventListener(type,event=>{
+    const audio=event.target;
+    if(!event.isTrusted || !hasProgress(audio)) return;
+    if(type==='timeupdate' && Date.now()-(lastWrite.get(audio)||0)<5000) return;
+    lastWrite.set(audio,Date.now());
+    capture(audio);
+  },true);
+  window.addEventListener('pagehide',()=>{
+    document.querySelectorAll('audio[data-learned-recording]').forEach(audio=>capture(audio));
+  });
   document.addEventListener('ended', event => {
     const audio = event.target;
-    if (!event.isTrusted || !(audio instanceof HTMLAudioElement) || !audio.ended ||
-        !audio.dataset.learnedRecording || !listenedToEnd(audio.played, audio.duration)) return;
+    if (!event.isTrusted || !hasProgress(audio) || !audio.ended ||
+        !listenedToEnd(asTimeRanges(capture(audio,true)),audio.duration)) return;
     try {
       const key = JSON.parse(audio.dataset.learnedRecording);
       if (Array.isArray(key) && key.length === 5) {
@@ -456,7 +550,7 @@
     const notice = node('p', '', panel); notice.className = 'personal-notice'; notice.setAttribute('role','status'); notice.tabIndex = -1;
     const settings = node('section', undefined, preferences); settings.className = 'personal-settings';
     node('h2', 'Saved items', settings);
-    node('p', 'Favorites, To Do, and Learned are saved in this browser. Finishing a recording in the site player also marks that edition learned. Use the backup controls below to move your saved items to another browser.', settings);
+    node('p', 'Favorites, To Do, and Learned are saved in this browser. Finishing a recording in the site player marks that edition learned. To resume a listen after reloading, this tab keeps played ranges temporarily. Use the backup controls below to move your saved items to another browser.', settings);
     const settingsNotice = node('p', '', settings); settingsNotice.setAttribute('role','status');
     const counts = node('p', '', settings);
     const recordsDisclosure = node('details', undefined, settings); node('summary', 'Review saved learned versions', recordsDisclosure);
@@ -517,11 +611,11 @@
       selection.value=index>=0?String(index):current.recordings.length?'0':'guide';
     }
     const savePrompt=()=>previewChoice?'Preview recordings aren’t listed here.':'Nothing changes until you save.';
-    function openLearned(id, trigger, edition='') {
+    function openLearned(id, trigger, edition='', externalChoice=false) {
       if(!Object.hasOwn(data.subjects,id))return;
-      activeSubject=id;opener=trigger;explicitChoice=Boolean(edition);pendingEpoch=store.config()?.epoch||null;
+      activeSubject=id;opener=trigger;explicitChoice=Boolean(edition)||externalChoice;pendingEpoch=store.config()?.epoch||null;
       selection.replaceChildren(); const current=data.subjects[id];
-      previewChoice=!edition&&Boolean(document.querySelector('[data-local-release-review][data-review-track]'));
+      previewChoice=!edition&&!externalChoice&&Boolean(document.querySelector('[data-local-release-review][data-review-track]'));
       if(previewChoice&&!id.startsWith('OCF-')){
         const placeholder=node('option','Choose a learning target',selection);
         placeholder.value='';placeholder.disabled=true;
@@ -529,11 +623,17 @@
       current.recordings.forEach((r,i)=>{node('option',(previewChoice?'Published recording: ':'')+audioLabel(r),selection).value=String(i);});
       if(id.startsWith('OCF-'))node('option','Website guide only — no recording claim',selection).value='guide';
       if(id==='preparation:ocf')node('option','Already learned official Human Plus preparation',selection).value='external';
-      defaultChoice(edition);externalEdition.value='';externalDate.value='';external.open=false;versions.open=false;
+      defaultChoice(edition);if(externalChoice)selection.value='external';externalEdition.value='';externalDate.value='';external.open=false;versions.open=false;
       heading.textContent=`Mark learned: ${current.title}`;updateTarget();renderRecords(saved,records.filter(r=>r.subject===id||(id==='preparation:ocf'&&r.subject==='preparation:human-plus')));
       modalNotice.textContent=savePrompt();
       if(!modal.open)modal.showModal();selection.focus();
     }
+    document.querySelectorAll('[data-preparation-mark]').forEach(trigger=>{
+      const prep = data.subjects['preparation:ocf'];
+      if (!prep || (trigger.dataset.preparationMark === 'ocf' && !prep.recordings.length)) return;
+      trigger.addEventListener('click',()=>openLearned('preparation:ocf',trigger,'',trigger.dataset.preparationMark==='external'));
+      trigger.hidden=false;
+    });
     document.addEventListener('ocf-edition-change',()=>{if(modal.open&&!explicitChoice){defaultChoice();updateTarget();}});
     function openSettings(trigger) {
       opener=trigger;
@@ -637,7 +737,7 @@
     });
     button('Clear saved items',manage,()=>act(async()=>{
       if(!window.confirm('Remove all learned versions, favorites, to-do marks, custom affirmations, My Morning favorites and routine cues from this browser? Export a backup first to keep them.'))return;
-      store.reset();invalidateImport();if(modal.open)close();return 'Saved items cleared.';
+      store.reset();writeProgress([]);invalidateImport();if(modal.open)close();return 'Saved items cleared.';
     }));
     function renderRecords(saved,shown) {
       saved.replaceChildren();if(!shown.length)node('p','No learned versions saved here.',saved);

@@ -25,7 +25,7 @@
         voice: session.voice_name || session.voice_id || '', voiceId: session.voice_id || '',
         edition: session.edition || release.version, date: release.date, releaseTag: release.tag,
         artwork: safeURL(session.artwork?.download_url),
-        releaseURL: safeURL(release.release_url), assets: (session.assets || []).filter(a => safeURL(a.download_url))
+        releaseURL: safeURL(release.release_url), reportIssueURL: safeURL(session.report_issue_url), assets: (session.assets || []).filter(a => safeURL(a.download_url))
       }))));
     const documented = Object.entries(documentation.byId || {});
     const available = new Set(items.map(item => item.id));
@@ -304,6 +304,19 @@
     if (clearFilters) clearFilters.hidden = !filterControls.some(([, control]) => control.value);
   }
 
+  function recordingIssueLink(session) {
+    if (!session.reportIssueURL) return null;
+    const url = new URL(session.reportIssueURL);
+    if (url.origin !== 'https://github.com' ||
+        url.pathname !== '/ocfproject-org/open-consciousness-functions-audio/issues/new') return null;
+    const link = el('a', 'Report an issue', 'recording-issue-link');
+    link.href = url.href;
+    link.rel = 'noreferrer';
+    link.setAttribute('aria-label', `Report an issue with ${session.title}, ${session.locale}, ${session.voice}, edition ${session.edition} (opens GitHub)`);
+    const row = el('p'); row.append(link);
+    return row;
+  }
+
   function setupSurprise(items) {
     const section = el('section', undefined, 'surprise-session');
     section.setAttribute('aria-labelledby', 'surprise-heading');
@@ -350,6 +363,8 @@
       if (!concealed) {
         const link = el('a', 'Read the function guide'); link.href = current.href;
         details.append(el('p', current.description), el('p', [current.locale, current.voice, `Edition ${current.edition}`].join(' · ')), link);
+        const issue = recordingIssueLink(current);
+        if (issue) details.append(issue);
       }
       if (ownsMetadata) metadata();
       window.ocfUpdateMediaPlayerStatus?.(player);
@@ -517,6 +532,8 @@
       const measurements = [asset.size_bytes ? `${(asset.size_bytes / 1048576).toFixed(1)} MiB` : '', asset.duration_seconds ? `${Math.floor(Math.round(asset.duration_seconds) / 60)}m ${Math.round(asset.duration_seconds) % 60}s` : '', asset.sample_rate_hz ? `${asset.sample_rate_hz} Hz` : ''].filter(Boolean);
       detail.append(el('p', measurements.join(' · '))); card.append(detail);
     });
+    const issue = recordingIssueLink(item);
+    if (issue) card.append(issue);
     if (item.releaseURL) { const link = el('a', 'Release notes and original files'); link.href = item.releaseURL; card.append(link); }
     return card;
   }
