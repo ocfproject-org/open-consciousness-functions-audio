@@ -34,7 +34,7 @@ class Entries(HTMLParser):
 class KnowledgeBaseTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.data = json.loads(DATA.read_text())
+        cls.data = json.loads(DATA.read_text(encoding="utf-8"))
         cls.visitor = visitor_data(DATA)
         cls.html = directory(DATA, smart_play=True)
         cls.pages = {route: Entries(doc) for route, doc in cls.html.items()}
