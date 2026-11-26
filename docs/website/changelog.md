@@ -2,6 +2,12 @@
 
 Recent changes to the OCF website, newest first. For changes to the recordings themselves, see the [published audio release notes](https://github.com/ocfproject-org/open-consciousness-functions-audio/releases).
 
+## November 26, 2026: Learn, glossary, and listening updates
+
+- Search the new [glossary](../learn/glossary/) and [FAQ](../learn/faq/), or browse the [source directory](../learn/sources/). [How OCF works](../how-it-works/) explains the audio, learned cues, and what a typical session includes.
+- The [left/right stereo check](../listening/#stereo-test) is now part of the Listening Guide. It folds away after you play both tones and can be opened again anytime.
+- The [Energy Ball guide](../functions/OCF-EXP-007/) adds an aphantasia-friendly tip, common-use examples, and optional Access to Energy preparation. Function guides with multiple cues now list primary activation first.
+
 ## November 25, 2026: Smart Play
 
 Open the gear on an eligible 0.3.0 recording to choose how it plays. The original recording is still the default. See [the Listening Guide](../listening/).
