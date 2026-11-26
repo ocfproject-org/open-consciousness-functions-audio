@@ -6,7 +6,8 @@ test('visitor paths, contribution targets and feedback work at mobile and deskto
     await page.goto('/');
     await expect(page.getByRole('heading', {name:'Guided meditations and series',exact:true})).toBeVisible();
     await expect(page.getByText('Planned',{exact:true})).toBeVisible();
-    await page.getByRole('link',{name:'See the practice flow'}).click();
+    await page.locator('.hero-actions').getByRole('link',{name:'Start Here'}).click();
+    await expect(page).toHaveURL(/\/start\/$/);
     await expect(page.locator('#choose-your-path .practice-path')).toHaveCount(2);
     await expect(page.locator('#choose-your-path')).toContainText('official Human Plus preparation track');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();

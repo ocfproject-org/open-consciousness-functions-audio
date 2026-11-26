@@ -125,10 +125,10 @@ test('all 59 generated function pages expose spoken cues only and pass axe', asy
       has: page.locator('summary', { hasText: 'Common-use examples' }),
     });
     const expectedUses = source.common_uses.filter(item => publicStatuses.includes(item.status)).map(item => item.text);
-    await expect(uses.locator(':scope > ul > li')).toHaveText(expectedUses);
+    await expect(uses.locator(':scope > ul > li:not([data-editorial-example])')).toHaveText(expectedUses);
     if (expectedUses.length) await uses.locator(':scope > summary').click();
     const tags = page.locator('details.discovery-details').filter({
-      has: page.locator('summary', { hasText: /^Tags$/ }),
+      has: page.locator('summary', { hasText: /^Tags and discovery terms$/ }),
     });
     await expect(tags.locator('li')).toHaveText(source.tags
       .filter(item => publicStatuses.includes(item.status)).map(item => item.text));
@@ -435,11 +435,12 @@ test('mobile navigation stays readable, in-flow, keyboard-operable, and overflow
   await expect(menu.locator('a').first()).toBeFocused();
   await expect(menu.locator('a').first()).toHaveAttribute('href', 'start/');
   await expect(menu.locator('a[href="preparation-learning/"]')).toHaveCount(0);
-  expect(await menu.locator('a').count()).toBe(14);
+  await expect(menu.getByRole('link', {name: 'Learn', exact: true})).toHaveAttribute('href', 'learn/');
+  await expect(menu.locator('a')).toHaveCount(16);
   await expect(menu.getByRole('link',{name:'Affirmations',exact:true})).toHaveAttribute('href','affirmations/');
   await expect(menu.getByRole('link',{name:'My Morning',exact:true})).toHaveAttribute('href','my-morning/');
   const primaryLinks = menu.locator('nav[aria-label="Main navigation"] > a');
-  await expect(primaryLinks).toHaveCount(14);
+  await expect(primaryLinks).toHaveCount(16);
   const linkRects = await primaryLinks.evaluateAll(links => links.map(link => {
     const { x, right, height } = link.getBoundingClientRect();
     return { x, right, height };

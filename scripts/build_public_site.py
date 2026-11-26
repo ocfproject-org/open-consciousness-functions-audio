@@ -1182,7 +1182,10 @@ def build_public_site(
                 link = f'<a href="{base}learn/">Learn</a>'
                 doc = doc.replace('<div class="more-links" role="group" aria-label="More pages">', '<div class="more-links" role="group" aria-label="More pages">' + link, 1)
                 mobile = '<details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">'
-                doc = doc.replace(mobile, mobile + link, 1)
+                doc = re.sub(
+                    rf"({re.escape(mobile)}(?:<a [^>]*>[^<]*</a>){{4}})",
+                    lambda match: match.group() + link, doc, count=1,
+                )
                 doc = re.sub(
                     rf'(href="{re.escape(base)})(glossary/)("[^>]*>)(?:Open the )?Glossary and FAQ(</a>)',
                     lambda match: f'{match[1]}learn/glossary/">Glossary and FAQ</a>',
@@ -2090,7 +2093,8 @@ def _discovery_section(title, values, function_id=None, *, extra_examples=()):
     if not values and not extra_examples:
         return ""
     rows = "".join(f"<li>{_html(value['text'])}</li>" for value in values)
-    rows += "".join(f"<li><strong>{_html(label)}:</strong> {_html(text)}</li>" for label, text in extra_examples)
+    rows += "".join(f'<li data-editorial-example><strong>{_html(label)}:</strong> {_html(text)}</li>'
+                    for label, text in extra_examples)
     references = use_references(function_id, values) if function_id else ""
     anchor = ' id="common-use-examples"' if extra_examples else ""
     return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul{anchor}>{rows}</ul>{references}</details>'

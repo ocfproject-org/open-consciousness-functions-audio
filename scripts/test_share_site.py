@@ -10,7 +10,7 @@ class ShareTests(unittest.TestCase):
             head = '<head><link rel="canonical" href="https://ocfproject.org/functions/X/"></head>'
             target = root / 'functions/X/index.html'
             target.parent.mkdir(parents=True)
-            target.write_text(head + '<footer class="site-footer"></footer>')
+            target.write_text(head + '<footer class="site-footer" id="site-footer"></footer>')
             (root / '404.html').write_text('<head></head><footer class="site-footer"></footer>')
             (root / 'redirect.html').write_text(head + '<meta http-equiv="refresh" content="0"><footer class="site-footer"></footer>')
             install(root)
