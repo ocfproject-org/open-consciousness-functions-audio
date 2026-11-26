@@ -18,6 +18,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 
 from catalog import validate_catalog
+from knowledge_base import PAGES as LEARN_PAGES, directory as knowledge_directory
 from learned_site import install as install_learned_tracking
 from share_site import install as install_page_sharing
 from site_references import chain_references, function_background, use_references
@@ -891,7 +892,7 @@ def build_public_site(
                     f"functions/{fid}",
                     source_commit,
                     toc=True,
-                    toc_items=_function_toc_items(),
+                    toc_items=_function_toc_items(fid),
                     description=_public_description(function),
                 ),
             )
@@ -929,15 +930,33 @@ def build_public_site(
             ("how-it-works", "How OCF works"),
             ("get-involved", "Get involved"),
             ("changelog", "Website changelog"),
+            ("glossary", "Glossary and FAQ"),
         ):
             markdown = _read_markdown(content_dir, f"{route}.md")
-            body = render_markdown(markdown)
+            if route == "glossary" and not smart_play_functions:
+                markdown = markdown.replace("../listening/#smart-play", "../listening/")
+            body = render_markdown(markdown, heading_permalinks=route in {"glossary", "how-it-works"})
+            if route == "how-it-works":
+                # Preserve links to the earlier wording of this heading.
+                body = body.replace('<h2 id="what-the-stereo-audio-does">', '<span id="what-you-hear"></span><h2 id="what-the-stereo-audio-does">', 1)
+            if route == "glossary" and (content_dir / "knowledge-base.json").is_file():
+                body = body.replace("</h1>", '</h1><p>This page has a short list of common session terms.</p>'
+                                    '<p class="hero-actions"><a class="button primary-action" href="../learn/glossary/">Open the full searchable glossary</a>'
+                                    '<a class="button" href="../learn/faq/">Open the full FAQ</a></p>', 1)
             if route == "get-involved":
                 body += _feedback_contact()
             _write(staging / route / "index.html", _shell(
                 f"{title} — OCF", body, route, source_commit,
                 toc=True, toc_items=_markdown_toc(markdown),
             ))
+        knowledge_file = content_dir / "knowledge-base.json"
+        if knowledge_file.is_file():
+            pages = knowledge_directory(knowledge_file, smart_play=bool(smart_play_functions))
+            for route, title in LEARN_PAGES:
+                _write(staging / route / "index.html", _shell(
+                    f"{title} — OCF", pages[route], route, source_commit,
+                    include_learn=True,
+                ))
         historical_body = _historical_names_page(
             historical_rows,
             functions,
@@ -966,7 +985,23 @@ def build_public_site(
             listening_markdown = _public_smart_play_listening(
                 listening_markdown, _read_markdown(content_dir, "smart-play.md")
             )
+        if knowledge_file.is_file():
+            heading = "Imagery is not required"
+            imagery = _markdown_section_body(listening_markdown, heading)
+            listening_markdown = _replace_markdown_section(
+                listening_markdown,
+                heading,
+                "We write OCF’s guidance with [aphantasia](../learn/glossary/#aphantasia) in mind. "
+                "When a session invites you to imagine something, you can work with what it means "
+                "or what you’re doing, without seeing a picture. If images come naturally, use them. "
+                "You can also mix images, words, and feelings in whatever way suits you.\n\n"
+                "See the [aphantasia-friendly Energy Ball tip](../learn/glossary/#rebal) for an example.\n\n"
+                + imagery,
+            )
         listening_html = render_markdown(listening_markdown, heading_permalinks=True)
+        listening_html = listening_html.replace(
+            "</h1>", '</h1><p id="glossary-link"><a href="../glossary/">Glossary and FAQ</a> explains the terms used in a session.</p>', 1,
+        )
         # Retain incoming links when consolidating/renaming public guide sections.
         for old_id, current_id in (
             ("welcome-to-ocf", "listening-guide"),
@@ -1083,7 +1118,7 @@ def build_public_site(
                     "categories": [category["id"] for category in row["categories"]],
                     "cues": [
                         command["spoken_cue"]
-                        for command in row["commands"]
+                        for command in _commands_for_display(row["commands"])
                         if command.get("spoken_cue")
                         and command.get("command_status") == "active"
                         and command.get("spoken_status") in {"canonical", "reviewed"}
@@ -1135,6 +1170,26 @@ def build_public_site(
                     collection["audio_format"] = match[1]
             browse_catalog["releases"].append(public_release)
         _write(staging / "browse-catalog.json", json.dumps(browse_catalog, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n")
+        if knowledge_file.is_file():
+            for page in staging.rglob("index.html"):
+                title = page.relative_to(staging)
+                if str(title).startswith(("learn/", "experiments/")):
+                    continue
+                doc = page.read_text(encoding="utf-8")
+                if '<nav class="desktop-nav"' not in doc:
+                    continue
+                base = "../" * (len(title.parts) - 1)
+                link = f'<a href="{base}learn/">Learn</a>'
+                doc = doc.replace('<div class="more-links" role="group" aria-label="More pages">', '<div class="more-links" role="group" aria-label="More pages">' + link, 1)
+                mobile = '<details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">'
+                doc = doc.replace(mobile, mobile + link, 1)
+                doc = re.sub(
+                    rf'(href="{re.escape(base)})(glossary/)("[^>]*>)(?:Open the )?Glossary and FAQ(</a>)',
+                    lambda match: f'{match[1]}learn/glossary/">Glossary and FAQ</a>',
+                    doc,
+                )
+                _write(page, doc)
+
         excluded_sitemap_paths = {Path("practice-chains"), Path("experiments/shared-clips-test")}
         urls = [
             PUBLIC_ORIGIN + (relative.as_posix() + "/" if relative != Path(".") else "")
@@ -1338,6 +1393,7 @@ def _shell(
     toc=False,
     toc_items=None,
     description=None,
+    include_learn=False,
 ):
     canonical = PUBLIC_ORIGIN + (current.strip("/") + "/" if current else "")
     description = description or f"{title.removesuffix(' — OCF')}: OCF guides and verified published recordings."
@@ -1358,9 +1414,15 @@ def _shell(
         ("Listen", "functions/#library", ""),
         ("Downloads", "downloads/", "downloads"),
         ("How OCF works", "how-it-works/", "how-it-works"),
+        ("Glossary and FAQ", "glossary/", "glossary"),
         ("Get involved", "get-involved/", "get-involved"),
         ("About", "about/", "about"),
     ]
+    if include_learn:
+        more_nav = [(label, "learn/glossary/", "learn/glossary") if route == "glossary" else (label, href, route)
+                    for label, href, route in more_nav]
+        more_nav.insert(0, ("Learn", "learn/", "learn"))
+    glossary_href = "learn/glossary/" if include_learn else "glossary/"
     current_path = current.strip("/")
 
     def nav_link(label, href, route):
@@ -1404,27 +1466,33 @@ def _shell(
         else ""
     )
     docs_script = f'<script src="{base}assets/js/docs.js" defer></script><script src="{base}assets/js/preferences.js" defer></script>'
+    learn_include = (
+        f'<link rel="stylesheet" href="{base}assets/css/knowledge-base.css">'
+        f'<script src="{base}assets/js/knowledge-base.js" defer></script>'
+        if current == "learn" or current.startswith("learn/") else ""
+    )
     content_class = "docs-content home-content" if root else "docs-content"
     return f'''<!doctype html>
 <html lang="en-US"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101a22"><meta name="description" content="{_html(description)}">
 <link rel="canonical" href="{_html(canonical)}"><meta property="og:type" content="website"><meta property="og:title" content="{_html(title)}"><meta property="og:description" content="{_html(description)}"><meta property="og:url" content="{_html(canonical)}"><meta name="twitter:card" content="summary">
 <title>{_html(title)}</title><link rel="icon" href="{base}assets/branding/ocf-app-icon-32.png" type="image/png" sizes="32x32"><link rel="stylesheet" href="{base}assets/css/main.css"><link rel="stylesheet" href="{base}assets/css/website.css">
-<script src="{base}assets/js/editions.js" defer></script>{catalog_script}{docs_script}<script src="{base}assets/js/playback-controls.js" defer></script><noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
+<script src="{base}assets/js/editions.js" defer></script>{catalog_script}{docs_script}{learn_include}<script src="{base}assets/js/playback-controls.js" defer></script><noscript><style>.theme-toggle,.library-tools,.selection-tools,.reference-tools,.transcript-search,.transcript-navigation,[data-feedback-reveal],.stereo-controls{{display:none!important}}</style></noscript></head><body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header docs-header"><a class="brand" href="{logo_href}"{logo_current_attr}><img class="brand-mark" src="{base}assets/branding/ocf-app-icon-128.png" width="42" height="42" alt="" aria-hidden="true"><span class="brand-short" aria-hidden="true">OCF</span><span class="brand-name">Open Consciousness Functions<small>Audio and Guides</small></span></a>
 <nav class="desktop-nav" aria-label="Main navigation">{primary_links}{more_menu}</nav><details class="mobile-nav"><summary>Menu</summary><nav aria-label="Main navigation">{primary_links}{more_links}</nav></details>
 <button class="preferences-open" type="button" data-preferences-open hidden>Preferences</button></header>
 <main id="main" class="docs-main">{toc_mobile}<div class="docs-layout{" with-toc" if toc_nav else ""}">{toc_desktop}<article class="{content_class}">{body}</article></div></main>
-<footer class="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{base}changelog/">Website changelog</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
+<footer class="site-footer" id="site-footer"><a class="footer-brand" href="{logo_href}">OCF<span> / AUDIO &amp; GUIDES</span></a><div class="footer-links"><a href="{base}get-involved/#feedback">Feedback</a><a href="{base}get-involved/">Get involved</a><a href="{base}changelog/">Website changelog</a><a href="{base}{glossary_href}">Glossary and FAQ</a><a href="{SITE_REPOSITORY}">Audio site source</a><a href="{SOURCE_REPOSITORY}/tree/{source_commit}">Canonical OCF source at {source_commit[:12]}</a><a href="https://github.com/ocfproject-org/open-consciousness-functions-audio/releases">Published releases</a></div><p>Independent documentation and listening library. Audio files remain with their verified published releases.</p></footer>
 </body></html>'''
 
 
-def _function_toc_items():
+def _function_toc_items(function_id=None):
     return [
         (2, identity, label)
         for identity, label in (
             ("overview", "Purpose"),
+            *((("aphantasia-friendly-tip", "Aphantasia-friendly tip"),) if function_id == "OCF-EXP-007" else ()),
             ("cues", "How to use this function"),
             ("behavior", "Use and duration"),
             ("listening", "Listen and download"),
@@ -1477,11 +1545,13 @@ def _start_page(markdown, functions, catalog):
     additional = markdown.split("## Choose one practice", 1)[1]
     return ('<header class="start-journey"><h1>Start here</h1>'
             '<p>OCF uses guided audio to teach focused practices and the cues you can use with their instructions in daily life.</p>'
-            '<ol class="start-steps"><li><strong>Check your audio</strong> — <a href="../listening/#stereo-test">Test left and right</a> and read the <a href="../listening/">Listening Guide</a>.</li>'
+            '<ol class="start-steps"><li><strong>Check your audio</strong> — Use the stereo test in the <a href="../listening/">Listening Guide</a>.</li>'
             '<li data-preparation-prominent><strong>Prepare</strong> — Complete Preparation Learning before using any OCF function.</li>'
             '<li><strong>Choose</strong> — pick a function and read its guide.</li>'
             '<li><strong>Learn</strong> — follow its guided session.</li>'
             '<li><strong>Use</strong> — follow the taught steps in daily life.</li></ol>'
+            '<p id="glossary-link">New to these terms? <a href="../glossary/">Open the Glossary and FAQ</a> or '
+            '<a href="../how-it-works/#what-a-typical-function-session-looks-like">see a typical function session</a>.</p>'
             f'<p data-preparation-prominent><a class="primary-action" href="../preparation-learning/#listen">Play Preparation Learning{timing}</a></p>'
             '<p class="start-play-note" data-preparation-prominent>Opens the recording; press Play when you are ready.</p>'
             '<details class="preparation-exception" data-preparation-prominent><summary>Already learned the official Human Plus preparation?</summary>'
@@ -1492,7 +1562,7 @@ def _start_page(markdown, functions, catalog):
 
 
 def _visitor_flow():
-    return f'''<section class="visitor-flow" id="choose-your-path" aria-labelledby="flow-title"><h2 id="flow-title">Choose your path</h2><p>These paths show the difference between learning an OCF function and the broader guided listening experiences planned for the project.</p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Learn a function</h3><ol class="flow-steps"><li><strong>Check your audio</strong><br><a href="../listening/#stereo-test">Test left and right</a> and read the <a href="../listening/">Listening Guide</a>.</li><li data-preparation-prominent><strong>Prepare</strong><br><a href="../preparation-learning/">Complete Preparation Learning</a>. { _html(PREPARATION_FIRST_GUIDANCE.split('. ', 1)[1]) }{_preparation_completion_actions()}</li><li><strong>Choose</strong><br><a href="../functions/">Pick a function</a> and read its guide.</li><li><strong>Learn</strong><br>Follow the guided session and learn the cue with its instructions.</li><li><strong>Use in daily life</strong><br>Use the taught procedure when it fits. Return to the guide or recording when you want to refresh the practice.</li></ol></section><section class="practice-path"><p class="eyebrow">Planned · not yet in this library</p><h3>Explore guided meditations and series</h3><ol class="flow-steps"><li><strong>Choose a session or series</strong><br>Pick a theme and follow its published starting guidance.</li><li><strong>Settle in and listen</strong><br>Follow the session’s guidance rather than assuming every meditation teaches a function cue.</li><li><strong>Continue at your pace</strong><br>Revisit a session or follow the series order when one is provided.</li></ol><p><a href="../get-involved/">Share ideas for future sessions</a></p></section></div></section>'''
+    return f'''<section class="visitor-flow" id="choose-your-path" aria-labelledby="flow-title"><h2 id="flow-title">Choose your path</h2><p>These paths show the difference between learning an OCF function and the broader guided listening experiences planned for the project.</p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Learn a function</h3><ol class="flow-steps"><li><strong>Check your audio</strong><br>Use the stereo test in the <a href="../listening/">Listening Guide</a>.</li><li data-preparation-prominent><strong>Prepare</strong><br><a href="../preparation-learning/">Complete Preparation Learning</a>. { _html(PREPARATION_FIRST_GUIDANCE.split('. ', 1)[1]) }{_preparation_completion_actions()}</li><li><strong>Choose</strong><br><a href="../functions/">Pick a function</a> and read its guide.</li><li><strong>Learn</strong><br>Follow the guided session and learn the cue with its instructions.</li><li><strong>Use in daily life</strong><br>Use the taught procedure when it fits. Return to the guide or recording when you want to refresh the practice.</li></ol></section><section class="practice-path"><p class="eyebrow">Planned · not yet in this library</p><h3>Explore guided meditations and series</h3><ol class="flow-steps"><li><strong>Choose a session or series</strong><br>Pick a theme and follow its published starting guidance.</li><li><strong>Settle in and listen</strong><br>Follow the session’s guidance rather than assuming every meditation teaches a function cue.</li><li><strong>Continue at your pace</strong><br>Revisit a session or follow the series order when one is provided.</li></ol><p><a href="../get-involved/">Share ideas for future sessions</a></p></section></div></section>'''
 
 
 def _feedback_contact():
@@ -1501,7 +1571,7 @@ def _feedback_contact():
 
 def _stereo_test():
     title = _heading_permalink("stereo-test", "Check left and right")
-    return f'''<section id="stereo-test" class="stereo-test" aria-labelledby="stereo-test-title"><h2 id="stereo-test-title">{title}</h2><p>Put on your stereo headphones or earbuds and start at a comfortable low volume. Each button plays a short, quiet tone in one channel. Left should be heard on your left; right on your right.</p><div class="stereo-controls"><button type="button" data-test-channel="0">Play left</button><button type="button" data-test-channel="1">Play right</button><button type="button" data-test-stop disabled>Stop test</button></div><p data-test-status role="status" aria-live="polite">Ready. No sound plays until you choose a channel.</p><p>If both sides sound the same, check mono audio, balance and your device’s processing settings below. This test lets you listen for separation; it cannot inspect your headphones or system settings.</p><p data-no-script-note>This interactive test needs JavaScript. The listening and device setup guides below remain available.</p></section>'''
+    return f'''<section id="stereo-test" class="stereo-test" aria-labelledby="stereo-test-title"><h2 id="stereo-test-title">{title}</h2><p data-stereo-first-visit>Before your first session, play both tones to check that left and right reach the correct ears.</p><details data-stereo-controls open><summary>Left and right audio test</summary><p>Put on your stereo headphones or earbuds and start at a comfortable low volume. Each button plays a short, quiet tone in one channel. Left should be heard on your left; right on your right.</p><div class="stereo-controls"><button type="button" data-test-channel="0">Play left</button><button type="button" data-test-channel="1">Play right</button><button type="button" data-test-stop disabled>Stop test</button></div><p data-test-status role="status" aria-live="polite">Ready. No sound plays until you choose a channel.</p><p>If both sides sound the same, check mono audio, balance and your device’s processing settings below. This test lets you listen for separation; it cannot inspect your headphones or system settings.</p></details><p data-no-script-note>This interactive test needs JavaScript. The listening and device setup guides below remain available.</p></section>'''
 
 
 def _home_page(functions, catalog, source_commit):
@@ -1521,9 +1591,9 @@ def _home_page(functions, catalog, source_commit):
         for release in catalog["releases"]
         for group in release["functions"] + release.get("preparations", [])
     )
-    return f'''<section class="hero docs-hero"><div class="hero-copy"><p class="eyebrow">Guided practices and function guides</p><h1 id="home-title">Make space to practice.<br><em>Bring it into daily life.</em></h1><p class="hero-lede">OCF is an open-source guided audio project. Explore focused practices for attention, learning, rest and everyday life, then learn the cues and instructions that go with each one.</p><div class="hero-actions"><a class="button button-light" href="start/">Start Here <span aria-hidden="true">→</span></a><a class="button button-outline-light" href="functions/">Browse &amp; Listen</a></div></div><div class="hero-index" aria-hidden="true">{len(functions)} FUNCTION GUIDES · <span data-edition-session-count>{session_count}</span> PUBLISHED SESSIONS</div></section>
-<section class="home-introduction" aria-labelledby="practice-paths-title"><h2 id="practice-paths-title">A practice you can learn, not just a recording you play.</h2><p>OCF functions pair a focused guided session with a short cue. The session teaches the practice and how to use its cue later, following that function’s own instructions.</p><p><a href="how-it-works/">How the guidance, cues and stereo sound fit together</a> · <a href="start/#choose-your-path">See the practice flow</a> · <a href="listening/#stereo-test">Check your left and right audio</a></p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Functions</h3><p>Choose a function with a purpose that fits what you want to explore.</p><a href="functions/">Explore the function library</a></section><section class="practice-path"><p class="eyebrow">Planned</p><h3>Guided meditations and series</h3><p>The project is growing beyond functions, with standalone guided meditations and connected series planned. These are future paths, not recordings currently listed in this library.</p><a href="get-involved/">Help shape what comes next</a></section></div></section>
-<section class="home-paths" aria-labelledby="paths-title"><p class="eyebrow">First steps</p><h2 id="paths-title"><span data-preparation-prominent>Preparation first; then explore by choice.</span><span data-preparation-learned>Explore by choice</span></h2><p class="preparation-note" data-preparation-prominent>{_html(PREPARATION_FIRST_GUIDANCE)}</p><p data-preparation-prominent>After Preparation Learning, these practices are optional starting choices—not additional prerequisites:</p>{_preparation_completion_actions()}{_preparation_learned_link(prefix="")}<ul class="starting-practices">{starting_links}</ul><div class="path-grid"><a class="path-card" href="start/"><h3>Start Here</h3><p>Preparation instructions, the exception, and choosing a first practice.</p></a><a class="path-card" href="functions/"><h3>Browse &amp; Listen</h3><p>Search practices, compare categories, and open available recordings.</p></a></div><p class="home-utilities">Also available: <a href="quick-reference/">Quick Reference for current cues</a> · <a href="listening/">Detailed Listening Guide</a></p></section>
+    return f'''<section class="hero docs-hero"><div class="hero-copy"><p class="eyebrow">Open Consciousness Functions</p><h1 id="home-title">Guided audio for focus,<br><em>relaxation and rest.</em></h1><p class="hero-lede">Each OCF function is a practice you learn by following a guided recording. It teaches you the steps and a short phrase, called a cue, you can think silently when you want to use the practice again.</p><div class="hero-actions"><a class="button button-light" href="start/">Start Here <span aria-hidden="true">→</span></a><a class="button button-outline-light" href="functions/">Browse &amp; Listen</a></div></div><div class="hero-index" aria-hidden="true">{len(functions)} FUNCTION GUIDES · <span data-edition-session-count>{session_count}</span> PUBLISHED SESSIONS</div></section>
+<section class="home-introduction" aria-labelledby="practice-paths-title"><h2 id="practice-paths-title">What’s an OCF function?</h2><p>Take <a href="functions/OCF-FND-004/">Relax</a> as an example. Once you’ve learned it, <strong>Plus Relax</strong> works like a human hotkey. Use it as taught and give yourself a moment to settle. You don’t have to replay the recording or repeat the guided exercise.</p><p><a href="how-it-works/#what-the-stereo-audio-does">How the stereo audio works</a> · <a href="how-it-works/#what-a-typical-function-session-looks-like">What’s in a session</a> · <a href="glossary/">Glossary and FAQ</a></p><div class="practice-path-grid"><section class="practice-path"><p class="eyebrow">Available now</p><h3>Functions</h3><p>Choose a function with a purpose that fits what you want to explore.</p><a href="functions/">Explore the function library</a></section><section class="practice-path"><p class="eyebrow">Planned</p><h3>Guided meditations and series</h3><p>The project is growing beyond functions, with standalone guided meditations and connected series planned. These are future paths, not recordings currently listed in this library.</p><a href="get-involved/">Help shape what comes next</a></section></div></section>
+<section class="home-paths" aria-labelledby="paths-title"><p class="eyebrow">First steps</p><h2 id="paths-title"><span data-preparation-prominent>Check your audio, then learn the preparation</span><span data-preparation-learned>Choose your next practice</span></h2><p>First time listening? Use the stereo test in the <a href="listening/">Listening Guide</a>.</p><p class="preparation-note" data-preparation-prominent>{_html(PREPARATION_FIRST_GUIDANCE)}</p><p data-preparation-prominent>After Preparation Learning, these practices are optional starting choices—not additional prerequisites:</p>{_preparation_completion_actions()}{_preparation_learned_link(prefix="")}<ul class="starting-practices">{starting_links}</ul><div class="path-grid"><a class="path-card" href="start/"><h3>Start Here</h3><p>Preparation instructions, the exception, and choosing a first practice.</p></a><a class="path-card" href="functions/"><h3>Browse &amp; Listen</h3><p>Search practices, compare categories, and open available recordings.</p></a></div><p class="home-utilities">Also available: <a href="quick-reference/">Quick Reference for current cues</a> · <a href="listening/">Detailed Listening Guide</a></p></section>
 <section class="home-library-preview" id="library" aria-labelledby="home-library-title"><span id="releases"></span><p class="eyebrow">Explore all {len(functions)} guides</p><h2 id="home-library-title">Browse by category</h2><nav class="category-links" aria-label="Browse categories">{category_links}</nav><p><a class="text-link" href="functions/">Open Browse &amp; Listen</a> · <a href="quick-reference/">Quick Reference</a> · <a href="downloads/">Individual downloads</a></p></section>
 <section class="home-about"><p class="eyebrow">Open-source and independent</p><p>Read the source, suggest improvements, help translate, or share what would make the project more useful to you.</p><a class="text-link" href="about/">About OCF</a> · <a href="get-involved/">Get involved and send feedback</a></section>'''
 
@@ -1787,15 +1857,50 @@ def _technical_info(content):
     )
 
 
+def _energy_ball_imagery_tip(function_id):
+    if function_id != "OCF-EXP-007":
+        return ""
+    return (
+        '<section class="guide-section" aria-labelledby="aphantasia-friendly-tip">'
+        '<h2 id="aphantasia-friendly-tip">Aphantasia-friendly tip</h2>'
+        '<p>Think of the Energy Ball as spinning so fast it’s invisible. No picture needed. '
+        'Anchor the idea to the feeling of being energized or powered up, if that helps.</p>'
+        '<p>If you like to visualize, give the ball vivid colors, light, or trails that show how it moves. '
+        'You can use images, feelings, or both.</p></section>'
+    )
+
+
+def _commands_for_display(commands):
+    """Show primary activation first without changing source or secondary order."""
+    return sorted(commands, key=lambda command: command.get("designation") != "primary")
+
+
 def _function_page(function, sessions, transcript_paths, source_commit, history_records=()):
     categories = " · ".join(
         _html(category["label"]) for category in function["categories"]
     )
+    energy_ball_examples = (
+        ("Travel", "Before a car trip, bike ride, or flight, picture or sense the ball surrounding you. "
+         "You can also try it while riding as a passenger."),
+        ("Healing intention", "While resting or recovering, picture or sense the ball around you. "
+         "Imagine filling it with warmth or comfort as you set an intention for healing."),
+        ("Feeling protected", "Picture or sense the ball as a boundary around you. "
+         "Give it a quality that helps you feel grounded or secure."),
+    ) if function["function_id"] == "OCF-EXP-007" else ()
     terms = _discovery_section(
         "Tags and discovery terms", function["tags"]
-    ) + _discovery_section("Common-use examples", function["common_uses"], function["function_id"])
+    ) + _discovery_section(
+        "Common-use examples", function["common_uses"], function["function_id"],
+        extra_examples=energy_ball_examples,
+    )
+    optional_preparation = (
+        '<p id="optional-preparation"><strong>Optional:</strong> Consider learning '
+        '<a href="../OCF-FND-001/">Access to Energy</a> before Energy Ball. '
+        'If you already know it, you can use it during the session. You can also learn Energy Ball on its own.</p>'
+        if function["function_id"] == "OCF-EXP-007" else ""
+    )
     command_sections = []
-    for command in function["commands"]:
+    for command in _commands_for_display(function["commands"]):
         spoken_cue = command.get("spoken_cue", "").strip()
         if not spoken_cue:
             raise ValueError(
@@ -1941,7 +2046,7 @@ def _function_page(function, sessions, transcript_paths, source_commit, history_
     )
     return (
         breadcrumb
-        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{audio_actions}</header>{terms}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{emergency_html}{"".join(command_sections)}</section>{lifecycle_html}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
+        + f'''<header class="page-intro function-intro" data-function-id="{_html(function["function_id"])}"><p class="eyebrow">{_html(function["function_id"])} · {_html(categories)}</p><h1>{_html(function["title"]["text"])}</h1><p id="overview" class="lead">{_html(_public_description(function))}</p>{optional_preparation}{audio_actions}</header>{terms}{_energy_ball_imagery_tip(function["function_id"])}{function_background(function["function_id"])}<section class="guide-section"><h2 id="cues">How to use this function</h2>{emergency_html}{"".join(command_sections)}</section>{lifecycle_html}<section class="guide-section"><h2 id="listening">Listen and download</h2><p>Choose an edition. The written instructions are available whether or not you use audio. Release downloads open the original files; some browsers may use the server filename, so rename it locally if needed. This page does not buffer audio.</p>{session_html}</section><section class="guide-section"><h2 id="related">Explore related practices</h2><p>These source-approved links are optional, one-way relationships. They are not prerequisites or claims about combining practices.</p><ul class="relationship-list">{related_html}</ul></section>{history}{contribution}{source_details}'''
     )
 
 
@@ -1976,17 +2081,19 @@ def _function_audio_actions(sessions):
     return f'<nav class="function-audio-actions" aria-label="Listen and download">{"".join(groups)}</nav>'
 
 
-def _discovery_section(title, values, function_id=None):
+def _discovery_section(title, values, function_id=None, *, extra_examples=()):
     values = [
         value
         for value in values
         if value.get("status") in PUBLIC_DISCOVERY_STATUSES
     ]
-    if not values:
+    if not values and not extra_examples:
         return ""
     rows = "".join(f"<li>{_html(value['text'])}</li>" for value in values)
+    rows += "".join(f"<li><strong>{_html(label)}:</strong> {_html(text)}</li>" for label, text in extra_examples)
     references = use_references(function_id, values) if function_id else ""
-    return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul>{rows}</ul>{references}</details>'
+    anchor = ' id="common-use-examples"' if extra_examples else ""
+    return f'<details class="discovery-details"><summary>{_html(title)}</summary><ul{anchor}>{rows}</ul>{references}</details>'
 
 
 def _recording_issue_url(release, group, session):
@@ -2191,7 +2298,7 @@ def _quick_reference(functions, sessions_by_function):
             for term in function["tags"] + function["common_uses"]
             if term.get("status") in PUBLIC_DISCOVERY_STATUSES
         )
-        for command in function["commands"]:
+        for command in _commands_for_display(function["commands"]):
             spoken = command.get("spoken_cue")
             if not spoken:
                 raise ValueError(
@@ -2386,7 +2493,7 @@ def _downloads_page(catalog, preparation_sessions, functions=()):
                 title = session.get("title") or group.get("title") or "Session"
                 function_id = group.get("function_id") or "preparation-learning"
                 documented = by_id.get(function_id, {})
-                cues = [command["spoken_cue"] for command in documented.get("commands", [])
+                cues = [command["spoken_cue"] for command in _commands_for_display(documented.get("commands", []))
                         if command.get("command_status") == "active"
                         and command.get("spoken_status") in {"canonical", "reviewed"}
                         and command.get("spoken_cue")]

@@ -592,7 +592,8 @@ class PublicSiteBuildTests(unittest.TestCase):
         functions = [{"function_id": fid, "title": {"text": title}, "categories": []}
                      for fid, title in zip(ids, titles)]
         page = _home_page(functions, {"releases": []}, "a" * 40)
-        locations = [page.index(f'href="functions/{fid}/"') for fid in ids]
+        starter_list = page.index('<ul class="starting-practices">')
+        locations = [page.index(f'href="functions/{fid}/"', starter_list) for fid in ids]
         self.assertEqual(locations, sorted(locations))
         for title in titles:
             self.assertIn(f'>{title}</a></li>', page)
@@ -824,13 +825,16 @@ class PublicSiteBuildTests(unittest.TestCase):
         function["commands"][0]["explanation"] = {"text": "  A   documented purpose. "}
         secondary = copy.deepcopy(function["commands"][0])
         secondary.update(designation="secondary", spoken_cue="Plus Cancel", explanation={"text": "A distinct secondary meaning."})
-        function["commands"].append(secondary)
+        other_secondary = dict(secondary, spoken_cue="Plus Release")
+        function["commands"].insert(0, secondary)
+        function["commands"].append(other_secondary)
         snapshot = copy.deepcopy(function)
         rendered = _function_page(function, [], {}, "a" * 40)
         self.assertEqual(rendered.count("A documented purpose."), 1)
         self.assertNotIn("A   documented purpose", rendered)
         self.assertIn("A distinct secondary meaning.", rendered)
-        self.assertIn("Plus Cancel", rendered)
+        cues = re.findall(r'<p class="spoken-cue"><strong>(.*?)</strong></p>', rendered)
+        self.assertEqual(cues, [function["commands"][1]["spoken_cue"], "Plus Cancel", "Plus Release"])
         self.assertEqual(function, snapshot)
 
     def test_spoken_cue_reference_replaces_only_the_approved_whole_cue(self):
