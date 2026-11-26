@@ -93,6 +93,17 @@
     const channelButtons = [...stereoTest.querySelectorAll('[data-test-channel]')];
     const stopButton = stereoTest.querySelector('[data-test-stop]');
     const status = stereoTest.querySelector('[data-test-status]');
+    const disclosure = stereoTest.querySelector('[data-stereo-controls]');
+    const firstVisit = stereoTest.querySelector('[data-stereo-first-visit]');
+    const completedChannels = new Set();
+    const stereoKey = 'ocf:stereo-test-completed:v1';
+    let stereoTested = false;
+    try { stereoTested = localStorage.getItem(stereoKey) === 'true'; } catch (_) { /* Storage is optional. */ }
+    if (stereoTested && firstVisit) firstVisit.hidden = true;
+    if (stereoTested && disclosure && location.hash !== '#stereo-test') disclosure.open = false;
+    const openFromLink = () => { if (disclosure && location.hash === '#stereo-test') disclosure.open = true; };
+    window.addEventListener('hashchange', openFromLink);
+    stereoTest.querySelector('h2 a')?.addEventListener('click', () => { if (disclosure) disclosure.open = true; });
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let context = null;
     let source = null;
@@ -135,7 +146,18 @@
           source = context.createBufferSource();
           source.buffer = buffer; // The opposite channel remains exactly zero.
           source.connect(context.destination);
-          source.onended = () => { if (ticket === generation) stop('Test finished. Choose a channel to play again.'); };
+          source.onended = () => {
+            if (ticket !== generation) return;
+            completedChannels.add(channel);
+            if (!stereoTested && completedChannels.size === 2) {
+              stereoTested = true;
+              try { localStorage.setItem(stereoKey, 'true'); } catch (_) { /* Storage is optional. */ }
+              if (firstVisit) firstVisit.hidden = true;
+              stop('Both tones played. You can run the test again any time.');
+            } else {
+              stop('Test finished. Choose a channel to play again.');
+            }
+          };
           source.start();
           button.setAttribute('aria-pressed', 'true');
           status.textContent = `Playing ${channel === 0 ? 'left' : 'right'} channel only.`;
@@ -145,6 +167,9 @@
       });
     });
     stopButton.addEventListener('click', () => stop());
+    if (disclosure) disclosure.addEventListener('toggle', () => {
+      if (!disclosure.open && !stopButton.disabled) stop();
+    });
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
     window.addEventListener('pagehide', () => {
       stop();

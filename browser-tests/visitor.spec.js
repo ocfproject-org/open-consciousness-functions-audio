@@ -6,7 +6,8 @@ test('visitor paths, contribution targets and feedback work at mobile and deskto
     await page.goto('/');
     await expect(page.getByRole('heading', {name:'Guided meditations and series',exact:true})).toBeVisible();
     await expect(page.getByText('Planned',{exact:true})).toBeVisible();
-    await page.getByRole('link',{name:'See the practice flow'}).click();
+    await page.locator('.hero-actions').getByRole('link',{name:'Start Here'}).click();
+    await expect(page).toHaveURL(/\/start\/$/);
     await expect(page.locator('#choose-your-path .practice-path')).toHaveCount(2);
     await expect(page.locator('#choose-your-path')).toContainText('official Human Plus preparation track');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
@@ -77,7 +78,8 @@ test('actual Web Audio channel rendering and short user-started playback complet
  for(const [label,silent,active]of[['Play left',1,0],['Play right',0,1]]){
   await page.getByRole('button',{name:label,exact:true}).click();await expect(page.locator('[data-test-status]')).toContainText('Playing');
   const measured=await page.evaluate(async({silent,active})=>{const b=window.lastTestBuffer;const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;const ctx=new C(2,b.length,b.sampleRate);const n=ctx.createBufferSource();n.buffer=b;n.connect(ctx.destination);n.start();const out=await ctx.startRendering();return {silent:out.getChannelData(silent).every(x=>x===0),active:out.getChannelData(active).some(x=>Math.abs(x)>.03)}},{silent,active});
-  expect(measured).toEqual({silent:true,active:true});await expect(page.locator('[data-test-status]')).toContainText('Test finished',{timeout:5000});
+  expect(measured).toEqual({silent:true,active:true});
+  await expect(page.locator('[data-test-status]')).toContainText(active === 0 ? 'Test finished' : 'Both tones played',{timeout:5000});
  }
 });
 
@@ -90,4 +92,33 @@ test('new visitor pages preserve accessible structure and theme contrast',async(
   const violations=await page.evaluate(async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations);
   expect(violations).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
  }
+});
+
+test('stereo test stays in Listening Guide and folds away after both tones', async ({page}) => {
+  await page.setViewportSize({width:375,height:812});
+  await page.goto('/learn/');
+  await expect(page.getByText('Check left and right before you listen',{exact:true})).toHaveCount(0);
+  await page.locator('main').getByRole('link',{name:'Listening Guide',exact:true}).click();
+  await expect(page).toHaveURL(/listening\/$/);
+  const prompt=page.locator('[data-stereo-first-visit]');
+  const section=page.locator('#stereo-test');
+  const details=section.locator('details');
+  const left=section.getByRole('button',{name:'Play left',exact:true});
+  const right=section.getByRole('button',{name:'Play right',exact:true});
+  const status=section.getByRole('status');
+  await expect(prompt).toBeVisible();
+  await left.click();
+  await expect(status).toContainText('Test finished');
+  await expect(prompt).toBeVisible();
+  await right.click();
+  await expect(status).toContainText('Both tones played');
+  await expect(prompt).toBeHidden();
+  await page.reload();
+  await expect(prompt).toBeHidden();
+  await expect(left).toBeHidden();
+  await details.locator('summary').click();
+  await expect(left).toBeVisible();
+  await page.goto('/listening/#stereo-test');
+  await expect(left).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
 });

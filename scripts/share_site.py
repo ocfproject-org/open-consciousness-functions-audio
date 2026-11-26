@@ -31,5 +31,6 @@ def install(root):
                 header = header[:anchor.end()] + controls + header[anchor.end():]
                 text = text[:intro.start()] + header + text[intro.end():]
         else:
-            text = text.replace('<footer class="site-footer">', '<footer class="site-footer">' + controls)
+            text = re.sub(r'<footer class="site-footer"[^>]*>',
+                          lambda match: match.group() + controls, text, count=1)
         page.write_text(text, encoding="utf-8")

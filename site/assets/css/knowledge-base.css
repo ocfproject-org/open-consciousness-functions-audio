@@ -1,0 +1,12 @@
+.learn-nav,.learn-controls { display:flex; flex-wrap:wrap; align-items:end; gap:.75rem 1.25rem; margin-block:1rem 1.5rem; }
+.learn-nav [aria-current="page"] { font-weight:700; }
+.learn-controls[hidden],.learn-row[hidden],[data-learn-empty][hidden] { display:none; }
+.learn-controls label { display:grid; gap:.3rem; min-width:0; }
+.learn-controls label:first-child { flex:1 1 14rem; }
+.learn-controls :is(input,select,button) { min-width:0; max-width:100%; padding:.55rem; font:inherit; }
+.learn-row { overflow-wrap:anywhere; scroll-margin-top:6rem; }
+.learn-row summary { cursor:pointer; }
+.learn-row summary small { display:block; margin:.3rem 0 .35rem 1.25rem; }
+.learn-row:target { outline:2px solid currentColor; outline-offset:3px; }
+.learn-evidence { margin:.8rem 0; }
+.learn-permalink { font-size:.9em; }
