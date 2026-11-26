@@ -20,6 +20,17 @@ test('the website changelog is discoverable from normal pages and lists dated up
   });
   expect(dates.every(Number.isFinite)).toBe(true);
   expect(dates).toEqual([...dates].sort((a, b) => b - a));
+  expect(titles[0]).toBe('November 26, 2026: Learn, glossary, and listening updates');
+  for (const [name, href] of [
+    ['glossary', '../learn/glossary/'],
+    ['FAQ', '../learn/faq/'],
+    ['left/right stereo check', '../listening/#stereo-test'],
+    ['Energy Ball guide', '../functions/OCF-EXP-007/'],
+  ]) {
+    await expect(article.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+    const response = await request.get(href.replace(/^\.\./, '').split('#')[0]);
+    expect(response.ok()).toBe(true);
+  }
   await expect(article.getByRole('heading', { name: /Smart Play$/ })).toBeVisible();
   await expect(article.getByRole('link', { name: 'published audio release notes' }))
     .toHaveAttribute('href', 'https://github.com/ocfproject-org/open-consciousness-functions-audio/releases');
